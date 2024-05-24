@@ -1,0 +1,75 @@
+{
+  "name": "@lightningtv/core",
+  "version": "0.0.1",
+  "description": "Lightning TV Core for Universal Renderers",
+  "type": "module",
+  "source": "src/index.ts",
+  "main": "./dist/esm/index.js",
+  "browser": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "typescript": "./src/index.ts",
+      "browser": "./dist/esm/index.js",
+      "solid": "./dist/source/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "start": "npm run watch",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "npm run lint:prettier && npm run lint:eslint",
+    "lint:fix": "npm run lint:fix:prettier && npm run lint:fix:eslint",
+    "lint:prettier": "prettier --check \"**/*.{ts,js,cjs,md}\"",
+    "lint:fix:prettier": "prettier --write \"**/*.{ts,js,cjs,md}\"",
+    "lint:eslint": "eslint .",
+    "lint:fix:eslint": "eslint --fix .",
+    "build": "npm run tsc",
+    "tsc": "tsc",
+    "watch": "tsc -w",
+    "prepare": "husky",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "lightning",
+    "javascript",
+    "canvas",
+    "web",
+    "tv"
+  ],
+  "author": "Chris Lorenzo",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@lightningjs/renderer": "^0.9.1",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "client": "link:@types/vite/client",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{js,cjs,md}": "prettier --write"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lightning-tv/core.git"
+  },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ]
+}
