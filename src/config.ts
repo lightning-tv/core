@@ -11,7 +11,7 @@ interface Config {
   animationsEnabled: boolean;
   fontSettings: Partial<IntrinsicTextNodeStyleProps>;
   rendererOptions?: Partial<RendererMainSettings>;
-  setActiveElement?: (elm: ElementNode) => void;
+  setActiveElement: (elm: ElementNode) => void;
 }
 
 declare global {

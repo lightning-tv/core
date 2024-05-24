@@ -36,7 +36,6 @@ import type {
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeTypes } from './nodeTypes.js';
 
-const { animationSettings: defaultAnimationSettings, setActiveElement } = Config;
 const layoutQueue = new Set<ElementNode>();
 let queueLayout = true;
 
@@ -316,7 +315,7 @@ export class ElementNode extends Object {
         }
       }
       // Delay setting focus so children can render (useful for Row + Column)
-      queueMicrotask(() => setActiveElement!(this));
+      queueMicrotask(() => Config.setActiveElement(this));
     } else {
       this.autofocus = true;
     }
@@ -419,7 +418,7 @@ export class ElementNode extends Object {
   }
 
   get animationSettings(): Partial<AnimationSettings> {
-    return this._animationSettings || defaultAnimationSettings;
+    return this._animationSettings || Config.animationSettings;
   }
 
   set animationSettings(animationSettings: Partial<AnimationSettings>) {

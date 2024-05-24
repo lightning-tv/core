@@ -4,18 +4,8 @@
   "description": "Lightning TV Core for Universal Renderers",
   "type": "module",
   "source": "src/index.ts",
-  "main": "./dist/esm/index.js",
-  "browser": "./dist/esm/index.js",
-  "types": "./dist/types/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./src/index.ts",
-      "typescript": "./src/index.ts",
-      "browser": "./dist/esm/index.js",
-      "solid": "./dist/source/index.js",
-      "types": "./dist/types/index.d.ts"
-    }
-  },
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "sideEffects": false,
   "scripts": {
     "start": "npm run watch",
