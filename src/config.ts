@@ -3,6 +3,7 @@ import type {
   RendererMainSettings,
 } from '@lightningjs/renderer';
 import type { IntrinsicTextNodeStyleProps } from './intrinsicTypes.js';
+import { type ElementNode } from './elementNode.js';
 
 interface Config {
   debug: boolean;
@@ -10,6 +11,7 @@ interface Config {
   animationsEnabled: boolean;
   fontSettings: Partial<IntrinsicTextNodeStyleProps>;
   rendererOptions?: Partial<RendererMainSettings>;
+  setActiveElement?: (elm: ElementNode) => void;
 }
 
 declare global {
@@ -37,4 +39,5 @@ export const Config: Config = {
     fontFamily: 'Ubuntu',
     fontSize: 100,
   },
+  setActiveElement: () => {},
 };

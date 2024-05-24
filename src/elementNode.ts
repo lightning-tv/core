@@ -9,7 +9,6 @@ import {
   type NodeStyles,
   type TextStyles,
   type ShaderEffectDesc,
-  type IntrinsicTextNodeStyleProps,
 } from './intrinsicTypes.js';
 import Children from './children.js';
 import States, { type NodeStates } from './states.js';
@@ -23,11 +22,9 @@ import {
   flattenStyles,
 } from './utils.js';
 import { Config } from './config.js';
-import { setActiveElement } from '@activeElement';
 import type {
   RendererMain,
   INode,
-  ITextNode,
   INodeAnimatableProps,
   INodeWritableProps,
   ShaderRef,
@@ -39,7 +36,7 @@ import type {
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeTypes } from './nodeTypes.js';
 
-const { animationSettings: defaultAnimationSettings } = Config;
+const { animationSettings: defaultAnimationSettings, setActiveElement } = Config;
 const layoutQueue = new Set<ElementNode>();
 let queueLayout = true;
 
@@ -170,7 +167,7 @@ export class ElementNode extends Object {
   id?: string;
   debug?: boolean;
   type: NodeTypes;
-  lng: INode | IntrinsicNodeProps | IntrinsicTextProps | ITextNode;
+  lng: INode | IntrinsicNodeProps | IntrinsicTextProps;
   rendered: boolean;
   renderer?: RendererMain;
   selected?: number;
@@ -319,7 +316,7 @@ export class ElementNode extends Object {
         }
       }
       // Delay setting focus so children can render (useful for Row + Column)
-      queueMicrotask(() => setActiveElement<ElementNode>(this));
+      queueMicrotask(() => setActiveElement!(this));
     } else {
       this.autofocus = true;
     }
@@ -551,33 +548,34 @@ export class ElementNode extends Object {
     }
 
     if (node.isTextNode()) {
+      const textProps = props as IntrinsicTextProps;
       if (Config.fontSettings) {
         for (const key in Config.fontSettings) {
-          if (props[key] === undefined) {
-            props[key] = Config.fontSettings[key];
+          if (textProps[key] === undefined) {
+            textProps[key] = Config.fontSettings[key];
           }
         }
       }
-      props.text = node.getText();
+      textProps.text = node.getText();
 
-      if (props.textAlign && !props.contain) {
+      if (textProps.textAlign && !textProps.contain) {
         console.warn('Text align requires contain: ', node.getText());
       }
 
       // contain is either width or both
-      if (props.contain) {
-        if (!props.width) {
-          props.width =
-            (parent.width || 0) - props.x - (props.marginRight || 0);
+      if (textProps.contain) {
+        if (!textProps.width) {
+          textProps.width =
+            (parent.width || 0) - textProps.x! - (textProps.marginRight || 0);
         }
 
-        if (props.contain === 'both' && !props.height && !props.maxLines) {
-          props.height =
-            (parent.height || 0) - props.y - (props.marginBottom || 0);
-        } else if (props.maxLines === 1) {
-          props.height = (props.height ||
-            props.lineHeight ||
-            props.fontSize) as number;
+        if (textProps.contain === 'both' && !textProps.height && !textProps.maxLines) {
+          textProps.height =
+            (parent.height || 0) - textProps.y! - (textProps.marginBottom || 0);
+        } else if (textProps.maxLines === 1) {
+          textProps.height = (textProps.height ||
+            textProps.lineHeight ||
+            textProps.fontSize) as number;
         }
       }
 
