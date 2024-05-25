@@ -10,10 +10,6 @@
     "sourceMap": true,
     "declaration": true,
     "skipLibCheck": true,
-    "paths": {
-      "@activeElement": ["./activeElement.ts"]
-    },
-
     // Type Checking / Syntax Rules
     "strict": true,
     "noUncheckedIndexedAccess": true,
