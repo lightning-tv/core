@@ -530,7 +530,7 @@ export class ElementNode extends Object {
       }
     }
 
-    if (this.states.length) {
+    if (this._states) {
       this._stateChanged();
     }
 
@@ -568,7 +568,11 @@ export class ElementNode extends Object {
             (parent.width || 0) - textProps.x! - (textProps.marginRight || 0);
         }
 
-        if (textProps.contain === 'both' && !textProps.height && !textProps.maxLines) {
+        if (
+          textProps.contain === 'both' &&
+          !textProps.height &&
+          !textProps.maxLines
+        ) {
           textProps.height =
             (parent.height || 0) - textProps.y! - (textProps.marginBottom || 0);
         } else if (textProps.maxLines === 1) {
