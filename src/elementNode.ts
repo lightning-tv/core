@@ -188,12 +188,14 @@ export class ElementNode extends Object {
     [string, (target: ElementNode, event?: Event) => void]
   >;
   private _animationSettings?: Partial<AnimationSettings>;
-  private _animationQueue: Array<{
-    props: Partial<INodeAnimatableProps>;
-    animationSettings?: Partial<AnimationSettings>;
-  }> = [];
+  private _animationQueue:
+    | Array<{
+        props: Partial<INodeAnimatableProps>;
+        animationSettings?: Partial<AnimationSettings>;
+      }>
+    | undefined;
   private _animationQueueSettings: Partial<AnimationSettings> | undefined;
-  private _animationRunning: boolean = false;
+  private _animationRunning?: boolean;
 
   children: Children;
 
@@ -279,18 +281,19 @@ export class ElementNode extends Object {
         animationSettings || this.animationSettings;
     }
     animationSettings = animationSettings || this._animationQueueSettings;
+    this._animationQueue = this._animationQueue || [];
     this._animationQueue.push({ props, animationSettings });
     return this;
   }
 
   async start() {
-    let animation = this._animationQueue.shift();
+    let animation = this._animationQueue!.shift();
     while (animation) {
       this._animationRunning = true;
       await this.animate(animation.props, animation.animationSettings)
         .start()
         .waitUntilStopped();
-      animation = this._animationQueue.shift();
+      animation = this._animationQueue!.shift();
     }
     this._animationRunning = false;
     this._animationQueueSettings = undefined;
