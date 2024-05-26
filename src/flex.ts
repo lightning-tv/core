@@ -1,6 +1,6 @@
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { type ElementNode, type SolidNode } from './elementNode.js';
-import { NodeTypes } from './nodeTypes.js';
+import { NodeType } from './nodeTypes.js';
 
 export default function (node: ElementNode): boolean {
   const children = [];
@@ -8,7 +8,7 @@ export default function (node: ElementNode): boolean {
   for (let i = 0; i < node.children.length; i++) {
     const c = node.children[i]!;
     // Filter empty text nodes which are place holders for <Show> and elements missing dimensions
-    if (c.type === NodeTypes.Text) {
+    if (c.type === NodeType.Text) {
       continue;
     }
 
@@ -18,7 +18,7 @@ export default function (node: ElementNode): boolean {
     }
 
     // text node hasnt loaded yet - skip layout
-    if (c.type === NodeTypes.TextNode && c.text && !(c.width || c.height)) {
+    if (c.type === NodeType.TextNode && c.text && !(c.width || c.height)) {
       return false;
     }
 

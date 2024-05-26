@@ -34,7 +34,7 @@ import type {
   LinearGradientEffectProps,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
-import { NodeTypes } from './nodeTypes.js';
+import { NodeType, type NodeTypes } from './nodeTypes.js';
 
 const layoutQueue = new Set<ElementNode>();
 let queueLayout = true;
@@ -131,7 +131,7 @@ const LightningRendererNonAnimatingProps = [
 
 export interface TextNode {
   id?: string;
-  type: NodeTypes.TextNode | NodeTypes.Text;
+  type: NodeTypes;
   text: string;
   parent: ElementNode | undefined;
   zIndex?: number;
@@ -201,7 +201,7 @@ export class ElementNode extends Object {
 
   constructor(name: string) {
     super();
-    this.type = name === 'text' ? NodeTypes.TextNode : NodeTypes.Element;
+    this.type = name === 'text' ? NodeType.TextNode : NodeType.Element;
     this.rendered = false;
     this.lng = {};
     this.children = new Children(this);
@@ -325,7 +325,7 @@ export class ElementNode extends Object {
   }
 
   isTextNode() {
-    return this.type === NodeTypes.TextNode;
+    return this.type === NodeType.TextNode;
   }
 
   _layoutOnLoad() {
@@ -646,7 +646,7 @@ export class ElementNode extends Object {
       node.lng.div.element = node;
     }
 
-    if (node.type === NodeTypes.Element) {
+    if (node.type === NodeType.Element) {
       // only element nodes will have children that need rendering
       for (let i = 0; i < node.children.length; i++) {
         const c = node.children[i];
