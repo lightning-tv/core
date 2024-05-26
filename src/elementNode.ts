@@ -159,10 +159,6 @@ export interface ElementNode
   extends Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>,
     IntrinsicCommonProps {
   [key: string]: unknown;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class ElementNode extends Object {
   id?: string;
   debug?: boolean;
   type: NodeTypes;
@@ -179,26 +175,26 @@ export class ElementNode extends Object {
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
 
-  private _undoStyles?: string[];
-  private _effects?: StyleEffects;
-  private _parent: ElementNode | undefined;
-  private _style?: SolidStyles;
-  private _states?: States;
-  private _events?: Array<
-    [string, (target: ElementNode, event?: Event) => void]
-  >;
-  private _animationSettings?: Partial<AnimationSettings>;
-  private _animationQueue:
+  _undoStyles?: string[];
+  _effects?: StyleEffects;
+  _parent: ElementNode | undefined;
+  _style?: SolidStyles;
+  _states?: States;
+  _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
+  _animationSettings?: Partial<AnimationSettings>;
+  _animationQueue:
     | Array<{
         props: Partial<INodeAnimatableProps>;
         animationSettings?: Partial<AnimationSettings>;
       }>
     | undefined;
-  private _animationQueueSettings: Partial<AnimationSettings> | undefined;
-  private _animationRunning?: boolean;
-
+  _animationQueueSettings: Partial<AnimationSettings> | undefined;
+  _animationRunning?: boolean;
   children: Children;
+}
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class ElementNode extends Object {
   constructor(name: string) {
     super();
     this.type = name === 'text' ? NodeType.TextNode : NodeType.Element;
