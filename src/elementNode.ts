@@ -129,31 +129,17 @@ const LightningRendererNonAnimatingProps = [
   'wordWrap',
 ];
 
-export interface TextNode {
-  id?: string;
-  type: NodeTypes;
-  text: string;
-  parent: ElementNode | undefined;
-  zIndex?: number;
-  states?: States;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  marginLeft?: number;
-  marginRight?: number;
-  marginTop?: number;
-  marginBottom?: number;
-  flexItem?: boolean;
-  flexOrder?: number;
-  _queueDelete?: boolean;
-}
-
-export type SolidNode = ElementNode | TextNode;
-export type SolidStyles = {
+export type Styles = {
   [key: string]: NodeStyles | TextStyles | undefined;
 } & (NodeStyles | TextStyles);
 
+export type TextNode = {
+  id?: string;
+  text: string;
+  type: 'text';
+  parent?: ElementNode;
+  states?: NodeStates;
+};
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ElementNode
   extends Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>,
@@ -161,7 +147,7 @@ export interface ElementNode
   [key: string]: unknown;
   id?: string;
   debug?: boolean;
-  type: NodeTypes;
+  type: 'element' | 'textNode';
   lng: INode | IntrinsicNodeProps | IntrinsicTextProps;
   rendered: boolean;
   renderer?: RendererMain;
@@ -169,8 +155,7 @@ export interface ElementNode
   autofocus?: boolean;
   flexItem?: boolean;
   flexOrder?: number;
-  flexBoundary?: 'contain' | 'fixed'; // default is undefined - contained for flex calculated size
-  _queueDelete?: boolean;
+  text?: string;
   forwardFocus?:
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
@@ -178,7 +163,7 @@ export interface ElementNode
   _undoStyles?: string[];
   _effects?: StyleEffects;
   _parent: ElementNode | undefined;
-  _style?: SolidStyles;
+  _style?: Styles;
   _states?: States;
   _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
   _animationSettings?: Partial<AnimationSettings>;
@@ -360,7 +345,7 @@ export class ElementNode extends Object {
     return this._events;
   }
 
-  set style(values: SolidStyles | (SolidStyles | undefined)[]) {
+  set style(values: Styles | (Styles | undefined)[]) {
     if (isArray(values)) {
       this._style = flattenStyles(values);
     } else {
@@ -369,13 +354,13 @@ export class ElementNode extends Object {
     // Keys set in JSX are more important
     for (const key in this._style) {
       // be careful of 0 values
-      if (this[key as keyof SolidStyles] === undefined) {
-        this[key as keyof SolidStyles] = this._style[key as keyof SolidStyles];
+      if (this[key as keyof Styles] === undefined) {
+        this[key as keyof Styles] = this._style[key as keyof Styles];
       }
     }
   }
 
-  get style(): SolidStyles {
+  get style(): Styles {
     return this._style!;
   }
 
@@ -387,10 +372,10 @@ export class ElementNode extends Object {
     return this.children.find((c) => c.id === id);
   }
 
-  searchChildrenById(id: string): SolidNode | undefined {
+  searchChildrenById(id: string): ElementNode | undefined {
     // traverse all the childrens children
     for (let i = 0; i < this.children.length; i++) {
-      const child = this.children[i];
+      const child = this.children[i] as ElementNode;
       if (child instanceof ElementNode) {
         if (child.id === id) {
           return child;

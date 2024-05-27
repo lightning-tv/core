@@ -1,9 +1,9 @@
-import type { ElementNode, SolidNode } from './elementNode.js';
+import type { ElementNode, TextNode } from './elementNode.js';
 
 /**
  * Children class
  */
-export default class Children extends Array<SolidNode> {
+export default class Children extends Array<ElementNode | TextNode> {
   _parent: ElementNode;
 
   constructor(node: ElementNode) {
@@ -20,7 +20,10 @@ export default class Children extends Array<SolidNode> {
     return this[0];
   }
 
-  insert(node: SolidNode, beforeNode?: SolidNode | null) {
+  insert(
+    node: ElementNode | TextNode,
+    beforeNode?: ElementNode | TextNode | null,
+  ) {
     if (beforeNode) {
       const index = this.indexOf(beforeNode);
       this.splice(index, 0, node);
@@ -31,7 +34,7 @@ export default class Children extends Array<SolidNode> {
     node.parent = this._parent;
   }
 
-  remove(node: SolidNode) {
+  remove(node: ElementNode | TextNode) {
     const nodeIndexToRemove = this.indexOf(node);
     if (nodeIndexToRemove >= 0) {
       this.splice(nodeIndexToRemove, 1);

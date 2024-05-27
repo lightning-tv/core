@@ -1,5 +1,5 @@
 import { assertTruthy } from '@lightningjs/renderer/utils';
-import { type ElementNode, type SolidNode } from './elementNode.js';
+import { type ElementNode } from './elementNode.js';
 import { NodeType } from './nodeTypes.js';
 
 export default function (node: ElementNode): boolean {
@@ -55,7 +55,7 @@ export default function (node: ElementNode): boolean {
   // Only align children if container has a cross size
   const crossAlignChild =
     containerCrossSize && align
-      ? (c: SolidNode) => {
+      ? (c: ElementNode) => {
           if (align === 'flexStart') {
             c[crossProp] = 0;
           } else if (align === 'center') {
@@ -64,7 +64,7 @@ export default function (node: ElementNode): boolean {
             c[crossProp] = containerCrossSize - (c[crossDimension] || 0);
           }
         }
-      : (c: SolidNode) => c;
+      : (c: ElementNode) => c;
 
   if (justify === 'flexStart') {
     let start = 0;

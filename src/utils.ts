@@ -1,11 +1,11 @@
 import { Config, isDev } from './config.js';
-import type { SolidNode, SolidStyles } from './elementNode.js';
+import type { ElementNode, Styles } from './elementNode.js';
 
 function hasDebug(node: any) {
   return isObject(node) && node.debug;
 }
 
-export function log(msg: string, node: SolidNode, ...args: any[]) {
+export function log(msg: string, node: ElementNode, ...args: any[]) {
   if (isDev) {
     if (Config.debug || hasDebug(node) || hasDebug(args[0])) {
       console.log(msg, node, ...args);
@@ -51,9 +51,9 @@ export function keyExists(
 }
 
 export function flattenStyles(
-  obj: SolidStyles | undefined | (SolidStyles | undefined)[],
-  result: SolidStyles = {},
-): SolidStyles {
+  obj: Styles | undefined | (Styles | undefined)[],
+  result: Styles = {},
+): Styles {
   if (isArray(obj)) {
     obj.forEach((item) => {
       flattenStyles(item, result);
@@ -63,7 +63,7 @@ export function flattenStyles(
     for (const key in obj) {
       // be careful of 0 values
       if (result[key] === undefined) {
-        result[key as keyof SolidStyles] = obj[key as keyof SolidStyles];
+        result[key as keyof Styles] = obj[key as keyof Styles];
       }
     }
   }
