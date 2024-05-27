@@ -688,9 +688,6 @@ Object.defineProperties(ElementNode.prototype, {
   borderRight: borderAccessor('Right'),
   borderTop: borderAccessor('Top'),
   borderBottom: borderAccessor('Bottom'),
-});
-
-Object.defineProperties(ElementNode.prototype, {
   linearGradient: {
     set(this: ElementNode, props: LinearGradientEffectProps = {}) {
       this.effects = this.effects
