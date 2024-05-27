@@ -133,13 +133,13 @@ export type Styles = {
   [key: string]: NodeStyles | TextStyles | undefined;
 } & (NodeStyles | TextStyles);
 
-export type TextNode = {
+export interface TextNode {
   id?: string;
   text: string;
   type: 'text';
   parent?: ElementNode;
   states?: NodeStates;
-};
+}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ElementNode
   extends Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>,

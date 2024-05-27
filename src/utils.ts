@@ -1,11 +1,11 @@
 import { Config, isDev } from './config.js';
-import type { ElementNode, Styles } from './elementNode.js';
+import type { ElementNode, TextNode, Styles } from './elementNode.js';
 
 function hasDebug(node: any) {
   return isObject(node) && node.debug;
 }
 
-export function log(msg: string, node: ElementNode, ...args: any[]) {
+export function log(msg: string, node: ElementNode | TextNode, ...args: any[]) {
   if (isDev) {
     if (Config.debug || hasDebug(node) || hasDebug(args[0])) {
       console.log(msg, node, ...args);
