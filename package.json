@@ -4,7 +4,12 @@
   "description": "Lightning TV Core for Universal Renderers",
   "type": "module",
   "main": "./dist/src/index.js",
+  "browser": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
+  "exports": {
+    "types": "./src/index.ts",
+    "import": "./src/index.ts"
+  },
   "sideEffects": false,
   "scripts": {
     "start": "npm run watch",
