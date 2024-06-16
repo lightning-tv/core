@@ -49,7 +49,11 @@ export default function (node: ElementNode): boolean {
   const align = node.alignItems;
   let itemSize = 0;
   if (['center', 'spaceBetween', 'spaceEvenly'].includes(justify)) {
-    itemSize = children.reduce((prev, c) => prev + (c[dimension] || 0), 0);
+    itemSize = children.reduce(
+      (prev, c) =>
+        prev + (c[dimension] || 0) + (c[marginOne] || 0) + (c[marginTwo] || 0),
+      0,
+    );
   }
 
   // Only align children if container has a cross size
@@ -97,8 +101,9 @@ export default function (node: ElementNode): boolean {
     let start = (containerSize - (itemSize + gap * (numChildren - 1))) / 2;
     for (let i = 0; i < children.length; i++) {
       const c = children[i]!;
-      c[prop] = start;
-      start += (c[dimension] || 0) + gap;
+      c[prop] = start + (c[marginOne] || 0);
+      start +=
+        (c[dimension] || 0) + gap + (c[marginOne] || 0) + (c[marginTwo] || 0);
       crossAlignChild(c);
     }
   } else if (justify === 'spaceBetween') {
@@ -106,8 +111,9 @@ export default function (node: ElementNode): boolean {
     let start = 0;
     for (let i = 0; i < children.length; i++) {
       const c = children[i]!;
-      c[prop] = start;
-      start += (c[dimension] || 0) + toPad;
+      c[prop] = start + (c[marginOne] || 0);
+      start +=
+        (c[dimension] || 0) + toPad + (c[marginOne] || 0) + (c[marginTwo] || 0);
       crossAlignChild(c);
     }
   } else if (justify === 'spaceEvenly') {
@@ -115,8 +121,9 @@ export default function (node: ElementNode): boolean {
     let start = toPad;
     for (let i = 0; i < children.length; i++) {
       const c = children[i]!;
-      c[prop] = start;
-      start += (c[dimension] || 0) + toPad;
+      c[prop] = start + (c[marginOne] || 0);
+      start +=
+        (c[dimension] || 0) + toPad + (c[marginOne] || 0) + (c[marginTwo] || 0);
       crossAlignChild(c);
     }
   }
