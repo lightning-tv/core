@@ -97,6 +97,14 @@ export default function (node: ElementNode): boolean {
         (c[dimension] || 0) + gap + (c[marginOne] || 0) + (c[marginTwo] || 0);
       crossAlignChild(c);
     }
+    // Update container size
+    if (node.flexBoundary !== 'fixed') {
+      const calculatedSize = start - gap;
+      if (calculatedSize !== node[dimension]) {
+        node[dimension] = calculatedSize;
+        return true;
+      }
+    }
   } else if (justify === 'center') {
     let start = (containerSize - (itemSize + gap * (numChildren - 1))) / 2;
     for (let i = 0; i < children.length; i++) {
