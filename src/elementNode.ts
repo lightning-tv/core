@@ -634,8 +634,9 @@ export class ElementNode extends Object {
         assertTruthy(c, 'Child is undefined');
         if ('render' in c) {
           c.render();
-        } else if (c.text) {
+        } else if (c.text && c.type === NodeType.Text) {
           // Solid Show uses an empty text node as a placeholder
+          // Vue uses comment nodes for v-if
           console.warn('TextNode outside of <Text>: ', c);
         }
       }
