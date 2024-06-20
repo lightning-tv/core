@@ -138,7 +138,7 @@ export interface TextNode {
   text: string;
   type: 'text';
   parent?: ElementNode;
-  states?: NodeStates;
+  states?: States;
 }
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ElementNode
