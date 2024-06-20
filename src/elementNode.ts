@@ -9,6 +9,7 @@ import {
   type NodeStyles,
   type TextStyles,
   type ShaderEffectDesc,
+  TextProps,
 } from './intrinsicTypes.js';
 import Children from './children.js';
 import States, { type NodeStates } from './states.js';
@@ -20,6 +21,7 @@ import {
   isFunc,
   keyExists,
   flattenStyles,
+  isINode,
 } from './utils.js';
 import { Config } from './config.js';
 import type {
@@ -133,7 +135,7 @@ export type Styles = {
   [key: string]: NodeStyles | TextStyles | undefined;
 } & (NodeStyles | TextStyles);
 
-export interface TextNode {
+export interface TextNode extends TextProps {
   id?: string;
   text: string;
   type: 'text';
@@ -184,7 +186,7 @@ export class ElementNode extends Object {
     super();
     this.type = name === 'text' ? NodeType.TextNode : NodeType.Element;
     this.rendered = false;
-    this.lng = {};
+    this.lng = {} as INode;
     this.children = new Children(this);
   }
 
@@ -240,7 +242,7 @@ export class ElementNode extends Object {
     animationSettings?: Partial<AnimationSettings>,
   ) {
     assertTruthy(this.rendered, 'Node must be rendered before animating');
-    return (this.lng as INode).animate(
+    return (this.lng as INode).animate?.(
       props,
       animationSettings || this.animationSettings,
     );
@@ -310,7 +312,7 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on(
+    (this.lng as INode).on?.(
       'loaded',
       (_node: INode, loadedPayload: NodeLoadedPayload) => {
         const { dimensions } = loadedPayload;
@@ -328,8 +330,8 @@ export class ElementNode extends Object {
   }
 
   destroy() {
-    if (this._queueDelete) {
-      (this.lng as INode).destroy();
+    if (this._queueDelete && isINode(this.lng)) {
+      this.lng.destroy();
     }
   }
   // Must be set before render
@@ -617,7 +619,7 @@ export class ElementNode extends Object {
 
     node.onEvents &&
       node.onEvents.forEach(([name, handler]) => {
-        (node.lng as INode).on(name, (inode, data) => handler(node, data));
+        (node.lng as INode).on?.(name, (inode, data) => handler(node, data));
       });
 
     // L3 Inspector adds div to the lng object
@@ -632,7 +634,7 @@ export class ElementNode extends Object {
       for (let i = 0; i < node.children.length; i++) {
         const c = node.children[i];
         assertTruthy(c, 'Child is undefined');
-        if ('render' in c) {
+        if (c instanceof ElementNode && 'render' in c) {
           c.render();
         } else if (c.text && c.type === NodeType.Text) {
           // Solid Show uses an empty text node as a placeholder
@@ -659,10 +661,10 @@ for (const key of LightningRendererNumberProps) {
 
 for (const key of LightningRendererNonAnimatingProps) {
   Object.defineProperty(ElementNode.prototype, key, {
-    get() {
+    get(): unknown {
       return this.lng[key];
     },
-    set(v) {
+    set(v: unknown) {
       this.lng[key] = v;
     },
   });
