@@ -139,9 +139,10 @@ export type Styles = {
 export interface ElementText {
   id?: string;
   type: 'text';
-  parent: ElementNode;
+  parent?: ElementNode;
   text: string;
-  _queueDelete: boolean;
+  states?: States;
+  _queueDelete?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -315,15 +316,13 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    if (isINode(this.lng)) {
-      this.lng.on(
-        'loaded',
-        (_node: INode, loadedPayload: NodeLoadedPayload) => {
-          const { dimensions } = loadedPayload;
-          this.parent!.updateLayout(this, dimensions);
-        },
-      );
-    }
+    (this.lng as INode).on(
+      'loaded',
+      (_node: INode, loadedPayload: NodeLoadedPayload) => {
+        const { dimensions } = loadedPayload;
+        this.parent!.updateLayout(this, dimensions);
+      },
+    );
   }
 
   getText() {
@@ -447,11 +446,9 @@ export class ElementNode extends Object {
 
     if (this.forwardStates) {
       // apply states to children first
-      const states = this.states.slice();
+      const states = this.states.slice() as States;
       this.children.forEach((c) => {
-        if (isElementNode(c)) {
-          c.states = states;
-        }
+        c.states = states;
       });
     }
 
@@ -628,9 +625,7 @@ export class ElementNode extends Object {
 
     node.onEvents &&
       node.onEvents.forEach(([name, handler]) => {
-        if (isINode(node.lng)) {
-          node.lng.on(name, (inode, data) => handler(node, data));
-        }
+        (node.lng as INode).on(name, (inode, data) => handler(node, data));
       });
 
     // L3 Inspector adds div to the lng object
