@@ -135,7 +135,7 @@ export type Styles = {
   [key: string]: NodeStyles | TextStyles | undefined;
 } & (NodeStyles | TextStyles);
 
-/** Node text children of a ElementNode of type TextNode */
+/** Node text, children of a ElementNode of type TextNode */
 export interface ElementText {
   id?: string;
   type: 'text';
