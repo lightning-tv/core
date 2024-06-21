@@ -36,7 +36,7 @@ import type {
   LinearGradientEffectProps,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
-import { NodeType, type NodeTypes } from './nodeTypes.js';
+import { NodeType } from './nodeTypes.js';
 
 const layoutQueue = new Set<ElementNode>();
 let queueLayout = true;
