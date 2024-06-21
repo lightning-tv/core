@@ -186,7 +186,7 @@ export class ElementNode extends Object {
     super();
     this.type = name === 'text' ? NodeType.TextNode : NodeType.Element;
     this.rendered = false;
-    this.lng = {} as INode;
+    this.lng = {};
     this.children = new Children(this);
   }
 
@@ -242,7 +242,7 @@ export class ElementNode extends Object {
     animationSettings?: Partial<AnimationSettings>,
   ) {
     assertTruthy(this.rendered, 'Node must be rendered before animating');
-    return (this.lng as INode).animate?.(
+    return (this.lng as INode).animate(
       props,
       animationSettings || this.animationSettings,
     );
@@ -312,7 +312,7 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on?.(
+    (this.lng as INode).on(
       'loaded',
       (_node: INode, loadedPayload: NodeLoadedPayload) => {
         const { dimensions } = loadedPayload;
@@ -619,7 +619,7 @@ export class ElementNode extends Object {
 
     node.onEvents &&
       node.onEvents.forEach(([name, handler]) => {
-        (node.lng as INode).on?.(name, (inode, data) => handler(node, data));
+        (node.lng as INode).on(name, (inode, data) => handler(node, data));
       });
 
     // L3 Inspector adds div to the lng object
