@@ -144,8 +144,6 @@ export interface ElementText {
   states?: States;
   _queueDelete?: boolean;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ElementNode
   extends Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>,
     IntrinsicCommonProps {
@@ -183,8 +181,6 @@ export interface ElementNode
   _animationRunning?: boolean;
   children: Children;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ElementNode extends Object {
   constructor(name: string) {
     super();
@@ -487,8 +483,6 @@ export class ElementNode extends Object {
 
   render() {
     // Elements are rendered from the outside in, then `insert`ed from the inside out.
-
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const node = this;
     const parent = this.parent;
 
