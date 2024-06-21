@@ -48,7 +48,7 @@ export function isINode(node: object): node is INode {
 }
 
 export function isElementNode(node: unknown): node is ElementNode {
-  return node instanceof ElementNode;
+  return Boolean(node instanceof ElementNode);
 }
 
 export function keyExists(
