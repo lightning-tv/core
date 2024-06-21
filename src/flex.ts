@@ -1,10 +1,10 @@
-import { assertTruthy } from '@lightningjs/renderer/utils';
 import { type ElementNode } from './elementNode.js';
 import { NodeType } from './nodeTypes.js';
 
 export default function (node: ElementNode): boolean {
   const children = [];
   let hasOrder = false;
+  let growSize = 0;
   for (let i = 0; i < node.children.length; i++) {
     const c = node.children[i]!;
     // Filter empty text nodes which are place holders for <Show> and elements missing dimensions
@@ -24,6 +24,10 @@ export default function (node: ElementNode): boolean {
 
     if (c.flexOrder !== undefined) {
       hasOrder = true;
+    }
+
+    if (c.flexGrow !== undefined) {
+      growSize += c.flexGrow;
     }
 
     children.push(c);
@@ -47,6 +51,26 @@ export default function (node: ElementNode): boolean {
   const gap = node.gap || 0;
   const justify = node.justifyContent || 'flexStart';
   const align = node.alignItems;
+
+  if (growSize) {
+    const flexBasis = children.reduce(
+      (prev, c) =>
+        prev +
+        (c.flexGrow ? 0 : c[dimension] || 0) +
+        (c[marginOne] || 0) +
+        (c[marginTwo] || 0),
+      0,
+    );
+    const growFactor =
+      (containerSize - flexBasis - gap * (numChildren - 1)) / growSize;
+    for (let i = 0; i < children.length; i++) {
+      const c = children[i]!;
+      if (c.flexGrow !== undefined && c.flexGrow > 0) {
+        c[dimension] = c.flexGrow * growFactor;
+      }
+    }
+  }
+
   let itemSize = 0;
   if (['center', 'spaceBetween', 'spaceEvenly'].includes(justify)) {
     itemSize = children.reduce(
@@ -90,8 +114,7 @@ export default function (node: ElementNode): boolean {
   } else if (justify === 'flexEnd') {
     let start = containerSize;
     for (let i = numChildren - 1; i >= 0; i--) {
-      const c = children[i];
-      assertTruthy(c);
+      const c = children[i]!;
       c[prop] = start - (c[dimension] || 0) - (c[marginTwo] || 0);
       start -=
         (c[dimension] || 0) + gap + (c[marginOne] || 0) + (c[marginTwo] || 0);
