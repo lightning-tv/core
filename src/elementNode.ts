@@ -159,6 +159,7 @@ export interface ElementNode
   autofocus?: boolean;
   flexItem?: boolean;
   flexOrder?: number;
+  flexGrow?: number;
   text?: string;
   forwardFocus?:
     | number

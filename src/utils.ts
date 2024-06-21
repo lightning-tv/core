@@ -43,13 +43,8 @@ export function isInteger(item: unknown): item is number {
   return Number.isInteger(item);
 }
 
-export function isINode(node: unknown): node is INode {
-  return Boolean(
-    node &&
-      typeof node === 'object' &&
-      'destroy' in node &&
-      typeof node.destroy === 'function',
-  );
+export function isINode(node: object): node is INode {
+  return Boolean('destroy' in node && typeof node.destroy === 'function');
 }
 
 export function isElementNode(node: unknown): node is ElementNode {

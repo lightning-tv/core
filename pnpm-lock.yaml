@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@lightningjs/renderer':
-        specifier: '*'
+        specifier: ^0.9.0
         version: 0.9.1
     devDependencies:
       '@typescript-eslint/eslint-plugin':
