@@ -9,7 +9,6 @@ import {
   type NodeStyles,
   type TextStyles,
   type ShaderEffectDesc,
-  TextProps,
 } from './intrinsicTypes.js';
 import Children from './children.js';
 import States, { type NodeStates } from './states.js';
@@ -22,6 +21,7 @@ import {
   keyExists,
   flattenStyles,
   isINode,
+  isElementNode,
 } from './utils.js';
 import { Config } from './config.js';
 import type {
@@ -135,9 +135,13 @@ export type Styles = {
   [key: string]: NodeStyles | TextStyles | undefined;
 } & (NodeStyles | TextStyles);
 
-export interface TextNode extends TextProps {
+/** Node text, children of a ElementNode of type TextNode */
+export interface ElementText {
+  id?: string;
   type: 'text';
-  parent?: ElementNode;
+  parent: ElementNode;
+  text: string;
+  _queueDelete: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -294,7 +298,7 @@ export class ElementNode extends Object {
             typeof this.forwardFocus === 'number' ? this.forwardFocus : null;
           if (focusedIndex !== null && focusedIndex < this.children.length) {
             const child = this.children[focusedIndex];
-            child instanceof ElementNode && child.setFocus();
+            isElementNode(child) && child.setFocus();
             return;
           }
         }
@@ -311,13 +315,15 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on(
-      'loaded',
-      (_node: INode, loadedPayload: NodeLoadedPayload) => {
-        const { dimensions } = loadedPayload;
-        this.parent!.updateLayout(this, dimensions);
-      },
-    );
+    if (isINode(this.lng)) {
+      this.lng.on(
+        'loaded',
+        (_node: INode, loadedPayload: NodeLoadedPayload) => {
+          const { dimensions } = loadedPayload;
+          this.parent!.updateLayout(this, dimensions);
+        },
+      );
+    }
   }
 
   getText() {
@@ -377,7 +383,7 @@ export class ElementNode extends Object {
     // traverse all the childrens children
     for (let i = 0; i < this.children.length; i++) {
       const child = this.children[i] as ElementNode;
-      if (child instanceof ElementNode) {
+      if (isElementNode(child)) {
         if (child.id === id) {
           return child;
         }
@@ -441,8 +447,12 @@ export class ElementNode extends Object {
 
     if (this.forwardStates) {
       // apply states to children first
-      const states = this.states.slice() as States;
-      this.children.forEach((c) => (c.states = states));
+      const states = this.states.slice();
+      this.children.forEach((c) => {
+        if (isElementNode(c)) {
+          c.states = states;
+        }
+      });
     }
 
     const states = this.states;
@@ -618,7 +628,9 @@ export class ElementNode extends Object {
 
     node.onEvents &&
       node.onEvents.forEach(([name, handler]) => {
-        (node.lng as INode).on(name, (inode, data) => handler(node, data));
+        if (isINode(node.lng)) {
+          node.lng.on(name, (inode, data) => handler(node, data));
+        }
       });
 
     // L3 Inspector adds div to the lng object
@@ -633,7 +645,7 @@ export class ElementNode extends Object {
       for (let i = 0; i < node.children.length; i++) {
         const c = node.children[i];
         assertTruthy(c, 'Child is undefined');
-        if (c instanceof ElementNode) {
+        if (isElementNode(c)) {
           c.render();
         } else if (c.text && c.type === NodeType.Text) {
           // Solid Show uses an empty text node as a placeholder
