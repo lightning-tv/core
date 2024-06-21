@@ -44,11 +44,11 @@ export function isInteger(item: unknown): item is number {
 }
 
 export function isINode(node: object): node is INode {
-  return Boolean('destroy' in node && typeof node.destroy === 'function');
+  return 'destroy' in node && typeof node.destroy === 'function';
 }
 
 export function isElementNode(node: unknown): node is ElementNode {
-  return Boolean(node instanceof ElementNode);
+  return node instanceof ElementNode;
 }
 
 export function keyExists(
