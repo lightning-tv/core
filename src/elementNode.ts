@@ -631,7 +631,7 @@ export class ElementNode extends Object {
       for (let i = 0; i < node.children.length; i++) {
         const c = node.children[i];
         assertTruthy(c, 'Child is undefined');
-        if (c instanceof ElementNode && 'render' in c) {
+        if (c instanceof ElementNode) {
           c.render();
         } else if (c.text && c.type === NodeType.Text) {
           // Solid Show uses an empty text node as a placeholder
