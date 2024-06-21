@@ -1,3 +1,4 @@
+import { INode } from '@lightningjs/renderer';
 import { Config, isDev } from './config.js';
 import type { ElementNode, TextNode, Styles } from './elementNode.js';
 
@@ -36,6 +37,15 @@ export function isNumber(item: unknown): item is number {
 
 export function isInteger(item: unknown): item is number {
   return Number.isInteger(item);
+}
+
+export function isINode(node: unknown): node is INode {
+  return Boolean(
+    node &&
+      typeof node === 'object' &&
+      'destroy' in node &&
+      typeof node.destroy === 'function',
+  );
 }
 
 export function keyExists(

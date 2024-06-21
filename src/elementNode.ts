@@ -9,6 +9,7 @@ import {
   type NodeStyles,
   type TextStyles,
   type ShaderEffectDesc,
+  TextProps,
 } from './intrinsicTypes.js';
 import Children from './children.js';
 import States, { type NodeStates } from './states.js';
@@ -20,6 +21,7 @@ import {
   isFunc,
   keyExists,
   flattenStyles,
+  isINode,
 } from './utils.js';
 import { Config } from './config.js';
 import type {
@@ -34,7 +36,7 @@ import type {
   LinearGradientEffectProps,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
-import { NodeType, type NodeTypes } from './nodeTypes.js';
+import { NodeType } from './nodeTypes.js';
 
 const layoutQueue = new Set<ElementNode>();
 let queueLayout = true;
@@ -133,13 +135,10 @@ export type Styles = {
   [key: string]: NodeStyles | TextStyles | undefined;
 } & (NodeStyles | TextStyles);
 
-export interface TextNode {
-  id?: string;
-  text: string;
+export interface TextNode extends TextProps {
   type: 'text';
-  parent?: ElementNode;
-  states?: States;
 }
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ElementNode
   extends Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>,
@@ -328,8 +327,8 @@ export class ElementNode extends Object {
   }
 
   destroy() {
-    if (this._queueDelete) {
-      (this.lng as INode).destroy();
+    if (this._queueDelete && isINode(this.lng)) {
+      this.lng.destroy();
     }
   }
   // Must be set before render
@@ -632,7 +631,7 @@ export class ElementNode extends Object {
       for (let i = 0; i < node.children.length; i++) {
         const c = node.children[i];
         assertTruthy(c, 'Child is undefined');
-        if ('render' in c) {
+        if (c instanceof ElementNode) {
           c.render();
         } else if (c.text && c.type === NodeType.Text) {
           // Solid Show uses an empty text node as a placeholder
@@ -659,10 +658,10 @@ for (const key of LightningRendererNumberProps) {
 
 for (const key of LightningRendererNonAnimatingProps) {
   Object.defineProperty(ElementNode.prototype, key, {
-    get() {
+    get(): unknown {
       return this.lng[key];
     },
-    set(v) {
+    set(v: unknown) {
       this.lng[key] = v;
     },
   });
