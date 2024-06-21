@@ -1,12 +1,16 @@
 import { INode } from '@lightningjs/renderer';
 import { Config, isDev } from './config.js';
-import type { ElementNode, TextNode, Styles } from './elementNode.js';
+import { ElementNode, Styles, ElementText } from './elementNode.js';
 
 function hasDebug(node: any) {
   return isObject(node) && node.debug;
 }
 
-export function log(msg: string, node: ElementNode | TextNode, ...args: any[]) {
+export function log(
+  msg: string,
+  node: ElementNode | ElementText,
+  ...args: any[]
+) {
   if (isDev) {
     if (Config.debug || hasDebug(node) || hasDebug(args[0])) {
       console.log(msg, node, ...args);
@@ -46,6 +50,10 @@ export function isINode(node: unknown): node is INode {
       'destroy' in node &&
       typeof node.destroy === 'function',
   );
+}
+
+export function isElementNode(node: unknown): node is ElementNode {
+  return node instanceof ElementNode;
 }
 
 export function keyExists(

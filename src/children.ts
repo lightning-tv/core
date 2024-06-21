@@ -1,9 +1,9 @@
-import type { ElementNode, TextNode } from './elementNode.js';
+import type { ElementNode, ElementText } from './elementNode.js';
 
 /**
  * Children class
  */
-export default class Children extends Array<ElementNode | TextNode> {
+export default class Children extends Array<ElementNode | ElementText> {
   _parent: ElementNode;
 
   constructor(node: ElementNode) {
@@ -21,8 +21,8 @@ export default class Children extends Array<ElementNode | TextNode> {
   }
 
   insert(
-    node: ElementNode | TextNode,
-    beforeNode?: ElementNode | TextNode | null,
+    node: ElementNode | ElementText,
+    beforeNode?: ElementNode | ElementText | null,
   ) {
     if (beforeNode) {
       const index = this.indexOf(beforeNode);
@@ -34,7 +34,7 @@ export default class Children extends Array<ElementNode | TextNode> {
     node.parent = this._parent;
   }
 
-  remove(node: ElementNode | TextNode) {
+  remove(node: ElementNode | ElementText) {
     const nodeIndexToRemove = this.indexOf(node);
     if (nodeIndexToRemove >= 0) {
       this.splice(nodeIndexToRemove, 1);

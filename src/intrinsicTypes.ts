@@ -148,7 +148,6 @@ export interface IntrinsicNodeProps
 
 export interface IntrinsicTextProps
   extends AddUndefined<IntrinsicNodeCommonProps & IntrinsicTextNodeStyleProps> {
-  states?: NodeStates;
   style?:
     | IntrinsicTextNodeStyleProps
     | (IntrinsicTextNodeStyleProps | undefined)[]
