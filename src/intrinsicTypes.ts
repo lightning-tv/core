@@ -20,6 +20,10 @@ type AddUndefined<T> = {
   [K in keyof T]: T[K] | undefined;
 };
 
+export type AddColorString<T> = {
+  [K in keyof T]: K extends `color${string}` ? string | number : T[K];
+};
+
 export interface BorderStyleObject {
   width: number;
   color: number | string;
@@ -127,13 +131,17 @@ export interface IntrinsicCommonProps
     IntrinsicNodeStyleCommonProps,
     IntrinsicTextStyleCommonProps {}
 export interface IntrinsicNodeStyleProps
-  extends Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>,
+  extends AddColorString<
+      Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>
+    >,
     IntrinsicNodeStyleCommonProps {
   [key: string]: unknown;
 }
 
 export interface IntrinsicTextNodeStyleProps
-  extends Partial<Omit<ITextNodeWritableProps, 'parent' | 'shader'>>,
+  extends AddColorString<
+      Partial<Omit<ITextNodeWritableProps, 'parent' | 'shader'>>
+    >,
     IntrinsicTextStyleCommonProps {
   [key: string]: unknown;
 }

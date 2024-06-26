@@ -9,6 +9,7 @@ import {
   type NodeStyles,
   type TextStyles,
   type ShaderEffectDesc,
+  AddColorString,
 } from './intrinsicTypes.js';
 import Children from './children.js';
 import States, { type NodeStates } from './states.js';
@@ -34,6 +35,7 @@ import type {
   AnimationSettings,
   NodeLoadedPayload,
   LinearGradientEffectProps,
+  ITextNodeWritableProps,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -145,7 +147,9 @@ export interface ElementText {
   _queueDelete?: boolean;
 }
 export interface ElementNode
-  extends Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>,
+  extends AddColorString<
+      Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>
+    >,
     IntrinsicCommonProps {
   [key: string]: unknown;
   id?: string;
@@ -569,7 +573,9 @@ export class ElementNode extends Object {
       }
 
       log('Rendering: ', this, props);
-      node.lng = renderer.createTextNode(props);
+      node.lng = renderer.createTextNode(
+        props as unknown as ITextNodeWritableProps,
+      );
 
       if (parent.requiresLayout() && (!props.width || !props.height)) {
         node._layoutOnLoad();
@@ -598,7 +604,7 @@ export class ElementNode extends Object {
       }
 
       log('Rendering: ', this, props);
-      node.lng = renderer.createNode(props);
+      node.lng = renderer.createNode(props as INodeWritableProps);
     }
 
     node.rendered = true;
