@@ -238,17 +238,17 @@ export class ElementNode extends Object {
 
       const controller = this.animate({ [name]: value }, animationSettings);
 
-      controller.once('animating', () => {
-        if (isFunc(this.onAnimationStarted)) {
-          this.onAnimationStarted.call(this, name, value);
-        }
-      });
+      if (isFunc(this.onAnimationStarted)) {
+        controller.once('animating', () => {
+          this.onAnimationStarted?.call(this, name, value);
+        });
+      }
 
-      controller.once('finished', () => {
-        if (isFunc(this.onAnimationStarted)) {
-          this.onAnimationStarted.call(this, name, value);
-        }
-      });
+      if (isFunc(this.onAnimationStarted)) {
+        controller.once('finished', () => {
+          this.onAnimationStarted?.call(this, name, value);
+        });
+      }
 
       return controller.start();
     }
