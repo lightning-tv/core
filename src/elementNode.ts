@@ -36,6 +36,7 @@ import type {
   NodeLoadedPayload,
   LinearGradientEffectProps,
   ITextNodeWritableProps,
+  IAnimationController,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -223,7 +224,7 @@ export class ElementNode extends Object {
     this.lng.shader = shaderProps;
   }
 
-  _sendToLightningAnimatable(name: string, value: number | string) {
+  _sendToLightningAnimatable(name: string, value: number) {
     if (
       this.transition &&
       this.rendered &&
@@ -235,7 +236,21 @@ export class ElementNode extends Object {
           ? undefined
           : (this.transition[name] as undefined | AnimationSettings);
 
-      return this.animate({ [name]: value }, animationSettings).start();
+      const controller = this.animate({ [name]: value }, animationSettings);
+
+      controller.once('animating', () => {
+        if (isFunc(this.onAnimationStarted)) {
+          this.onAnimationStarted.call(this, name, value);
+        }
+      });
+
+      controller.once('finished', () => {
+        if (isFunc(this.onAnimationStarted)) {
+          this.onAnimationStarted.call(this, name, value);
+        }
+      });
+
+      return controller.start();
     }
 
     (this.lng[name as keyof INode] as number | string) = value;
@@ -244,7 +259,7 @@ export class ElementNode extends Object {
   animate(
     props: Partial<INodeAnimatableProps>,
     animationSettings?: Partial<AnimationSettings>,
-  ) {
+  ): IAnimationController {
     assertTruthy(this.rendered, 'Node must be rendered before animating');
     return (this.lng as INode).animate(
       props,
