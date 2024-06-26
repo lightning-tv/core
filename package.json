@@ -52,7 +52,7 @@
     "vite": "^5.3.1"
   },
   "peerDependencies": {
-    "@lightningjs/renderer": "^0.9.0"
+    "@lightningjs/renderer": "^0.9.4"
   },
   "lint-staged": {
     "*.ts": [
