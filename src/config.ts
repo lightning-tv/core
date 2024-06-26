@@ -14,15 +14,6 @@ interface Config {
   setActiveElement: (elm: ElementNode) => void;
 }
 
-declare global {
-  interface ImportMeta {
-    env: {
-      DEV: boolean;
-      // Add other environment variables here if needed
-    };
-  }
-}
-
 function isDevEnv(): boolean {
   return !!(import.meta.env && import.meta.env.DEV);
 }
