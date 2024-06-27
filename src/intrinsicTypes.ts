@@ -80,7 +80,7 @@ export interface IntrinsicNodeCommonProps {
     child?: ElementNode,
     dimensions?: Dimensions,
   ) => void;
-  onAnimationStarted: (
+  onAnimationStarted?: (
     controller: IAnimationController,
     propKey: string,
     endValue: number,
