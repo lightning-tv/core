@@ -236,21 +236,24 @@ export class ElementNode extends Object {
           ? undefined
           : (this.transition[name] as undefined | AnimationSettings);
 
-      const controller = this.animate({ [name]: value }, animationSettings);
+      const animationController = this.animate(
+        { [name]: value },
+        animationSettings,
+      );
 
       if (isFunc(this.onAnimationStarted)) {
-        controller.once('animating', () => {
-          this.onAnimationStarted?.call(this, name, value, animationSettings);
+        animationController.once('animating', (controller) => {
+          this.onAnimationStarted?.call(this, controller, name, value);
         });
       }
 
       if (isFunc(this.onAnimationFinished)) {
-        controller.once('finished', () => {
-          this.onAnimationFinished?.call(this, name, value);
+        animationController.once('stopped', (controller) => {
+          this.onAnimationFinished?.call(this, controller, name, value);
         });
       }
 
-      return controller.start();
+      return animationController.start();
     }
 
     (this.lng[name as keyof INode] as number | string) = value;
