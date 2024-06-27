@@ -79,7 +79,11 @@ export interface IntrinsicNodeCommonProps {
     child?: ElementNode,
     dimensions?: Dimensions,
   ) => void;
-  onAnimationStarted?: (key: string, value: number) => void;
+  onAnimationStarted?: (
+    key: string,
+    value: number,
+    animationSettings: AnimationSettings | undefined,
+  ) => void;
   onAnimationFinished?: (key: string, value: number) => void;
   forwardFocus?:
     | number
