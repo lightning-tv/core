@@ -244,9 +244,9 @@ export class ElementNode extends Object {
         });
       }
 
-      if (isFunc(this.onAnimationStarted)) {
+      if (isFunc(this.onAnimationFinished)) {
         controller.once('finished', () => {
-          this.onAnimationStarted?.call(this, name, value);
+          this.onAnimationFinished?.call(this, name, value);
         });
       }
 
