@@ -240,7 +240,7 @@ export class ElementNode extends Object {
 
       if (isFunc(this.onAnimationStarted)) {
         controller.once('animating', () => {
-          this.onAnimationStarted?.call(this, name, value);
+          this.onAnimationStarted?.call(this, name, value, animationSettings);
         });
       }
 
