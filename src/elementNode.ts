@@ -191,7 +191,7 @@ export class ElementNode extends Object {
     super();
     this.type = name === 'text' ? NodeType.TextNode : NodeType.Element;
     this.rendered = false;
-    this.lng = {};
+    this.lng = {} as (typeof this)['lng'];
     this.children = new Children(this);
   }
 
