@@ -1,4 +1,5 @@
 import {
+  type IAnimationController,
   type AnimationSettings,
   type Dimensions,
   type FadeOutEffectProps,
@@ -79,12 +80,16 @@ export interface IntrinsicNodeCommonProps {
     child?: ElementNode,
     dimensions?: Dimensions,
   ) => void;
-  onAnimationStarted?: (
-    key: string,
-    value: number,
-    animationSettings: AnimationSettings | undefined,
+  onAnimationStarted: (
+    controller: IAnimationController,
+    propKey: string,
+    endValue: number,
   ) => void;
-  onAnimationFinished?: (key: string, value: number) => void;
+  onAnimationFinished?: (
+    controller: IAnimationController,
+    propKey: string,
+    endValue: number,
+  ) => void;
   forwardFocus?:
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
