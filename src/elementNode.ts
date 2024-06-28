@@ -563,7 +563,7 @@ export class ElementNode extends Object {
           }
         }
       }
-      textProps.text = node.getText();
+      textProps.text = textProps.text || node.getText();
 
       if (textProps.textAlign && !textProps.contain) {
         console.warn('Text align requires contain: ', node.getText());
