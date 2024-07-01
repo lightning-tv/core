@@ -8,7 +8,7 @@ export default function (node: ElementNode): boolean {
   for (let i = 0; i < node.children.length; i++) {
     const c = node.children[i]!;
     // Filter empty text nodes which are place holders for <Show> and elements missing dimensions
-    if (c.type === NodeType.Text) {
+    if (c._type === NodeType.Text) {
       continue;
     }
 
@@ -18,7 +18,7 @@ export default function (node: ElementNode): boolean {
     }
 
     // text node hasnt loaded yet - skip layout
-    if (c.type === NodeType.TextNode && c.text && !(c.width || c.height)) {
+    if (c._type === NodeType.TextNode && c.text && !(c.width || c.height)) {
       return false;
     }
 

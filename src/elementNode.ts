@@ -141,7 +141,7 @@ export type Styles = {
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText {
   id?: string;
-  type: 'text';
+  _type: 'text';
   parent?: ElementNode;
   text: string;
   states?: States;
@@ -155,7 +155,7 @@ export interface ElementNode
   [key: string]: unknown;
   id?: string;
   debug?: boolean;
-  type: 'element' | 'textNode';
+  _type: 'element' | 'textNode';
   lng: INode | IntrinsicNodeProps | IntrinsicTextProps;
   rendered: boolean;
   renderer?: RendererMain;
@@ -189,7 +189,7 @@ export interface ElementNode
 export class ElementNode extends Object {
   constructor(name: string) {
     super();
-    this.type = name === 'text' ? NodeType.TextNode : NodeType.Element;
+    this._type = name === 'text' ? NodeType.TextNode : NodeType.Element;
     this.rendered = false;
     this.lng = {};
     this.children = new Children(this);
@@ -330,7 +330,7 @@ export class ElementNode extends Object {
   }
 
   isTextNode() {
-    return this.type === NodeType.TextNode;
+    return this._type === NodeType.TextNode;
   }
 
   _layoutOnLoad() {
@@ -653,14 +653,14 @@ export class ElementNode extends Object {
       node.lng.div.element = node;
     }
 
-    if (node.type === NodeType.Element) {
+    if (node._type === NodeType.Element) {
       // only element nodes will have children that need rendering
       for (let i = 0; i < node.children.length; i++) {
         const c = node.children[i];
         assertTruthy(c, 'Child is undefined');
         if (isElementNode(c)) {
           c.render();
-        } else if (c.text && c.type === NodeType.Text) {
+        } else if (c.text && c._type === NodeType.Text) {
           // Solid Show uses an empty text node as a placeholder
           // Vue uses comment nodes for v-if
           console.warn('TextNode outside of <Text>: ', c);
