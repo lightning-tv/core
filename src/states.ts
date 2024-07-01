@@ -38,11 +38,21 @@ export default class States extends Array<string> {
     this.onChange();
   }
 
-  toggle(state: string) {
-    if (this.has(state)) {
-      this.remove(state);
+  toggle(state: string, force?: boolean) {
+    if (force === true) {
+      if (!this.has(state)) {
+        this.add(state);
+      }
+    } else if (force === false) {
+      if (this.has(state)) {
+        this.remove(state);
+      }
     } else {
-      this.add(state);
+      if (this.has(state)) {
+        this.remove(state);
+      } else {
+        this.add(state);
+      }
     }
   }
 
