@@ -6,13 +6,13 @@ import {
   type GlitchEffectProps,
   type GrayscaleEffectProps,
   type INode,
-  type INodeWritableProps,
-  type ITextNodeWritableProps,
+  type ITextNodeProps,
   type LinearGradientEffectProps,
   type NodeFailedPayload,
   type NodeLoadedPayload,
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
+  INodeProps,
 } from '@lightningjs/renderer';
 import { type ElementNode } from './elementNode.js';
 import { type NodeStates } from './states.js';
@@ -142,17 +142,13 @@ export interface IntrinsicCommonProps
     IntrinsicNodeStyleCommonProps,
     IntrinsicTextStyleCommonProps {}
 export interface IntrinsicNodeStyleProps
-  extends AddColorString<
-      Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>
-    >,
+  extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
     IntrinsicNodeStyleCommonProps {
   [key: string]: unknown;
 }
 
 export interface IntrinsicTextNodeStyleProps
-  extends AddColorString<
-      Partial<Omit<ITextNodeWritableProps, 'parent' | 'shader'>>
-    >,
+  extends AddColorString<Partial<Omit<ITextNodeProps, 'parent' | 'shader'>>>,
     IntrinsicTextStyleCommonProps {
   [key: string]: unknown;
 }

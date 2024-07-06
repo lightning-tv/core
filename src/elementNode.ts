@@ -28,14 +28,14 @@ import { Config } from './config.js';
 import type {
   RendererMain,
   INode,
-  INodeAnimatableProps,
-  INodeWritableProps,
+  INodeAnimateProps,
+  INodeProps,
   ShaderRef,
   Dimensions,
   AnimationSettings,
   NodeLoadedPayload,
   LinearGradientEffectProps,
-  ITextNodeWritableProps,
+  ITextNodeProps,
   IAnimationController,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
@@ -148,9 +148,7 @@ export interface ElementText {
   _queueDelete?: boolean;
 }
 export interface ElementNode
-  extends AddColorString<
-      Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>
-    >,
+  extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
     IntrinsicCommonProps {
   [key: string]: unknown;
   id?: string;
@@ -178,7 +176,7 @@ export interface ElementNode
   _animationSettings?: Partial<AnimationSettings>;
   _animationQueue:
     | Array<{
-        props: Partial<INodeAnimatableProps>;
+        props: Partial<any>;
         animationSettings?: Partial<AnimationSettings>;
       }>
     | undefined;
@@ -202,7 +200,7 @@ export class ElementNode extends Object {
   set effects(v: StyleEffects) {
     this._effects = v;
     if (this.rendered) {
-      this.shader = convertEffectsToShader(v);
+      this.shader = convertEffectsToShader(v) as unknown as ShaderRef;
     }
   }
 
@@ -219,7 +217,7 @@ export class ElementNode extends Object {
 
   set shader(shaderProps: Parameters<typeof createShader> | ShaderRef) {
     if (isArray(shaderProps)) {
-      shaderProps = createShader(...shaderProps) as ShaderRef;
+      shaderProps = createShader(...shaderProps) as unknown as ShaderRef;
     }
     this.lng.shader = shaderProps;
   }
@@ -260,7 +258,7 @@ export class ElementNode extends Object {
   }
 
   animate(
-    props: Partial<INodeAnimatableProps>,
+    props: Partial<any>,
     animationSettings?: Partial<AnimationSettings>,
   ): IAnimationController {
     assertTruthy(this.rendered, 'Node must be rendered before animating');
@@ -270,10 +268,7 @@ export class ElementNode extends Object {
     );
   }
 
-  chain(
-    props: Partial<INodeAnimatableProps>,
-    animationSettings?: Partial<AnimationSettings>,
-  ) {
+  chain(props: Partial<any>, animationSettings?: Partial<AnimationSettings>) {
     if (this._animationRunning) {
       this._animationQueue = [];
       this._animationRunning = false;
@@ -591,9 +586,7 @@ export class ElementNode extends Object {
       }
 
       log('Rendering: ', this, props);
-      node.lng = renderer.createTextNode(
-        props as unknown as ITextNodeWritableProps,
-      );
+      node.lng = renderer.createTextNode(props as unknown as ITextNodeProps);
 
       if (parent.requiresLayout() && (!props.width || !props.height)) {
         node._layoutOnLoad();
@@ -622,7 +615,7 @@ export class ElementNode extends Object {
       }
 
       log('Rendering: ', this, props);
-      node.lng = renderer.createNode(props as INodeWritableProps);
+      node.lng = renderer.createNode(props as INodeProps);
     }
 
     node.rendered = true;
