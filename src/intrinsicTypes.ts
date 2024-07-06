@@ -56,6 +56,7 @@ export type StyleEffects = Effects & BorderEffects;
 
 // Renderer should export EffectDesc
 export type ShaderEffectDesc = {
+  name?: string;
   type: keyof StyleEffects;
   props: StyleEffects[keyof StyleEffects];
 };

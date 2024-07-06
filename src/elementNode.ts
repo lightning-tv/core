@@ -47,9 +47,11 @@ let queueLayout = true;
 function convertEffectsToShader(styleEffects: StyleEffects) {
   // Should be EffectDesc
   const effects: ShaderEffectDesc[] = [];
+  let index = 0;
 
   for (const [type, props] of Object.entries(styleEffects)) {
-    effects.push({ type, props } as ShaderEffectDesc);
+    effects.push({ name: `el${index}`, type, props } as ShaderEffectDesc);
+    index++;
   }
   return createShader('DynamicShader', { effects: effects as any[] });
 }
