@@ -30,13 +30,14 @@ import type {
   INode,
   INodeAnimateProps,
   INodeProps,
-  ShaderRef,
   Dimensions,
   AnimationSettings,
   NodeLoadedPayload,
   LinearGradientEffectProps,
   ITextNodeProps,
   IAnimationController,
+  EffectDescUnion,
+  ShaderController,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -44,16 +45,17 @@ import { NodeType } from './nodeTypes.js';
 const layoutQueue = new Set<ElementNode>();
 let queueLayout = true;
 
-function convertEffectsToShader(styleEffects: StyleEffects) {
-  // Should be EffectDesc
-  const effects: ShaderEffectDesc[] = [];
+function convertEffectsToShader(
+  styleEffects: StyleEffects,
+): ShaderController<'DynamicShader'> {
+  const effects: EffectDescUnion[] = [];
   let index = 0;
 
   for (const [type, props] of Object.entries(styleEffects)) {
-    effects.push({ name: `el${index}`, type, props } as ShaderEffectDesc);
+    effects.push({ name: `el${index}`, type, props } as EffectDescUnion);
     index++;
   }
-  return createShader('DynamicShader', { effects: effects as any[] });
+  return createShader('DynamicShader', { effects });
 }
 
 function borderAccessor(
@@ -178,7 +180,7 @@ export interface ElementNode
   _animationSettings?: Partial<AnimationSettings>;
   _animationQueue:
     | Array<{
-        props: Partial<any>;
+        props: Partial<INodeAnimateProps>;
         animationSettings?: Partial<AnimationSettings>;
       }>
     | undefined;
@@ -202,7 +204,7 @@ export class ElementNode extends Object {
   set effects(v: StyleEffects) {
     this._effects = v;
     if (this.rendered) {
-      this.shader = convertEffectsToShader(v) as unknown as ShaderRef;
+      this.shader = convertEffectsToShader(v);
     }
   }
 
@@ -217,11 +219,16 @@ export class ElementNode extends Object {
     }
   }
 
-  set shader(shaderProps: Parameters<typeof createShader> | ShaderRef) {
+  set shader(
+    shaderProps:
+      | Parameters<typeof createShader>
+      | ReturnType<RendererMain['createShader']>,
+  ) {
+    let shProps = shaderProps;
     if (isArray(shaderProps)) {
-      shaderProps = createShader(...shaderProps) as unknown as ShaderRef;
+      shProps = createShader(...shaderProps);
     }
-    this.lng.shader = shaderProps;
+    this.lng.shader = shProps;
   }
 
   _sendToLightningAnimatable(name: string, value: number) {
@@ -260,7 +267,7 @@ export class ElementNode extends Object {
   }
 
   animate(
-    props: Partial<any>,
+    props: Partial<INodeAnimateProps>,
     animationSettings?: Partial<AnimationSettings>,
   ): IAnimationController {
     assertTruthy(this.rendered, 'Node must be rendered before animating');
@@ -270,7 +277,10 @@ export class ElementNode extends Object {
     );
   }
 
-  chain(props: Partial<any>, animationSettings?: Partial<AnimationSettings>) {
+  chain(
+    props: Partial<INodeAnimateProps>,
+    animationSettings?: Partial<AnimationSettings>,
+  ) {
     if (this._animationRunning) {
       this._animationQueue = [];
       this._animationRunning = false;
