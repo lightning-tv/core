@@ -8,7 +8,6 @@ import {
   type StyleEffects,
   type NodeStyles,
   type TextStyles,
-  type ShaderEffectDesc,
   AddColorString,
 } from './intrinsicTypes.js';
 import Children from './children.js';
