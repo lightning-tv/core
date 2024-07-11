@@ -1,4 +1,4 @@
-import type { ElementNode, ElementText } from './elementNode.js';
+import { ElementNode, type ElementText } from './elementNode.js';
 
 /**
  * Children class
@@ -12,8 +12,16 @@ export default class Children extends Array<ElementNode | ElementText> {
   }
 
   get selected(): ElementNode | undefined {
-    // For selected Elements should always be an ElementNode
-    return this[this._parent.selected || 0] as ElementNode | undefined;
+    const selectedIndex = this._parent.selected || 0;
+
+    for (let i = selectedIndex; i < this.length; i++) {
+      if (this[i] instanceof ElementNode) {
+        this._parent.selected = i;
+        return this[i] as ElementNode;
+      }
+    }
+
+    return undefined;
   }
 
   get firstChild() {

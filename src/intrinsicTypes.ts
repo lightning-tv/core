@@ -96,6 +96,7 @@ export interface IntrinsicNodeCommonProps {
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   selected?: number;
+  skipFocus?: boolean;
   states?: NodeStates;
   text?: string;
 }

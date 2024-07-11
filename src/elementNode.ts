@@ -161,6 +161,7 @@ export interface ElementNode
   rendered: boolean;
   renderer?: RendererMain;
   selected?: number;
+  skipFocus?: boolean;
   autofocus?: boolean;
   flexItem?: boolean;
   flexOrder?: number;
@@ -313,6 +314,13 @@ export class ElementNode extends Object {
   setFocus() {
     if (this.rendered) {
       // can be 0
+      if (this.skipFocus) {
+        const index = this.parent?.children.indexOf(this);
+        const nextChild = this.parent?.children[index! + 1];
+        isElementNode(nextChild) && nextChild.setFocus();
+        return;
+      }
+
       if (this.forwardFocus !== undefined) {
         if (isFunc(this.forwardFocus)) {
           if (this.forwardFocus.call(this, this) !== false) {
