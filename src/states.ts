@@ -34,6 +34,9 @@ export default class States extends Array<string> {
   }
 
   add(state: string) {
+    if (this.has(state)) {
+      return;
+    }
     this.push(state);
     this.onChange();
   }
