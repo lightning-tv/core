@@ -8,7 +8,6 @@ import {
   type StyleEffects,
   type NodeStyles,
   type TextStyles,
-  type ShaderEffectDesc,
   AddColorString,
 } from './intrinsicTypes.js';
 import Children from './children.js';
@@ -28,15 +27,16 @@ import { Config } from './config.js';
 import type {
   RendererMain,
   INode,
-  INodeAnimatableProps,
-  INodeWritableProps,
-  ShaderRef,
+  INodeAnimateProps,
+  INodeProps,
   Dimensions,
   AnimationSettings,
   NodeLoadedPayload,
   LinearGradientEffectProps,
-  ITextNodeWritableProps,
+  ITextNodeProps,
   IAnimationController,
+  EffectDescUnion,
+  ShaderController,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -44,14 +44,17 @@ import { NodeType } from './nodeTypes.js';
 const layoutQueue = new Set<ElementNode>();
 let queueLayout = true;
 
-function convertEffectsToShader(styleEffects: StyleEffects) {
-  // Should be EffectDesc
-  const effects: ShaderEffectDesc[] = [];
+function convertEffectsToShader(
+  styleEffects: StyleEffects,
+): ShaderController<'DynamicShader'> {
+  const effects: EffectDescUnion[] = [];
+  let index = 0;
 
   for (const [type, props] of Object.entries(styleEffects)) {
-    effects.push({ type, props } as ShaderEffectDesc);
+    effects.push({ name: `el${index}`, type, props } as EffectDescUnion);
+    index++;
   }
-  return createShader('DynamicShader', { effects: effects as any[] });
+  return createShader('DynamicShader', { effects });
 }
 
 function borderAccessor(
@@ -148,9 +151,7 @@ export interface ElementText {
   _queueDelete?: boolean;
 }
 export interface ElementNode
-  extends AddColorString<
-      Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>
-    >,
+  extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
     IntrinsicCommonProps {
   [key: string]: unknown;
   id?: string;
@@ -160,6 +161,7 @@ export interface ElementNode
   rendered: boolean;
   renderer?: RendererMain;
   selected?: number;
+  skipFocus?: boolean;
   autofocus?: boolean;
   flexItem?: boolean;
   flexOrder?: number;
@@ -178,7 +180,7 @@ export interface ElementNode
   _animationSettings?: Partial<AnimationSettings>;
   _animationQueue:
     | Array<{
-        props: Partial<INodeAnimatableProps>;
+        props: Partial<INodeAnimateProps>;
         animationSettings?: Partial<AnimationSettings>;
       }>
     | undefined;
@@ -217,11 +219,16 @@ export class ElementNode extends Object {
     }
   }
 
-  set shader(shaderProps: Parameters<typeof createShader> | ShaderRef) {
+  set shader(
+    shaderProps:
+      | Parameters<typeof createShader>
+      | ReturnType<RendererMain['createShader']>,
+  ) {
+    let shProps = shaderProps;
     if (isArray(shaderProps)) {
-      shaderProps = createShader(...shaderProps) as ShaderRef;
+      shProps = createShader(...shaderProps);
     }
-    this.lng.shader = shaderProps;
+    this.lng.shader = shProps;
   }
 
   _sendToLightningAnimatable(name: string, value: number) {
@@ -260,7 +267,7 @@ export class ElementNode extends Object {
   }
 
   animate(
-    props: Partial<INodeAnimatableProps>,
+    props: Partial<INodeAnimateProps>,
     animationSettings?: Partial<AnimationSettings>,
   ): IAnimationController {
     assertTruthy(this.rendered, 'Node must be rendered before animating');
@@ -271,7 +278,7 @@ export class ElementNode extends Object {
   }
 
   chain(
-    props: Partial<INodeAnimatableProps>,
+    props: Partial<INodeAnimateProps>,
     animationSettings?: Partial<AnimationSettings>,
   ) {
     if (this._animationRunning) {
@@ -307,6 +314,13 @@ export class ElementNode extends Object {
   setFocus() {
     if (this.rendered) {
       // can be 0
+      if (this.skipFocus) {
+        const index = this.parent?.children.indexOf(this);
+        const nextChild = this.parent?.children[index! + 1];
+        isElementNode(nextChild) && nextChild.setFocus();
+        return;
+      }
+
       if (this.forwardFocus !== undefined) {
         if (isFunc(this.forwardFocus)) {
           if (this.forwardFocus.call(this, this) !== false) {
@@ -591,9 +605,7 @@ export class ElementNode extends Object {
       }
 
       log('Rendering: ', this, props);
-      node.lng = renderer.createTextNode(
-        props as unknown as ITextNodeWritableProps,
-      );
+      node.lng = renderer.createTextNode(props as unknown as ITextNodeProps);
 
       if (parent.requiresLayout() && (!props.width || !props.height)) {
         node._layoutOnLoad();
@@ -622,7 +634,7 @@ export class ElementNode extends Object {
       }
 
       log('Rendering: ', this, props);
-      node.lng = renderer.createNode(props as INodeWritableProps);
+      node.lng = renderer.createNode(props as INodeProps);
     }
 
     node.rendered = true;

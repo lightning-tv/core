@@ -6,13 +6,13 @@ import {
   type GlitchEffectProps,
   type GrayscaleEffectProps,
   type INode,
-  type INodeWritableProps,
-  type ITextNodeWritableProps,
+  type ITextNodeProps,
   type LinearGradientEffectProps,
   type NodeFailedPayload,
   type NodeLoadedPayload,
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
+  INodeProps,
 } from '@lightningjs/renderer';
 import { type ElementNode } from './elementNode.js';
 import { type NodeStates } from './states.js';
@@ -56,6 +56,7 @@ export type StyleEffects = Effects & BorderEffects;
 
 // Renderer should export EffectDesc
 export type ShaderEffectDesc = {
+  name?: string;
   type: keyof StyleEffects;
   props: StyleEffects[keyof StyleEffects];
 };
@@ -95,6 +96,7 @@ export interface IntrinsicNodeCommonProps {
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   selected?: number;
+  skipFocus?: boolean;
   states?: NodeStates;
   text?: string;
 }
@@ -142,17 +144,13 @@ export interface IntrinsicCommonProps
     IntrinsicNodeStyleCommonProps,
     IntrinsicTextStyleCommonProps {}
 export interface IntrinsicNodeStyleProps
-  extends AddColorString<
-      Partial<Omit<INodeWritableProps, 'parent' | 'shader'>>
-    >,
+  extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
     IntrinsicNodeStyleCommonProps {
   [key: string]: unknown;
 }
 
 export interface IntrinsicTextNodeStyleProps
-  extends AddColorString<
-      Partial<Omit<ITextNodeWritableProps, 'parent' | 'shader'>>
-    >,
+  extends AddColorString<Partial<Omit<ITextNodeProps, 'parent' | 'shader'>>>,
     IntrinsicTextStyleCommonProps {
   [key: string]: unknown;
 }
