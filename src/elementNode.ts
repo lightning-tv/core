@@ -447,6 +447,14 @@ export class ElementNode extends Object {
     this._animationSettings = animationSettings;
   }
 
+  set hidden(val: boolean) {
+    this.alpha = val ? 0 : 1;
+  }
+
+  get hidden() {
+    return this.alpha === 0;
+  }
+
   requiresLayout() {
     return this.display === 'flex' || this.onBeforeLayout;
   }
