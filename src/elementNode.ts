@@ -53,7 +53,7 @@ function convertEffectsToShader(
   let index = 0;
 
   for (const [type, props] of Object.entries(styleEffects)) {
-    effects.push({ name: `el${index}`, type, props } as EffectDescUnion);
+    effects.push({ name: `effect${index}`, type, props } as EffectDescUnion);
     index++;
   }
   return createShader('DynamicShader', { effects });
