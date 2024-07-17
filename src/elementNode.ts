@@ -37,6 +37,8 @@ import type {
   IAnimationController,
   EffectDescUnion,
   ShaderController,
+  RadialGradientEffectProps,
+  RadialProgressEffectProps,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -746,6 +748,32 @@ Object.defineProperties(ElementNode.prototype, {
     },
     get(this: ElementNode): LinearGradientEffectProps | undefined {
       return this.effects?.linearGradient;
+    },
+  },
+  radialGradient: {
+    set(this: ElementNode, props: RadialGradientEffectProps = {}) {
+      this.effects = this.effects
+        ? {
+            ...this.effects,
+            ...{ radialGradient: props },
+          }
+        : { radialGradient: props };
+    },
+    get(this: ElementNode): RadialGradientEffectProps | undefined {
+      return this.effects?.radialGradient;
+    },
+  },
+  radialProgress: {
+    set(this: ElementNode, props: RadialProgressEffectProps = {}) {
+      this.effects = this.effects
+        ? {
+            ...this.effects,
+            ...{ radialProgressGradient: props },
+          }
+        : { radialProgressGradient: props };
+    },
+    get(this: ElementNode): RadialProgressEffectProps | undefined {
+      return this.effects?.radialProgress;
     },
   },
 });
