@@ -317,9 +317,6 @@ export class ElementNode extends Object {
     if (this.rendered) {
       // can be 0
       if (this.skipFocus) {
-        const index = this.parent?.children.indexOf(this);
-        const nextChild = this.parent?.children[index! + 1];
-        isElementNode(nextChild) && nextChild.setFocus();
         return;
       }
 
@@ -341,7 +338,9 @@ export class ElementNode extends Object {
       // Delay setting focus so children can render (useful for Row + Column)
       queueMicrotask(() => Config.setActiveElement(this));
     } else {
-      this.autofocus = true;
+      if (!this.skipFocus) {
+        this.autofocus = true;
+      }
     }
   }
 
@@ -415,7 +414,7 @@ export class ElementNode extends Object {
   searchChildrenById(id: string): ElementNode | undefined {
     // traverse all the childrens children
     for (let i = 0; i < this.children.length; i++) {
-      const child = this.children[i] as ElementNode;
+      const child = this.children[i];
       if (isElementNode(child)) {
         if (child.id === id) {
           return child;
