@@ -8,8 +8,10 @@ import {
   type StyleEffects,
   type NodeStyles,
   type TextStyles,
+  type IntrinsicTextStyleCommonProps,
   AddColorString,
 } from './intrinsicTypes.js';
+import { type ITextNode } from '@lightningjs/renderer';
 import Children from './children.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -144,7 +146,9 @@ export type Styles = {
 } & (NodeStyles | TextStyles);
 
 /** Node text, children of a ElementNode of type TextNode */
-export interface ElementText {
+export interface ElementText
+  extends Partial<Omit<ITextNode, 'id' | 'parent' | 'shader'>>,
+    IntrinsicTextStyleCommonProps {
   id?: string;
   _type: 'text';
   parent?: ElementNode;
