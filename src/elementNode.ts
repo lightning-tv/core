@@ -318,12 +318,12 @@ export class ElementNode extends Object {
   }
 
   setFocus() {
+    if (this.skipFocus) {
+      return;
+    }
+
     if (this.rendered) {
       // can be 0
-      if (this.skipFocus) {
-        return;
-      }
-
       if (this.forwardFocus !== undefined) {
         if (isFunc(this.forwardFocus)) {
           if (this.forwardFocus.call(this, this) !== false) {
@@ -342,9 +342,7 @@ export class ElementNode extends Object {
       // Delay setting focus so children can render (useful for Row + Column)
       queueMicrotask(() => Config.setActiveElement(this));
     } else {
-      if (!this.skipFocus) {
-        this.autofocus = true;
-      }
+      this.autofocus = true;
     }
   }
 
