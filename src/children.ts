@@ -1,4 +1,5 @@
 import { ElementNode, type ElementText } from './elementNode.js';
+import { isElementNode } from './utils.js';
 
 /**
  * Children class
@@ -15,9 +16,10 @@ export default class Children extends Array<ElementNode | ElementText> {
     const selectedIndex = this._parent.selected || 0;
 
     for (let i = selectedIndex; i < this.length; i++) {
-      if (this[i] instanceof ElementNode) {
+      const element = this[i];
+      if (isElementNode(element)) {
         this._parent.selected = i;
-        return this[i] as ElementNode;
+        return element;
       }
     }
 
