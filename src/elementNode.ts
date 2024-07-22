@@ -462,6 +462,14 @@ export class ElementNode extends Object {
     return this.display === 'flex' || this.onBeforeLayout;
   }
 
+  set updateLayoutOn(v: any) {
+    this.updateLayout();
+  }
+
+  get updateLayoutOn() {
+    return null;
+  }
+
   updateLayout(child?: ElementNode, dimensions?: Dimensions) {
     if (this.hasChildren) {
       log('Layout: ', this);
