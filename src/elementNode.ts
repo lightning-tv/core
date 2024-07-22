@@ -148,6 +148,7 @@ export type Styles = {
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
   extends Partial<Omit<ITextNode, 'id' | 'parent' | 'shader'>>,
+    Partial<Omit<ElementNode, '_type'>>,
     IntrinsicTextStyleCommonProps {
   id?: string;
   _type: 'text';
