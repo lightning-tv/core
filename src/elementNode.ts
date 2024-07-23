@@ -9,6 +9,7 @@ import {
   type NodeStyles,
   type TextStyles,
   type IntrinsicTextStyleCommonProps,
+  type AnimationSettingsWithDisabled,
   AddColorString,
 } from './intrinsicTypes.js';
 import { type ITextNode } from '@lightningjs/renderer';
@@ -184,14 +185,14 @@ export interface ElementNode
   _style?: Styles;
   _states?: States;
   _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
-  _animationSettings?: Partial<AnimationSettings>;
+  _animationSettings?: AnimationSettingsWithDisabled;
   _animationQueue:
     | Array<{
         props: Partial<INodeAnimateProps>;
-        animationSettings?: Partial<AnimationSettings>;
+        animationSettings?: AnimationSettingsWithDisabled;
       }>
     | undefined;
-  _animationQueueSettings: Partial<AnimationSettings> | undefined;
+  _animationQueueSettings: AnimationSettingsWithDisabled | undefined;
   _animationRunning?: boolean;
   children: Children;
 }
@@ -243,7 +244,9 @@ export class ElementNode extends Object {
       this.transition &&
       this.rendered &&
       Config.animationsEnabled &&
-      (this.transition === true || this.transition[name])
+      (this.transition === true ||
+        this.transition[name] === true ||
+        (this.transition[name] && !this.transition[name].disabled))
     ) {
       const animationSettings =
         this.transition === true || this.transition[name] === true
@@ -275,7 +278,7 @@ export class ElementNode extends Object {
 
   animate(
     props: Partial<INodeAnimateProps>,
-    animationSettings?: Partial<AnimationSettings>,
+    animationSettings?: AnimationSettingsWithDisabled,
   ): IAnimationController {
     assertTruthy(this.rendered, 'Node must be rendered before animating');
     return (this.lng as INode).animate(
