@@ -1,5 +1,6 @@
 import {
   type IAnimationController,
+  type AnimationSettings,
   type Dimensions,
   type FadeOutEffectProps,
   type GlitchEffectProps,
@@ -12,7 +13,6 @@ import {
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
   INodeProps,
-  AnimationSettings,
 } from '@lightningjs/renderer';
 import { type ElementNode } from './elementNode.js';
 import { type NodeStates } from './states.js';
@@ -29,10 +29,6 @@ export interface BorderStyleObject {
   width: number;
   color: number | string;
 }
-
-export type AnimationSettingsWithDisabled = Partial<AnimationSettings> & {
-  disabled?: boolean;
-};
 
 export type BorderStyle = number | BorderStyleObject;
 export type BorderRadius = number | number[];
@@ -66,7 +62,7 @@ export type ShaderEffectDesc = {
 };
 
 export interface IntrinsicNodeCommonProps {
-  animationSettings?: AnimationSettingsWithDisabled;
+  animationSettings?: Partial<AnimationSettings>;
   autofocus?: boolean;
   forwardStates?: boolean;
   id?: string;
@@ -131,7 +127,7 @@ export interface IntrinsicNodeStyleCommonProps {
   marginRight?: number;
   marginTop?: number;
   transition?:
-    | Record<string, AnimationSettingsWithDisabled | true | false>
+    | Record<string, Partial<AnimationSettings> | true | false>
     | true
     | false;
 }
