@@ -552,11 +552,6 @@ export class ElementNode extends Object {
       return;
     }
 
-    if (this.rendered) {
-      console.warn('Node already rendered: ', this);
-      return;
-    }
-
     if (parent.requiresLayout() && !layoutQueue.has(parent)) {
       layoutQueue.add(parent);
       if (queueLayout) {
@@ -570,6 +565,12 @@ export class ElementNode extends Object {
           }
         });
       }
+    }
+
+    if (this.rendered) {
+      // This happens if Array of items is reordered to reuse elements.
+      // We return after layout is queued so the change can trigger layout updates.
+      return;
     }
 
     if (this._states) {

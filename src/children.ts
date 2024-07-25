@@ -35,6 +35,9 @@ export default class Children extends Array<ElementNode | ElementText> {
     beforeNode?: ElementNode | ElementText | null,
   ) {
     if (beforeNode) {
+      // SolidJS can move nodes around in the children array.
+      // We need to insert following DOM insertBefore which moves elements.
+      this.remove(node);
       const index = this.indexOf(beforeNode);
       this.splice(index, 0, node);
     } else {
