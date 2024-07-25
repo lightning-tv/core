@@ -61,7 +61,9 @@ export type ShaderEffectDesc = {
   props: StyleEffects[keyof StyleEffects];
 };
 
-export interface IntrinsicNodeCommonProps {
+export interface IntrinsicNodeCommonProps
+  extends KeyMapEventHandlers,
+    KeyHoldMapEventHandlers {
   animationSettings?: Partial<AnimationSettings>;
   autofocus?: boolean;
   forwardStates?: boolean;
@@ -99,6 +101,34 @@ export interface IntrinsicNodeCommonProps {
   skipFocus?: boolean;
   states?: NodeStates;
   text?: string;
+  onFocus?: (
+    currentFocusedElm: ElementNode | undefined,
+    prevFocusedElm: ElementNode | undefined,
+  ) => void;
+  onFocusChanged?: (
+    hasFocus: boolean,
+    currentFocusedElm: ElementNode | undefined,
+    prevFocusedElm: ElementNode | undefined,
+  ) => void;
+  onBlur?: (
+    currentFocusedElm: ElementNode | undefined,
+    prevFocusedElm: ElementNode | undefined,
+  ) => void;
+  onKeyPress?: (
+    this: ElementNode,
+    e: KeyboardEvent,
+    mappedKeyEvent: string | undefined,
+    handlerElm: ElementNode,
+    currentFocusedElm: ElementNode,
+  ) => KeyHandlerReturn;
+  onSelectedChanged?: (
+    container: ElementNode,
+    activeElm: ElementNode,
+    selectedIndex: number | undefined,
+    lastSelectedIndex: number | undefined,
+  ) => void;
+  wrap?: boolean;
+  plinko?: boolean;
 }
 
 export interface IntrinsicNodeStyleCommonProps {
@@ -176,3 +206,46 @@ export type NodeStyles = IntrinsicNodeStyleProps;
 export type TextStyles = IntrinsicTextNodeStyleProps;
 export type NodeProps = IntrinsicNodeProps;
 export type TextProps = IntrinsicTextProps;
+
+// Focus + KeyHandling Types
+
+export type KeyNameOrKeyCode = string | number;
+
+export interface DefaultKeyMap {
+  Left: KeyNameOrKeyCode | KeyNameOrKeyCode[];
+  Right: KeyNameOrKeyCode | KeyNameOrKeyCode[];
+  Up: KeyNameOrKeyCode | KeyNameOrKeyCode[];
+  Down: KeyNameOrKeyCode | KeyNameOrKeyCode[];
+  Enter: KeyNameOrKeyCode | KeyNameOrKeyCode[];
+  Last: KeyNameOrKeyCode | KeyNameOrKeyCode[];
+}
+
+export interface DefaultKeyHoldMap {
+  EnterHold: KeyNameOrKeyCode | KeyNameOrKeyCode[];
+}
+
+export interface KeyMap extends DefaultKeyMap {}
+
+export interface KeyHoldMap extends DefaultKeyHoldMap {}
+
+export type KeyHandlerReturn = boolean | void;
+
+export type KeyHandler = (
+  this: ElementNode,
+  e: KeyboardEvent,
+  target: ElementNode,
+  handlerElm: ElementNode,
+) => KeyHandlerReturn;
+
+export type KeyMapEventHandlers = {
+  [K in keyof KeyMap as `on${Capitalize<K>}`]?: KeyHandler;
+};
+
+export type KeyHoldMapEventHandlers = {
+  [K in keyof KeyHoldMap as `on${Capitalize<K>}`]?: KeyHandler;
+};
+
+export type KeyHoldOptions = {
+  userKeyHoldMap: Partial<KeyHoldMap>;
+  holdThreshold?: number;
+};
