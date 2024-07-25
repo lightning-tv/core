@@ -44,6 +44,7 @@ import type {
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
+import { setActiveElement } from './focusManager.js';
 
 const layoutQueue = new Set<ElementNode>();
 let queueLayout = true;
@@ -341,7 +342,7 @@ export class ElementNode extends Object {
         }
       }
       // Delay setting focus so children can render (useful for Row + Column)
-      queueMicrotask(() => Config.setActiveElement(this));
+      queueMicrotask(() => setActiveElement(this));
     } else {
       this.autofocus = true;
     }

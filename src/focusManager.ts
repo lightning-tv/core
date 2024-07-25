@@ -1,3 +1,4 @@
+import { Config } from './config.js';
 import { type ElementNode } from './elementNode.js';
 import type {
   KeyNameOrKeyCode,
@@ -36,11 +37,14 @@ const flattenKeyMap = (keyMap: any, targetMap: any): void => {
   }
 };
 
-const DEFAULT_KEY_HOLD_THRESHOLD = 150; // ms
+let activeElement: ElementNode | undefined;
+export const setActiveElement = (elm: ElementNode) => {
+  updateFocusPath(elm, activeElement);
+  activeElement = elm;
+  Config.setActiveElement(elm);
+};
 
 let focusPath: ElementNode[] = [];
-const keyHoldTimeouts: { [key: KeyNameOrKeyCode]: number } = {};
-
 export const updateFocusPath = (
   currentFocusedElm: ElementNode,
   prevFocusedElm: ElementNode | undefined,
@@ -107,10 +111,12 @@ export const propagateKeyDown = (
   return false;
 };
 
+const DEFAULT_KEY_HOLD_THRESHOLD = 150; // ms
+const keyHoldTimeouts: { [key: KeyNameOrKeyCode]: number } = {};
+
 export const keyHoldCallback = (
   e: KeyboardEvent,
   mappedKeyHoldEvent: string | undefined,
-  keyHoldTimeouts: { [key: KeyNameOrKeyCode]: number },
 ) => {
   delete keyHoldTimeouts[e.key || e.keyCode];
   propagateKeyDown(e, mappedKeyHoldEvent, true);
@@ -119,8 +125,7 @@ export const keyHoldCallback = (
 export const handleKeyEvents = (
   keypressEvent: KeyboardEvent,
   keyupEvent: KeyboardEvent | undefined,
-  keyHoldOptions: KeyHoldOptions,
-  keyHoldTimeouts: { [key: KeyNameOrKeyCode]: number },
+  keyHoldOptions?: KeyHoldOptions,
 ) => {
   const keypress = keypressEvent;
   const keyup = keyupEvent;
@@ -137,7 +142,7 @@ export const handleKeyEvents = (
         clearTimeout(keyHoldTimeouts[key]);
       }
       keyHoldTimeouts[key] = window.setTimeout(
-        () => keyHoldCallback(keypress, mappedKeyHoldEvent, keyHoldTimeouts),
+        () => keyHoldCallback(keypress, mappedKeyHoldEvent),
         delay,
       );
     }
@@ -171,15 +176,15 @@ export const useFocusManager = (
 
   const keyPressHandler = (event: KeyboardEvent) => {
     keypressEvent = event;
-    handleKeyEvents(keypressEvent, keyupEvent, keyHoldOptions, keyHoldTimeouts);
+    handleKeyEvents(keypressEvent, keyupEvent, keyHoldOptions);
   };
 
   const keyUpHandler = (event: KeyboardEvent) => {
     keyupEvent = event;
-    handleKeyEvents(keypressEvent, keyupEvent, keyHoldOptions, keyHoldTimeouts);
+    handleKeyEvents(keypressEvent!, keyupEvent, keyHoldOptions);
   };
-  document.addEventListener('keyup', keyUpHandler);
 
+  document.addEventListener('keyup', keyUpHandler);
   document.addEventListener('keydown', keyPressHandler);
 
   return {
