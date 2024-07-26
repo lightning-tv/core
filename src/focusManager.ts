@@ -1,11 +1,12 @@
 import { Config } from './config.js';
 import { type ElementNode } from './elementNode.js';
+
 import type {
   KeyNameOrKeyCode,
-  KeyMapEventHandlers,
   KeyHoldOptions,
   KeyHandler,
   KeyMap,
+  EventHandlers,
 } from './intrinsicTypes.js';
 
 const keyMapEntries: Record<KeyNameOrKeyCode, string> = {
@@ -88,7 +89,7 @@ const propagateKeyDown = (
     finalFocusElm = finalFocusElm || elm;
     if (mappedEvent) {
       const onKeyHandler = elm[
-        `on${mappedEvent}` as keyof KeyMapEventHandlers
+        `on${mappedEvent}` as keyof EventHandlers<KeyMap>
       ] as KeyHandler | undefined;
       if (onKeyHandler?.call(elm, e, elm, finalFocusElm) === true) {
         break;

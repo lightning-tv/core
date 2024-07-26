@@ -61,9 +61,7 @@ export type ShaderEffectDesc = {
   props: StyleEffects[keyof StyleEffects];
 };
 
-export interface IntrinsicNodeCommonProps
-  extends KeyMapEventHandlers,
-    KeyHoldMapEventHandlers {
+export interface IntrinsicNodeCommonProps {
   animationSettings?: Partial<AnimationSettings>;
   autofocus?: boolean;
   forwardStates?: boolean;
@@ -172,7 +170,10 @@ export interface IntrinsicTextStyleCommonProps {
 export interface IntrinsicCommonProps
   extends IntrinsicNodeCommonProps,
     IntrinsicNodeStyleCommonProps,
-    IntrinsicTextStyleCommonProps {}
+    IntrinsicTextStyleCommonProps,
+    EventHandlers<KeyMap>,
+    EventHandlers<KeyHoldMap> {}
+
 export interface IntrinsicNodeStyleProps
   extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
     IntrinsicNodeStyleCommonProps {
@@ -224,6 +225,10 @@ export interface DefaultKeyHoldMap {
   EnterHold: KeyNameOrKeyCode | KeyNameOrKeyCode[];
 }
 
+export type EventHandlers<Map> = {
+  [K in keyof Map as `on${Capitalize<string & K>}`]?: KeyHandler;
+};
+
 export interface KeyMap extends DefaultKeyMap {}
 
 export interface KeyHoldMap extends DefaultKeyHoldMap {}
@@ -236,14 +241,6 @@ export type KeyHandler = (
   target: ElementNode,
   handlerElm: ElementNode,
 ) => KeyHandlerReturn;
-
-export type KeyMapEventHandlers = {
-  [K in keyof KeyMap as `on${Capitalize<K>}`]?: KeyHandler;
-};
-
-export type KeyHoldMapEventHandlers = {
-  [K in keyof KeyHoldMap as `on${Capitalize<K>}`]?: KeyHandler;
-};
 
 export type KeyHoldOptions = {
   userKeyHoldMap: Partial<KeyHoldMap>;
