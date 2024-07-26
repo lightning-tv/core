@@ -8,7 +8,7 @@ import type {
   KeyMap,
 } from './intrinsicTypes.js';
 
-export const keyMapEntries: Record<KeyNameOrKeyCode, string> = {
+const keyMapEntries: Record<KeyNameOrKeyCode, string> = {
   ArrowLeft: 'Left',
   ArrowRight: 'Right',
   ArrowUp: 'Up',
@@ -20,7 +20,7 @@ export const keyMapEntries: Record<KeyNameOrKeyCode, string> = {
   Escape: 'Escape',
 };
 
-export const keyHoldMapEntries: Record<KeyNameOrKeyCode, string> = {
+const keyHoldMapEntries: Record<KeyNameOrKeyCode, string> = {
   Enter: 'EnterHold',
 };
 
@@ -45,7 +45,7 @@ export const setActiveElement = (elm: ElementNode) => {
 };
 
 let focusPath: ElementNode[] = [];
-export const updateFocusPath = (
+const updateFocusPath = (
   currentFocusedElm: ElementNode,
   prevFocusedElm: ElementNode | undefined,
 ) => {
@@ -69,13 +69,8 @@ export const updateFocusPath = (
   focusPath.forEach((elm) => {
     if (!fp.includes(elm)) {
       elm.states.remove('focus');
-      elm.onBlur?.call(current, currentFocusedElm, prevFocusedElm);
-      elm.onFocusChanged?.call(
-        current,
-        false,
-        currentFocusedElm,
-        prevFocusedElm,
-      );
+      elm.onBlur?.call(elm, currentFocusedElm, prevFocusedElm);
+      elm.onFocusChanged?.call(elm, false, currentFocusedElm, prevFocusedElm);
     }
   });
 
@@ -83,7 +78,7 @@ export const updateFocusPath = (
   return fp;
 };
 
-export const propagateKeyDown = (
+const propagateKeyDown = (
   e: KeyboardEvent,
   mappedEvent: string | undefined,
   isHold: boolean,
@@ -114,7 +109,7 @@ export const propagateKeyDown = (
 const DEFAULT_KEY_HOLD_THRESHOLD = 150; // ms
 const keyHoldTimeouts: { [key: KeyNameOrKeyCode]: number } = {};
 
-export const keyHoldCallback = (
+const keyHoldCallback = (
   e: KeyboardEvent,
   mappedKeyHoldEvent: string | undefined,
 ) => {
@@ -122,14 +117,11 @@ export const keyHoldCallback = (
   propagateKeyDown(e, mappedKeyHoldEvent, true);
 };
 
-export const handleKeyEvents = (
-  keypressEvent: KeyboardEvent,
-  keyupEvent: KeyboardEvent | undefined,
-  keyHoldOptions?: KeyHoldOptions,
+const handleKeyEvents = (
+  delay: number,
+  keypress?: KeyboardEvent,
+  keyup?: KeyboardEvent,
 ) => {
-  const keypress = keypressEvent;
-  const keyup = keyupEvent;
-
   if (keypress) {
     const key: KeyNameOrKeyCode = keypress.key || keypress.keyCode;
     const mappedKeyHoldEvent = keyHoldMapEntries[key];
@@ -137,7 +129,6 @@ export const handleKeyEvents = (
     if (!mappedKeyHoldEvent) {
       propagateKeyDown(keypress, mappedKeyEvent, false);
     } else {
-      const delay = keyHoldOptions?.holdThreshold || DEFAULT_KEY_HOLD_THRESHOLD;
       if (keyHoldTimeouts[key]) {
         clearTimeout(keyHoldTimeouts[key]);
       }
@@ -159,13 +150,19 @@ export const handleKeyEvents = (
   }
 };
 
-export const useFocusManager = (
-  userKeyMap?: Partial<KeyMap>,
-  keyHoldOptions?: KeyHoldOptions,
-) => {
-  let keypressEvent: KeyboardEvent | undefined;
-  let keyupEvent: KeyboardEvent | undefined;
+interface FocusManagerOptions {
+  userKeyMap?: Partial<KeyMap>;
+  keyHoldOptions?: KeyHoldOptions;
+  ownerContext?: (cb: () => void) => void;
+}
 
+export const useFocusManager = ({
+  userKeyMap,
+  keyHoldOptions,
+  ownerContext = (cb) => {
+    cb();
+  },
+}: FocusManagerOptions) => {
   if (userKeyMap) {
     flattenKeyMap(userKeyMap, keyMapEntries);
   }
@@ -174,15 +171,19 @@ export const useFocusManager = (
     flattenKeyMap(keyHoldOptions.userKeyHoldMap, keyHoldMapEntries);
   }
 
-  const keyPressHandler = (event: KeyboardEvent) => {
-    keypressEvent = event;
-    handleKeyEvents(keypressEvent, keyupEvent, keyHoldOptions);
-  };
+  const delay = keyHoldOptions?.holdThreshold || DEFAULT_KEY_HOLD_THRESHOLD;
+  const runKeyEvent = handleKeyEvents.bind(null, delay);
 
-  const keyUpHandler = (event: KeyboardEvent) => {
-    keyupEvent = event;
-    handleKeyEvents(keypressEvent!, keyupEvent, keyHoldOptions);
-  };
+  // Owner context is for frameworks that need effects
+  const keyPressHandler = (event: KeyboardEvent) =>
+    ownerContext(() => {
+      runKeyEvent(event, undefined);
+    });
+
+  const keyUpHandler = (event: KeyboardEvent) =>
+    ownerContext(() => {
+      runKeyEvent(undefined, event);
+    });
 
   document.addEventListener('keyup', keyUpHandler);
   document.addEventListener('keydown', keyPressHandler);
@@ -195,6 +196,6 @@ export const useFocusManager = (
         if (timeout) clearTimeout(timeout);
       }
     },
-    focusPath,
+    focusPath: () => focusPath,
   };
 };
