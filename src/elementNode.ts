@@ -250,6 +250,20 @@ export class ElementNode extends Object {
     }
   }
 
+  get selectedNode(): ElementNode | undefined {
+    const selectedIndex = this.selected || 0;
+
+    for (let i = selectedIndex; i < this.children.length; i++) {
+      const element = this[i];
+      if (isElementNode(element)) {
+        this.selected = i;
+        return element;
+      }
+    }
+
+    return undefined;
+  }
+
   set shader(
     shaderProps:
       | Parameters<typeof createShader>
