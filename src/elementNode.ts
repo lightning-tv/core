@@ -12,7 +12,6 @@ import {
   AddColorString,
 } from './intrinsicTypes.js';
 import { type ITextNode } from '@lightningjs/renderer';
-import Children from './children.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
 import {
@@ -194,7 +193,7 @@ export interface ElementNode
     | undefined;
   _animationQueueSettings: Partial<AnimationSettings> | undefined;
   _animationRunning?: boolean;
-  children: Children;
+  children: Array<ElementNode | ElementText>;
 }
 export class ElementNode extends Object {
   constructor(name: string) {
@@ -202,7 +201,7 @@ export class ElementNode extends Object {
     this._type = name === 'text' ? NodeType.TextNode : NodeType.Element;
     this.rendered = false;
     this.lng = {};
-    this.children = new Children(this);
+    this.children = [];
   }
 
   get effects(): StyleEffects | undefined {
@@ -224,6 +223,30 @@ export class ElementNode extends Object {
     this._parent = p;
     if (this.rendered) {
       this.lng.parent = p?.lng ?? null;
+    }
+  }
+
+  insertChild(
+    node: ElementNode | ElementText,
+    beforeNode?: ElementNode | ElementText | null,
+  ) {
+    if (beforeNode) {
+      // SolidJS can move nodes around in the children array.
+      // We need to insert following DOM insertBefore which moves elements.
+      this.removeChild(node);
+      const index = this.children.indexOf(beforeNode);
+      this.children.splice(index, 0, node);
+    } else {
+      this.children.push(node);
+    }
+
+    node.parent = this;
+  }
+
+  removeChild(node: ElementNode | ElementText) {
+    const nodeIndexToRemove = this.children.indexOf(node);
+    if (nodeIndexToRemove >= 0) {
+      this.children.splice(nodeIndexToRemove, 1);
     }
   }
 
