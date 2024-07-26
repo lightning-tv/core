@@ -246,3 +246,12 @@ export type KeyHoldOptions = {
   userKeyHoldMap: Partial<KeyHoldMap>;
   holdThreshold?: number;
 };
+
+// Vue Helper to get component props
+export type ExtractComponentProps<TComponent> = TComponent extends new () => {
+  $props: infer P;
+}
+  ? P
+  : never;
+
+export type ElementNodeProps = ExtractComponentProps<typeof ElementNode>;
