@@ -254,7 +254,7 @@ export class ElementNode extends Object {
     const selectedIndex = this.selected || 0;
 
     for (let i = selectedIndex; i < this.children.length; i++) {
-      const element = this[i];
+      const element = this.children[i];
       if (isElementNode(element)) {
         this.selected = i;
         return element;

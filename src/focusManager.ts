@@ -163,7 +163,7 @@ export const useFocusManager = ({
   ownerContext = (cb) => {
     cb();
   },
-}: FocusManagerOptions) => {
+}: FocusManagerOptions = {}) => {
   if (userKeyMap) {
     flattenKeyMap(userKeyMap, keyMapEntries);
   }
