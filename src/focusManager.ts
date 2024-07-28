@@ -42,6 +42,7 @@ let activeElement: ElementNode | undefined;
 export const setActiveElement = (elm: ElementNode) => {
   updateFocusPath(elm, activeElement);
   activeElement = elm;
+  // Callback for libraries to use signals / refs
   Config.setActiveElement(elm);
 };
 

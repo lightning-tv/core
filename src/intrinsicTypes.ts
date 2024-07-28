@@ -154,6 +154,11 @@ export interface IntrinsicNodeStyleCommonProps {
   marginLeft?: number;
   marginRight?: number;
   marginTop?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  zIndex?: number;
   transition?:
     | Record<string, Partial<AnimationSettings> | true | false>
     | true
