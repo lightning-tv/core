@@ -61,44 +61,14 @@ export type ShaderEffectDesc = {
   props: StyleEffects[keyof StyleEffects];
 };
 
-export interface IntrinsicNodeCommonProps {
-  animationSettings?: Partial<AnimationSettings>;
+export interface IntrinsicFocusProps {
   autofocus?: boolean;
-  forwardStates?: boolean;
-  id?: string;
-  onCreate?: (target: ElementNode) => void;
-  onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
-  onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
-  onBeforeLayout?: (
-    this: ElementNode,
-    target: ElementNode,
-    child?: ElementNode,
-    dimensions?: Dimensions,
-  ) => boolean | void;
-  onLayout?: (
-    this: ElementNode,
-    target: ElementNode,
-    child?: ElementNode,
-    dimensions?: Dimensions,
-  ) => void;
-  onAnimationStarted?: (
-    controller: IAnimationController,
-    propKey: string,
-    endValue: number,
-  ) => void;
-  onAnimationFinished?: (
-    controller: IAnimationController,
-    propKey: string,
-    endValue: number,
-  ) => void;
   forwardFocus?:
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
-  ref?: ElementNode | ((node: ElementNode) => void) | undefined;
-  selected?: number;
-  skipFocus?: boolean;
-  states?: NodeStates;
-  text?: string;
+  plinko?: boolean;
+  wrap?: boolean;
+  // Events
   onFocus?: (
     currentFocusedElm: ElementNode | undefined,
     prevFocusedElm: ElementNode | undefined,
@@ -130,10 +100,45 @@ export interface IntrinsicNodeCommonProps {
     container: ElementNode,
     activeElm: ElementNode,
     selectedIndex: number,
-    lastSelectedIndex: number,
+    lastSelectedIndex: number | undefined,
   ) => void;
-  wrap?: boolean;
-  plinko?: boolean;
+}
+
+export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
+  animationSettings?: Partial<AnimationSettings>;
+  forwardStates?: boolean;
+  id?: string;
+  ref?: ElementNode | ((node: ElementNode) => void) | undefined;
+  selected?: number;
+  skipFocus?: boolean;
+  states?: NodeStates;
+  text?: string;
+  // Events
+  onCreate?: (target: ElementNode) => void;
+  onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
+  onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
+  onBeforeLayout?: (
+    this: ElementNode,
+    target: ElementNode,
+    child?: ElementNode,
+    dimensions?: Dimensions,
+  ) => boolean | void;
+  onLayout?: (
+    this: ElementNode,
+    target: ElementNode,
+    child?: ElementNode,
+    dimensions?: Dimensions,
+  ) => void;
+  onAnimationStarted?: (
+    controller: IAnimationController,
+    propKey: string,
+    endValue: number,
+  ) => void;
+  onAnimationFinished?: (
+    controller: IAnimationController,
+    propKey: string,
+    endValue: number,
+  ) => void;
 }
 
 export interface IntrinsicNodeStyleCommonProps {
