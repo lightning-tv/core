@@ -4,7 +4,6 @@ import { type ElementNode } from './elementNode.js';
 import type {
   KeyNameOrKeyCode,
   KeyHoldOptions,
-  KeyHandler,
   KeyMap,
   EventHandlers,
 } from './intrinsicTypes.js';
@@ -89,19 +88,18 @@ const propagateKeyDown = (
   for (const elm of focusPath) {
     finalFocusElm = finalFocusElm || elm;
     if (mappedEvent) {
-      const onKeyHandler = elm[
-        `on${mappedEvent}` as keyof EventHandlers<KeyMap>
-      ] as KeyHandler | undefined;
+      const onKeyHandler =
+        elm[`on${mappedEvent}` as keyof EventHandlers<KeyMap>];
       if (onKeyHandler?.call(elm, e, elm, finalFocusElm) === true) {
         break;
       }
     } else {
       console.log(`Unhandled key event: ${e.key || e.keyCode}`);
     }
-    const fallbackFunction = (isHold ? elm.onKeyHold : elm.onKeyPress) as
-      | KeyHandler
-      | undefined;
-    if (fallbackFunction?.call(elm, e, elm, finalFocusElm) === true) {
+    const fallbackFunction = isHold ? elm.onKeyHold : elm.onKeyPress;
+    if (
+      fallbackFunction?.call(elm, e, mappedEvent, elm, finalFocusElm) === true
+    ) {
       break;
     }
   }

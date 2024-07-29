@@ -61,11 +61,59 @@ export type ShaderEffectDesc = {
   props: StyleEffects[keyof StyleEffects];
 };
 
-export interface IntrinsicNodeCommonProps {
-  animationSettings?: Partial<AnimationSettings>;
+export interface IntrinsicFocusProps {
   autofocus?: boolean;
+  forwardFocus?:
+    | number
+    | ((this: ElementNode, elm: ElementNode) => boolean | void);
+  plinko?: boolean;
+  wrap?: boolean;
+  // Events
+  onFocus?: (
+    currentFocusedElm: ElementNode | undefined,
+    prevFocusedElm: ElementNode | undefined,
+  ) => void;
+  onFocusChanged?: (
+    hasFocus: boolean,
+    currentFocusedElm: ElementNode | undefined,
+    prevFocusedElm: ElementNode | undefined,
+  ) => void;
+  onBlur?: (
+    currentFocusedElm: ElementNode | undefined,
+    prevFocusedElm: ElementNode | undefined,
+  ) => void;
+  onKeyPress?: (
+    this: ElementNode,
+    e: KeyboardEvent,
+    mappedKeyEvent: string | undefined,
+    handlerElm: ElementNode,
+    currentFocusedElm: ElementNode,
+  ) => KeyHandlerReturn;
+  onKeyHold?: (
+    this: ElementNode,
+    e: KeyboardEvent,
+    mappedKeyEvent: string | undefined,
+    handlerElm: ElementNode,
+    currentFocusedElm: ElementNode,
+  ) => KeyHandlerReturn;
+  onSelectedChanged?: (
+    container: ElementNode,
+    activeElm: ElementNode,
+    selectedIndex: number,
+    lastSelectedIndex: number | undefined,
+  ) => void;
+}
+
+export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
+  animationSettings?: Partial<AnimationSettings>;
   forwardStates?: boolean;
   id?: string;
+  ref?: ElementNode | ((node: ElementNode) => void) | undefined;
+  selected?: number;
+  skipFocus?: boolean;
+  states?: NodeStates;
+  text?: string;
+  // Events
   onCreate?: (target: ElementNode) => void;
   onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
@@ -91,42 +139,6 @@ export interface IntrinsicNodeCommonProps {
     propKey: string,
     endValue: number,
   ) => void;
-  forwardFocus?:
-    | number
-    | ((this: ElementNode, elm: ElementNode) => boolean | void);
-  ref?: ElementNode | ((node: ElementNode) => void) | undefined;
-  selected?: number;
-  skipFocus?: boolean;
-  states?: NodeStates;
-  text?: string;
-  onFocus?: (
-    currentFocusedElm: ElementNode | undefined,
-    prevFocusedElm: ElementNode | undefined,
-  ) => void;
-  onFocusChanged?: (
-    hasFocus: boolean,
-    currentFocusedElm: ElementNode | undefined,
-    prevFocusedElm: ElementNode | undefined,
-  ) => void;
-  onBlur?: (
-    currentFocusedElm: ElementNode | undefined,
-    prevFocusedElm: ElementNode | undefined,
-  ) => void;
-  onKeyPress?: (
-    this: ElementNode,
-    e: KeyboardEvent,
-    mappedKeyEvent: string | undefined,
-    handlerElm: ElementNode,
-    currentFocusedElm: ElementNode,
-  ) => KeyHandlerReturn;
-  onSelectedChanged?: (
-    container: ElementNode,
-    activeElm: ElementNode,
-    selectedIndex: number | undefined,
-    lastSelectedIndex: number | undefined,
-  ) => void;
-  wrap?: boolean;
-  plinko?: boolean;
 }
 
 export interface IntrinsicNodeStyleCommonProps {
