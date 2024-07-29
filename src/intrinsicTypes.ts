@@ -119,11 +119,18 @@ export interface IntrinsicNodeCommonProps {
     handlerElm: ElementNode,
     currentFocusedElm: ElementNode,
   ) => KeyHandlerReturn;
+  onKeyHold?: (
+    this: ElementNode,
+    e: KeyboardEvent,
+    mappedKeyEvent: string | undefined,
+    handlerElm: ElementNode,
+    currentFocusedElm: ElementNode,
+  ) => KeyHandlerReturn;
   onSelectedChanged?: (
     container: ElementNode,
     activeElm: ElementNode,
-    selectedIndex: number | undefined,
-    lastSelectedIndex: number | undefined,
+    selectedIndex: number,
+    lastSelectedIndex: number,
   ) => void;
   wrap?: boolean;
   plinko?: boolean;
