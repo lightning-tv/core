@@ -98,7 +98,7 @@ const propagateKeyDown = (
     } else {
       console.log(`Unhandled key event: ${e.key || e.keyCode}`);
     }
-    const fallbackFunction = (isHold ? elm.onKeyPress : elm.onKeyHold) as
+    const fallbackFunction = (isHold ? elm.onKeyHold : elm.onKeyPress) as
       | KeyHandler
       | undefined;
     if (fallbackFunction?.call(elm, e, elm, finalFocusElm) === true) {
