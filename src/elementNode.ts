@@ -410,6 +410,9 @@ export class ElementNode extends Object {
   destroy() {
     if (this._queueDelete && isINode(this.lng)) {
       this.lng.destroy();
+      if (this.parent && this.parent.requiresLayout()) {
+        this.parent.updateLayout();
+      }
     }
   }
   // Must be set before render
