@@ -4,7 +4,6 @@ import { type ElementNode } from './elementNode.js';
 import type {
   KeyNameOrKeyCode,
   KeyHoldOptions,
-  KeyHandler,
   KeyMap,
   EventHandlers,
 } from './intrinsicTypes.js';
