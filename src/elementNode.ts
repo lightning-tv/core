@@ -169,7 +169,6 @@ export interface ElementNode
   renderer?: RendererMain;
   selected?: number;
   skipFocus?: boolean;
-  autofocus?: boolean;
   flexItem?: boolean;
   flexOrder?: number;
   flexGrow?: number;
@@ -381,7 +380,7 @@ export class ElementNode extends Object {
       // Delay setting focus so children can render (useful for Row + Column)
       queueMicrotask(() => setActiveElement(this));
     } else {
-      this.autofocus = true;
+      this._autofocus = true;
     }
   }
 
@@ -498,6 +497,15 @@ export class ElementNode extends Object {
 
   get hidden() {
     return this.alpha === 0;
+  }
+
+  set autofocus(val: any) {
+    this._autofocus = val ? true : false;
+    this._autofocus && this.setFocus();
+  }
+
+  get autofocus() {
+    return this._autofocus;
   }
 
   requiresLayout() {
@@ -742,7 +750,7 @@ export class ElementNode extends Object {
       }
     }
 
-    node.autofocus && node.setFocus();
+    node._autofocus && node.setFocus();
   }
 }
 
