@@ -4,6 +4,8 @@ import { RendererMain } from '@lightningjs/renderer';
 export let renderer: RendererMain;
 export let createShader: RendererMain['createShader'];
 
+export const getRenderer = () => renderer;
+
 export function startLightningRenderer(
   options: Partial<RendererMainSettings> = {},
   rootId: string | HTMLElement = 'app',
