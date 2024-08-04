@@ -43,13 +43,9 @@ export default class States extends Array<string> {
 
   toggle(state: string, force?: boolean) {
     if (force === true) {
-      if (!this.has(state)) {
-        this.add(state);
-      }
+      this.add(state);
     } else if (force === false) {
-      if (this.has(state)) {
-        this.remove(state);
-      }
+      this.remove(state);
     } else {
       if (this.has(state)) {
         this.remove(state);
@@ -57,6 +53,21 @@ export default class States extends Array<string> {
         this.add(state);
       }
     }
+  }
+
+  merge(newStates: NodeStates) {
+    if (isArray(newStates)) {
+      this.length = 0; // Clear the current states
+      this.push(...newStates);
+    } else if (isString(newStates)) {
+      this.length = 0; // Clear the current states
+      this.push(newStates);
+    } else {
+      for (const state in newStates) {
+        this.toggle(state, newStates[state]);
+      }
+    }
+    return this;
   }
 
   remove(state: string) {

@@ -267,6 +267,10 @@ export class ElementNode extends Object {
     return undefined;
   }
 
+  get nodes(): ElementNode[] {
+    return this.children.filter(isElementNode);
+  }
+
   set shader(
     shaderProps:
       | Parameters<typeof createShader>
@@ -374,8 +378,9 @@ export class ElementNode extends Object {
         } else {
           const focusedIndex =
             typeof this.forwardFocus === 'number' ? this.forwardFocus : null;
-          if (focusedIndex !== null && focusedIndex < this.children.length) {
-            const child = this.children[focusedIndex];
+          const nodes = this.nodes;
+          if (focusedIndex !== null && focusedIndex < nodes.length) {
+            const child = nodes[focusedIndex];
             isElementNode(child) && child.setFocus();
             return;
           }
@@ -451,7 +456,7 @@ export class ElementNode extends Object {
   }
 
   get hasChildren() {
-    return this.children.length > 0;
+    return this.nodes.length > 0;
   }
 
   getChildById(id: string) {
@@ -476,7 +481,9 @@ export class ElementNode extends Object {
   }
 
   set states(states: NodeStates) {
-    this._states = new States(this._stateChanged.bind(this), states);
+    this._states = this._states
+      ? this._states.merge(states)
+      : new States(this._stateChanged.bind(this), states);
     if (this.rendered) {
       this._stateChanged();
     }
