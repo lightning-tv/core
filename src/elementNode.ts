@@ -233,17 +233,18 @@ export class ElementNode extends Object {
     node: ElementNode | ElementText,
     beforeNode?: ElementNode | ElementText | null,
   ) {
+    node.parent = this;
     if (beforeNode) {
       // SolidJS can move nodes around in the children array.
       // We need to insert following DOM insertBefore which moves elements.
       this.removeChild(node);
       const index = this.children.indexOf(beforeNode);
-      this.children.splice(index, 0, node);
-    } else {
-      this.children.push(node);
+      if (index >= 0) {
+        this.children.splice(index, 0, node);
+        return;
+      }
     }
-
-    node.parent = this;
+    this.children.push(node);
   }
 
   removeChild(node: ElementNode | ElementText) {
@@ -265,10 +266,6 @@ export class ElementNode extends Object {
     }
 
     return undefined;
-  }
-
-  get nodes(): ElementNode[] {
-    return this.children.filter(isElementNode);
   }
 
   set shader(
@@ -378,7 +375,7 @@ export class ElementNode extends Object {
         } else {
           const focusedIndex =
             typeof this.forwardFocus === 'number' ? this.forwardFocus : null;
-          const nodes = this.nodes;
+          const nodes = this.children;
           if (focusedIndex !== null && focusedIndex < nodes.length) {
             const child = nodes[focusedIndex];
             isElementNode(child) && child.setFocus();
@@ -456,7 +453,7 @@ export class ElementNode extends Object {
   }
 
   get hasChildren() {
-    return this.nodes.length > 0;
+    return this.children.length > 0;
   }
 
   getChildById(id: string) {
