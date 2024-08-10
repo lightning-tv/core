@@ -194,7 +194,7 @@ export interface ElementNode
     | undefined;
   _animationQueueSettings: Partial<AnimationSettings> | undefined;
   _animationRunning?: boolean;
-  _containsTextNodes?: boolean;
+  _containsTextNodes?: boolean | null;
   children: Array<ElementNode | ElementText>;
 }
 export class ElementNode extends Object {
@@ -535,6 +535,8 @@ export class ElementNode extends Object {
         layoutQueue.clear();
         for (let i = queue.length - 1; i >= 0; i--) {
           queue[i]!.updateLayout();
+          // After initial render we want to updateLayout right away in case nodes are added or destroyed
+          queue[i]!._containsTextNodes = null;
         }
       });
     }
@@ -620,13 +622,13 @@ export class ElementNode extends Object {
       return;
     }
 
-    if (!this._containsTextNodes && this.requiresLayout()) {
-      // Since the element doesn't contain any text nodes, it's safe do layout early since we know dimensions.
+    if (this.requiresLayout() && !this._containsTextNodes) {
+      // Since the element doesn't contain any text nodes, it's safe to do layout early since we know dimensions.
       // This has the added benefit of laying out without animating the nodes
       this.updateLayout();
     }
 
-    if (parent.requiresLayout()) {
+    if (parent.requiresLayout() && !parent._containsTextNodes) {
       parent.queueLayout();
     }
 
