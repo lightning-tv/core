@@ -196,6 +196,7 @@ export interface ElementNode
     | undefined;
   _animationQueueSettings: Partial<AnimationSettings> | undefined;
   _animationRunning?: boolean;
+  _containsTextNodes?: boolean;
   children: Array<ElementNode | ElementText>;
 }
 export class ElementNode extends Object {
@@ -517,7 +518,7 @@ export class ElementNode extends Object {
   }
 
   requiresLayout() {
-    return this.display === 'flex' || this.onBeforeLayout;
+    return this.display === 'flex' || this.onBeforeLayout || this.onLayout;
   }
 
   set updateLayoutOn(v: any) {
@@ -529,7 +530,7 @@ export class ElementNode extends Object {
   }
 
   updateLayout(child?: ElementNode, dimensions?: Dimensions) {
-    if (this.hasChildren) {
+    if (!layoutQueue.has(this) && this.hasChildren) {
       log('Layout: ', this);
       let changedLayout = false;
       if (isFunc(this.onBeforeLayout)) {
@@ -595,7 +596,8 @@ export class ElementNode extends Object {
   }
 
   render() {
-    // Elements are rendered from the outside in, then `insert`ed from the inside out.
+    // Elements are inserted from the inside out, then rendered from the outside in.
+    // Render starts when an element is insertered with a parent that is already renderered.
     const node = this;
     const parent = this.parent;
 
@@ -609,7 +611,17 @@ export class ElementNode extends Object {
       return;
     }
 
-    if (parent.requiresLayout() && !layoutQueue.has(parent)) {
+    if (!this._containsTextNodes && this.requiresLayout()) {
+      // Since the element doesn't contain any text nodes, it's safe do layout early since we know dimensions.
+      // This has the added benefit of laying out without animating the nodes
+      this.updateLayout();
+    }
+
+    if (
+      !layoutQueue.has(parent) &&
+      parent._containsTextNodes &&
+      parent.requiresLayout()
+    ) {
       layoutQueue.add(parent);
       if (queueLayout) {
         queueLayout = false;
@@ -684,7 +696,7 @@ export class ElementNode extends Object {
 
       log('Rendering: ', this, props);
       node.lng = renderer.createTextNode(props as unknown as ITextNodeProps);
-
+      parent._containsTextNodes = true;
       if (parent.requiresLayout() && (!props.width || !props.height)) {
         node._layoutOnLoad();
       }
