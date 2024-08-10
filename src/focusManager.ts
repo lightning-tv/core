@@ -26,11 +26,12 @@ const keyHoldMapEntries: Record<KeyNameOrKeyCode, string> = {
 
 const flattenKeyMap = (keyMap: any, targetMap: any): void => {
   for (const [key, value] of Object.entries(keyMap)) {
-    if (value == null) continue;
     if (Array.isArray(value)) {
       value.forEach((v) => {
         targetMap[v] = key;
       });
+    } else if (value === null) {
+      delete targetMap[key];
     } else {
       targetMap[value as keyof any] = key;
     }
