@@ -9,6 +9,7 @@
     "moduleResolution": "NodeNext",
     "sourceMap": true,
     "declaration": true,
+    "declarationMap": true,
     "noEmit": false,
     // Type Checking / Syntax Rules
     "strict": true,

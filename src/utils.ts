@@ -1,6 +1,7 @@
 import { INode } from '@lightningjs/renderer';
 import { Config, isDev } from './config.js';
 import { ElementNode, Styles, ElementText } from './elementNode.js';
+export * from '@lightningjs/renderer/utils';
 
 function hasDebug(node: any) {
   return isObject(node) && node.debug;
