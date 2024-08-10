@@ -118,18 +118,8 @@ export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
   onCreate?: (target: ElementNode) => void;
   onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
-  onBeforeLayout?: (
-    this: ElementNode,
-    target: ElementNode,
-    child?: ElementNode,
-    dimensions?: Dimensions,
-  ) => boolean | void;
-  onLayout?: (
-    this: ElementNode,
-    target: ElementNode,
-    child?: ElementNode,
-    dimensions?: Dimensions,
-  ) => void;
+  onBeforeLayout?: (this: ElementNode, target: ElementNode) => boolean | void;
+  onLayout?: (this: ElementNode, target: ElementNode) => void;
   onAnimationStarted?: (
     controller: IAnimationController,
     propKey: string,

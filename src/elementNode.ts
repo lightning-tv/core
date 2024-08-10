@@ -30,9 +30,7 @@ import type {
   INode,
   INodeAnimateProps,
   INodeProps,
-  Dimensions,
   AnimationSettings,
-  NodeLoadedPayload,
   LinearGradientEffectProps,
   ITextNodeProps,
   IAnimationController,
@@ -396,13 +394,7 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on(
-      'loaded',
-      (_node: INode, loadedPayload: NodeLoadedPayload) => {
-        const { dimensions } = loadedPayload;
-        this.parent!.updateLayout(this, dimensions);
-      },
-    );
+    (this.lng as INode).on('loaded', this.parent!.queueLayout);
   }
 
   getText() {
@@ -416,7 +408,7 @@ export class ElementNode extends Object {
   destroy() {
     if (this._queueDelete && isINode(this.lng)) {
       this.lng.destroy();
-      if (this.parent && this.parent.requiresLayout()) {
+      if (this.parent?.requiresLayout()) {
         this.parent.updateLayout();
       }
     }
@@ -529,13 +521,31 @@ export class ElementNode extends Object {
     return null;
   }
 
-  updateLayout(child?: ElementNode, dimensions?: Dimensions) {
-    if (!layoutQueue.has(this) && this.hasChildren) {
+  queueLayout() {
+    if (layoutQueue.has(this)) {
+      return;
+    }
+
+    layoutQueue.add(this);
+    if (queueLayout) {
+      queueLayout = false;
+      queueMicrotask(() => {
+        queueLayout = true;
+        const queue = [...layoutQueue];
+        layoutQueue.clear();
+        for (let i = queue.length - 1; i >= 0; i--) {
+          queue[i]!.updateLayout();
+        }
+      });
+    }
+  }
+
+  updateLayout() {
+    if (this.hasChildren) {
       log('Layout: ', this);
       let changedLayout = false;
       if (isFunc(this.onBeforeLayout)) {
-        changedLayout =
-          this.onBeforeLayout.call(this, this, child, dimensions) || false;
+        changedLayout = this.onBeforeLayout.call(this, this) || false;
       }
 
       if (this.display === 'flex') {
@@ -546,8 +556,7 @@ export class ElementNode extends Object {
         this.parent?.updateLayout();
       }
 
-      isFunc(this.onLayout) &&
-        this.onLayout.call(this, this, child, dimensions);
+      isFunc(this.onLayout) && this.onLayout.call(this, this);
     }
   }
 
@@ -617,23 +626,8 @@ export class ElementNode extends Object {
       this.updateLayout();
     }
 
-    if (
-      !layoutQueue.has(parent) &&
-      parent._containsTextNodes &&
-      parent.requiresLayout()
-    ) {
-      layoutQueue.add(parent);
-      if (queueLayout) {
-        queueLayout = false;
-        queueMicrotask(() => {
-          queueLayout = true;
-          const queue = [...layoutQueue];
-          layoutQueue.clear();
-          for (let i = queue.length - 1; i >= 0; i--) {
-            queue[i]!.updateLayout();
-          }
-        });
-      }
+    if (parent.requiresLayout()) {
+      parent.queueLayout();
     }
 
     if (this.rendered) {
