@@ -3,9 +3,11 @@ import type {
   SdfTrFontFaceOptions,
   WebTrFontFaceOptions,
 } from '@lightningjs/renderer';
-export { RendererMain } from '@lightningjs/renderer';
-import { RendererMain } from '@lightningjs/renderer';
-import { SdfTrFontFace, WebTrFontFace } from '@lightningjs/renderer';
+import {
+  SdfTrFontFace,
+  WebTrFontFace,
+  RendererMain,
+} from '@lightningjs/renderer';
 type SdfFontType = 'ssdf' | 'msdf';
 
 export let renderer: RendererMain;
