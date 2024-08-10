@@ -394,7 +394,7 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on('loaded', this.parent!.queueLayout);
+    (this.lng as INode).on('loaded', () => this.parent!.queueLayout());
   }
 
   getText() {
