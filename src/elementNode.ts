@@ -785,63 +785,35 @@ for (const key of LightningRendererNonAnimatingProps) {
 }
 
 // Add Border Helpers
-Object.defineProperties(ElementNode.prototype, {
-  borderRadius: {
-    set(this: ElementNode, radius: BorderRadius) {
+function createEffectAccessor<T>(key: keyof StyleEffects) {
+  return {
+    set(this: ElementNode, value: T) {
       this.effects = this.effects
         ? {
             ...this.effects,
-            ...{ radius: { radius } },
+            [key]: value,
           }
-        : { radius: { radius } };
+        : { [key]: value };
     },
 
-    get(this: ElementNode): BorderRadius | undefined {
-      return this.effects?.radius?.radius;
+    get(this: ElementNode): T | undefined {
+      return this.effects?.[key] as T | undefined;
     },
-  },
+  };
+}
+
+Object.defineProperties(ElementNode.prototype, {
   border: borderAccessor(),
   borderLeft: borderAccessor('Left'),
   borderRight: borderAccessor('Right'),
   borderTop: borderAccessor('Top'),
   borderBottom: borderAccessor('Bottom'),
-  linearGradient: {
-    set(this: ElementNode, props: LinearGradientEffectProps = {}) {
-      this.effects = this.effects
-        ? {
-            ...this.effects,
-            ...{ linearGradient: props },
-          }
-        : { linearGradient: props };
-    },
-    get(this: ElementNode): LinearGradientEffectProps | undefined {
-      return this.effects?.linearGradient;
-    },
-  },
-  radialGradient: {
-    set(this: ElementNode, props: RadialGradientEffectProps = {}) {
-      this.effects = this.effects
-        ? {
-            ...this.effects,
-            ...{ radialGradient: props },
-          }
-        : { radialGradient: props };
-    },
-    get(this: ElementNode): RadialGradientEffectProps | undefined {
-      return this.effects?.radialGradient;
-    },
-  },
-  radialProgress: {
-    set(this: ElementNode, props: RadialProgressEffectProps = {}) {
-      this.effects = this.effects
-        ? {
-            ...this.effects,
-            ...{ radialProgressGradient: props },
-          }
-        : { radialProgressGradient: props };
-    },
-    get(this: ElementNode): RadialProgressEffectProps | undefined {
-      return this.effects?.radialProgress;
-    },
-  },
+  borderRadius: createEffectAccessor<BorderRadius>('radius'),
+  linearGradient:
+    createEffectAccessor<LinearGradientEffectProps>('linearGradient'),
+  radialGradient:
+    createEffectAccessor<RadialGradientEffectProps>('radialGradient'),
+  radialProgress: createEffectAccessor<RadialProgressEffectProps>(
+    'radialProgressGradient',
+  ),
 });

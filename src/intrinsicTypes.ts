@@ -37,6 +37,7 @@ export interface Effects {
   fadeOut?: FadeOutEffectProps;
   linearGradient?: LinearGradientEffectProps;
   radialGradient?: RadialGradientEffectProps;
+  radialProgressGradient?: RadialProgressEffectProps;
   grayscale?: GrayscaleEffectProps;
   glitch?: GlitchEffectProps;
   radialProgress?: RadialProgressEffectProps;
