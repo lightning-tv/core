@@ -233,6 +233,9 @@ export class ElementNode extends Object {
     beforeNode?: ElementNode | ElementText | null,
   ) {
     node.parent = this;
+    this._containsTextNodes =
+      this._containsTextNodes || node._type === NodeType.TextNode;
+
     if (beforeNode) {
       // SolidJS can move nodes around in the children array.
       // We need to insert following DOM insertBefore which moves elements.
@@ -394,7 +397,9 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on('loaded', () => this.parent!.queueLayout());
+    (this.lng as INode).on('loaded', () => {
+      this.parent!.queueLayout();
+    });
   }
 
   getText() {
@@ -529,16 +534,16 @@ export class ElementNode extends Object {
     layoutQueue.add(this);
     if (queueLayout) {
       queueLayout = false;
-      queueMicrotask(() => {
+      // Use setTimeout to allow renderers microtasks to finish
+      setTimeout(() => {
         queueLayout = true;
         const queue = [...layoutQueue];
         layoutQueue.clear();
         for (let i = queue.length - 1; i >= 0; i--) {
-          queue[i]!.updateLayout();
-          // After initial render we want to updateLayout right away in case nodes are added or destroyed
-          queue[i]!._containsTextNodes = null;
+          const node = queue[i] as ElementNode;
+          node.updateLayout();
         }
-      });
+      }, 0);
     }
   }
 
@@ -547,6 +552,7 @@ export class ElementNode extends Object {
       log('Layout: ', this);
       let changedLayout = false;
       if (isFunc(this.onBeforeLayout)) {
+        console.warn('onBeforeLayout is deprecated');
         changedLayout = this.onBeforeLayout.call(this, this) || false;
       }
 
@@ -606,7 +612,7 @@ export class ElementNode extends Object {
     }
   }
 
-  render() {
+  render(topNode?: boolean) {
     // Elements are inserted from the inside out, then rendered from the outside in.
     // Render starts when an element is insertered with a parent that is already renderered.
     const node = this;
@@ -628,7 +634,7 @@ export class ElementNode extends Object {
       this.updateLayout();
     }
 
-    if (parent.requiresLayout() && !parent._containsTextNodes) {
+    if (topNode && parent.requiresLayout()) {
       parent.queueLayout();
     }
 
@@ -692,9 +698,12 @@ export class ElementNode extends Object {
 
       log('Rendering: ', this, props);
       node.lng = renderer.createTextNode(props as unknown as ITextNodeProps);
-      parent._containsTextNodes = true;
-      if (parent.requiresLayout() && (!props.width || !props.height)) {
-        node._layoutOnLoad();
+      if (parent.requiresLayout()) {
+        if (!props.width || !props.height) {
+          node._layoutOnLoad();
+        } else {
+          parent.queueLayout();
+        }
       }
     } else {
       // If its not an image or texture apply some defaults

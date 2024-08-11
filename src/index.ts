@@ -6,4 +6,6 @@ export * from './intrinsicTypes.js';
 export { useFocusManager } from './focusManager.js';
 export { Config } from './config.js';
 export * from '@lightningjs/renderer';
+export type * from '@lightningjs/renderer';
 export * from '@lightningjs/renderer/utils';
+export type * from '@lightningjs/renderer/utils';
