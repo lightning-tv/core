@@ -125,7 +125,6 @@ const LightningRendererNonAnimatingProps = [
   'fontStretch',
   'fontStyle',
   'fontWeight',
-  'id',
   'letterSpacing',
   'maxLines',
   'offsetY',
@@ -650,12 +649,12 @@ export class ElementNode extends Object {
     }
 
     const props = node.lng;
-    if ('right' in props && props.right) {
-      props.x = (parent.width || 0) - props.right;
+    if (this.right || this.right === 0) {
+      props.x = (parent.width || 0) - this.right;
       props.mountX = 1;
     }
-    if ('bottom' in props && props.bottom) {
-      props.y = (parent.height || 0) - props.bottom;
+    if (this.bottom || this.bottom === 0) {
+      props.y = (parent.height || 0) - this.bottom;
       props.mountY = 1;
     }
 
