@@ -1,7 +1,6 @@
 import {
   type IAnimationController,
   type AnimationSettings,
-  type Dimensions,
   type FadeOutEffectProps,
   type GlitchEffectProps,
   type GrayscaleEffectProps,
@@ -110,6 +109,8 @@ export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
   forwardStates?: boolean;
   id?: string;
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
+  right?: number;
+  bottom?: number;
   selected?: number;
   skipFocus?: boolean;
   states?: NodeStates;
