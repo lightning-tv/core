@@ -628,7 +628,21 @@ export class ElementNode extends Object {
       return;
     }
 
-    if (topNode && parent.requiresLayout()) {
+    // Need to come back to this. In order to do layout all the children nodes also need to have their defaults calculated
+    // and then flex can be done. So we'd need to render the parent, then calculate all the props for the children, run flex, then render.
+    // For now we'll go back to the old system.
+
+    // if (this.requiresLayout() && !this._containsTextNodes) {
+    //   // Since the element doesn't contain any text nodes, it's safe to do layout early since we know dimensions.
+    //   // This has the added benefit of laying out without animating the nodes
+    //   this.updateLayout();
+    // }
+
+    // if (topNode && parent.requiresLayout()) {
+    //   parent.queueLayout();
+    // }
+
+    if (parent.requiresLayout()) {
       parent.queueLayout();
     }
 
@@ -733,12 +747,6 @@ export class ElementNode extends Object {
     }
 
     node.rendered = true;
-
-    if (this.requiresLayout() && !this._containsTextNodes) {
-      // Since the element doesn't contain any text nodes, it's safe to do layout early since we know dimensions.
-      // This has the added benefit of laying out without animating the nodes
-      this.updateLayout();
-    }
 
     if (node.autosize && parent.requiresLayout()) {
       node._layoutOnLoad();
