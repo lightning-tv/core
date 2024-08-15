@@ -44,7 +44,25 @@ import { NodeType } from './nodeTypes.js';
 import { setActiveElement } from './focusManager.js';
 
 const layoutQueue = new Set<ElementNode>();
-let queueLayout = true;
+let dynamicSizedNodeCount = 0;
+let flushQueued = false;
+
+function flushLayout() {
+  if (flushQueued) return;
+
+  flushQueued = true;
+  // Use setTimeout to allow renderers microtasks to finish
+  setTimeout(() => {
+    const queue = [...layoutQueue];
+    layoutQueue.clear();
+    for (let i = queue.length - 1; i >= 0; i--) {
+      const node = queue[i] as ElementNode;
+      node.updateLayout();
+    }
+    flushQueued = false;
+    dynamicSizedNodeCount = 0;
+  }, 0);
+}
 
 function convertEffectsToShader(
   styleEffects: StyleEffects,
@@ -194,7 +212,6 @@ export interface ElementNode
     | undefined;
   _animationQueueSettings: Partial<AnimationSettings> | undefined;
   _animationRunning?: boolean;
-  _containsTextNodes?: boolean | null;
   children: Array<ElementNode | ElementText>;
 }
 export class ElementNode extends Object {
@@ -233,8 +250,6 @@ export class ElementNode extends Object {
     beforeNode?: ElementNode | ElementText | null,
   ) {
     node.parent = this;
-    this._containsTextNodes =
-      this._containsTextNodes || node._type === NodeType.TextNode;
 
     if (beforeNode) {
       // SolidJS can move nodes around in the children array.
@@ -397,8 +412,11 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
+    dynamicSizedNodeCount++;
     (this.lng as INode).on('loaded', () => {
-      this.parent!.queueLayout();
+      // Re-add the node to the layout queue because somehow the queue fluses and there is a straggler
+      layoutQueue.add(this.parent!);
+      flushLayout();
     });
   }
 
@@ -526,27 +544,6 @@ export class ElementNode extends Object {
     return null;
   }
 
-  queueLayout() {
-    if (layoutQueue.has(this)) {
-      return;
-    }
-
-    layoutQueue.add(this);
-    if (queueLayout) {
-      queueLayout = false;
-      // Use setTimeout to allow renderers microtasks to finish
-      setTimeout(() => {
-        queueLayout = true;
-        const queue = [...layoutQueue];
-        layoutQueue.clear();
-        for (let i = queue.length - 1; i >= 0; i--) {
-          const node = queue[i] as ElementNode;
-          node.updateLayout();
-        }
-      }, 0);
-    }
-  }
-
   updateLayout() {
     if (this.hasChildren) {
       log('Layout: ', this);
@@ -628,22 +625,8 @@ export class ElementNode extends Object {
       return;
     }
 
-    // Need to come back to this. In order to do layout all the children nodes also need to have their defaults calculated
-    // and then flex can be done. So we'd need to render the parent, then calculate all the props for the children, run flex, then render.
-    // For now we'll go back to the old system.
-
-    // if (this.requiresLayout() && !this._containsTextNodes) {
-    //   // Since the element doesn't contain any text nodes, it's safe to do layout early since we know dimensions.
-    //   // This has the added benefit of laying out without animating the nodes
-    //   this.updateLayout();
-    // }
-
-    // if (topNode && parent.requiresLayout()) {
-    //   parent.queueLayout();
-    // }
-
     if (parent.requiresLayout()) {
-      parent.queueLayout();
+      layoutQueue.add(parent);
     }
 
     if (this.rendered) {
@@ -715,8 +698,6 @@ export class ElementNode extends Object {
       if (parent.requiresLayout()) {
         if (!props.width || !props.height) {
           node._layoutOnLoad();
-        } else {
-          parent.queueLayout();
         }
       }
     } else {
@@ -776,7 +757,8 @@ export class ElementNode extends Object {
 
     if (node._type === NodeType.Element) {
       // only element nodes will have children that need rendering
-      for (let i = 0; i < node.children.length; i++) {
+      const numChildren = node.children.length;
+      for (let i = 0; i < numChildren; i++) {
         const c = node.children[i];
         assertTruthy(c, 'Child is undefined');
         if (isElementNode(c)) {
@@ -788,7 +770,9 @@ export class ElementNode extends Object {
         }
       }
     }
-
+    if (topNode && !dynamicSizedNodeCount) {
+      flushLayout();
+    }
     node._autofocus && node.setFocus();
   }
 }

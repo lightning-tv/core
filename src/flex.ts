@@ -8,18 +8,8 @@ export default function (node: ElementNode): boolean {
   for (let i = 0; i < node.children.length; i++) {
     const c = node.children[i]!;
     // Filter empty text nodes which are place holders for <Show> and elements missing dimensions
-    if (c._type === NodeType.Text) {
+    if (c._type === NodeType.Text || c.flexItem === false) {
       continue;
-    }
-
-    // Skip layout for non flex items
-    if (c.flexItem === false) {
-      continue;
-    }
-
-    // text node hasnt loaded yet - skip layout
-    if (c._type === NodeType.TextNode && c.text && !(c.width || c.height)) {
-      return false;
     }
 
     if (c.flexOrder !== undefined) {
