@@ -107,7 +107,7 @@ export interface IntrinsicFocusProps {
 export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
   animationSettings?: Partial<AnimationSettings>;
   forwardStates?: boolean;
-  id?: string;
+  id?: string | undefined;
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   right?: number;
   bottom?: number;

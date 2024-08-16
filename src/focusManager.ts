@@ -38,6 +38,52 @@ const flattenKeyMap = (keyMap: any, targetMap: any): void => {
   }
 };
 
+let needFocusDebugStyles = true;
+const addFocusDebug = (
+  prevFocusPath: ElementNode[],
+  newFocusPath: ElementNode[],
+) => {
+  if (needFocusDebugStyles) {
+    const style = document.createElement('style');
+    style.type = 'text/css';
+    style.innerHTML = `
+      [data-focus="3"] {
+        border: 2px solid rgba(255, 33, 33, 0.2);
+        border-radius: 5px;
+        transition: border-color 0.3s ease;
+      }
+
+      [data-focus="2"] {
+        border: 2px solid rgba(255, 33, 33, 0.4);
+        border-radius: 5px;
+        transition: border-color 0.3s ease;
+      }
+
+      [data-focus="1"] {
+        border: 4px solid rgba(255, 33, 33, 0.9);
+        border-radius: 5px;
+        transition: border-color 0.5s ease;
+      }
+    `;
+    document.head.appendChild(style);
+    needFocusDebugStyles = false;
+  }
+
+  prevFocusPath.forEach((elm) => {
+    elm.data = {
+      ...elm.data,
+      focus: undefined,
+    };
+  });
+
+  newFocusPath.forEach((elm, i) => {
+    elm.data = {
+      ...elm.data,
+      focus: i + 1,
+    };
+  });
+};
+
 let activeElement: ElementNode | undefined;
 export const setActiveElement = (elm: ElementNode) => {
   updateFocusPath(elm, activeElement);
@@ -75,6 +121,10 @@ const updateFocusPath = (
       elm.onFocusChanged?.call(elm, false, currentFocusedElm, prevFocusedElm);
     }
   });
+
+  if (Config.focusDebug) {
+    addFocusDebug(focusPath, fp);
+  }
 
   focusPath = fp;
   return fp;
