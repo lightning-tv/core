@@ -181,8 +181,8 @@ export interface ElementNode
   extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
     IntrinsicCommonProps {
   [key: string]: unknown;
-  id?: string;
   debug?: boolean;
+  _id: string | undefined;
   _type: 'element' | 'textNode';
   lng: INode | IntrinsicNodeProps | IntrinsicTextProps;
   rendered: boolean;
@@ -232,6 +232,17 @@ export class ElementNode extends Object {
     if (this.rendered) {
       this.shader = convertEffectsToShader(v);
     }
+  }
+
+  set id(id: string) {
+    this._id = id;
+    if (Config.rendererOptions?.enableInspector) {
+      this.data = { ...this.data, testId: id };
+    }
+  }
+
+  get id(): string | undefined {
+    return this._id;
   }
 
   get parent() {

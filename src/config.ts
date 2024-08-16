@@ -7,6 +7,7 @@ import { type ElementNode } from './elementNode.js';
 
 interface Config {
   debug: boolean;
+  focusDebug: boolean;
   animationSettings: Partial<AnimationSettings>;
   animationsEnabled: boolean;
   fontSettings: Partial<IntrinsicTextNodeStyleProps>;
@@ -21,6 +22,7 @@ export const isDev = isDevEnv() || false;
 
 export const Config: Config = {
   debug: false,
+  focusDebug: false,
   animationsEnabled: true,
   animationSettings: {
     duration: 250,
