@@ -21,7 +21,7 @@ const keyMapEntries: Record<KeyNameOrKeyCode, string> = {
 };
 
 const keyHoldMapEntries: Record<KeyNameOrKeyCode, string> = {
-  Enter: 'EnterHold',
+  // Enter: 'EnterHold',
 };
 
 const flattenKeyMap = (keyMap: any, targetMap: any): void => {
@@ -157,7 +157,7 @@ const propagateKeyDown = (
   return false;
 };
 
-const DEFAULT_KEY_HOLD_THRESHOLD = 150; // ms
+const DEFAULT_KEY_HOLD_THRESHOLD = 200; // ms
 const keyHoldTimeouts: { [key: KeyNameOrKeyCode]: number } = {};
 
 const keyHoldCallback = (
