@@ -834,7 +834,6 @@ Object.defineProperties(ElementNode.prototype, {
   borderRight: borderAccessor('Right'),
   borderTop: borderAccessor('Top'),
   borderBottom: borderAccessor('Bottom'),
-  borderRadius: createEffectAccessor<BorderRadius>('radius'),
   linearGradient:
     createEffectAccessor<LinearGradientEffectProps>('linearGradient'),
   radialGradient:
@@ -842,4 +841,18 @@ Object.defineProperties(ElementNode.prototype, {
   radialProgress: createEffectAccessor<RadialProgressEffectProps>(
     'radialProgressGradient',
   ),
+  borderRadius: {
+    set(this: ElementNode, radius: BorderRadius) {
+      this.effects = this.effects
+        ? {
+            ...this.effects,
+            radius: { radius },
+          }
+        : { radius: { radius } };
+    },
+
+    get(this: ElementNode): BorderRadius | undefined {
+      return this.effects?.radius?.radius;
+    },
+  },
 });
