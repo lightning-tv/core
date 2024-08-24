@@ -16,7 +16,7 @@ export let createShader: RendererMain['createShader'];
 export const getRenderer = () => renderer;
 
 export function startLightningRenderer(
-  options: Partial<RendererMainSettings> = {},
+  options: RendererMainSettings,
   rootId: string | HTMLElement = 'app',
 ) {
   renderer = new RendererMain(options, rootId);
