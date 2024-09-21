@@ -2,15 +2,12 @@ import { renderer, createShader } from './lightningInit.js';
 import {
   type BorderRadius,
   type BorderStyle,
-  type IntrinsicCommonProps,
-  type IntrinsicNodeProps,
-  type IntrinsicTextProps,
   type StyleEffects,
   type NodeStyles,
   type TextStyles,
-  type IntrinsicTextStyleCommonProps,
   type AnimationSettings,
   AddColorString,
+  TextProps,
 } from './intrinsicTypes.js';
 import { type ITextNode } from '@lightningjs/renderer';
 import States, { type NodeStates } from './states.js';
@@ -38,6 +35,8 @@ import type {
   ShaderController,
   RadialGradientEffectProps,
   RadialProgressEffectProps,
+  NodeFailedPayload,
+  NodeLoadedPayload,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -162,14 +161,13 @@ const LightningRendererNonAnimatingProps = [
 ];
 
 export type Styles = {
-  [key: string]: NodeStyles | TextStyles | undefined;
-} & (NodeStyles | TextStyles);
+  [key: string]: NodeStyles;
+} & Partial<NodeStyles>;
 
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
   extends Partial<Omit<ITextNode, 'id' | 'parent' | 'shader'>>,
-    Partial<Omit<ElementNode, '_type'>>,
-    IntrinsicTextStyleCommonProps {
+    Partial<Omit<ElementNode, '_type'>> {
   id?: string;
   _type: 'text';
   parent?: ElementNode;
@@ -177,43 +175,95 @@ export interface ElementText
   states?: States;
   _queueDelete?: boolean;
 }
-export interface ElementNode
-  extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
-    IntrinsicCommonProps {
-  [key: string]: unknown;
-  debug?: boolean;
-  _id: string | undefined;
-  _type: 'element' | 'textNode';
-  lng: INode | IntrinsicNodeProps | IntrinsicTextProps;
-  rendered: boolean;
-  renderer?: RendererMain;
-  selected?: number;
-  skipFocus?: boolean;
-  flexItem?: boolean;
-  flexOrder?: number;
-  flexGrow?: number;
-  text?: string;
-  forwardFocus?:
-    | number
-    | ((this: ElementNode, elm: ElementNode) => boolean | void);
 
-  _undoStyles?: string[];
-  _effects?: StyleEffects;
-  _parent: ElementNode | undefined;
-  _style?: Styles;
-  _states?: States;
-  _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
-  _animationSettings?: AnimationSettings | undefined;
-  _animationQueue:
+export interface ElementNode
+  extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>> {
+  [key: string]: unknown;
+
+  // Properties
+  _animationQueue?:
     | Array<{
         props: Partial<INodeAnimateProps>;
         animationSettings?: AnimationSettings;
       }>
     | undefined;
-  _animationQueueSettings: AnimationSettings | undefined;
+  _animationQueueSettings?: AnimationSettings;
   _animationRunning?: boolean;
+  _animationSettings?: AnimationSettings;
+  _effects?: StyleEffects;
+  _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
+  _id: string | undefined;
+  _parent: ElementNode | undefined;
+  _states?: States;
+  _style?: Styles;
+  _type: 'element' | 'textNode';
+  _undoStyles?: string[];
+  bottom?: number;
   children: Array<ElementNode | ElementText>;
+  debug?: boolean;
+  flexGrow?: number;
+  flexItem?: boolean;
+  flexOrder?: number;
+  forwardFocus?:
+    | number
+    | ((this: ElementNode, elm: ElementNode) => boolean | void);
+  forwardStates?: boolean;
+  lng: INode | Partial<ElementNode>;
+  ref?: ElementNode | ((node: ElementNode) => void) | undefined;
+  rendered: boolean;
+  renderer?: RendererMain;
+  right?: number;
+  selected?: number;
+  skipFocus?: boolean;
+  text?: string;
+
+  alignItems?: 'flexStart' | 'flexEnd' | 'center';
+  border?: BorderStyle;
+  borderBottom?: BorderStyle;
+  borderLeft?: BorderStyle;
+  borderRadius?: BorderRadius;
+  borderRight?: BorderStyle;
+  borderTop?: BorderStyle;
+  display?: 'flex' | 'block';
+  flexBoundary?: 'contain' | 'fixed';
+  flexDirection?: 'row' | 'column';
+  gap?: number;
+  justifyContent?:
+    | 'flexStart'
+    | 'flexEnd'
+    | 'center'
+    | 'spaceBetween'
+    | 'spaceEvenly';
+  linearGradient?: LinearGradientEffectProps;
+  marginBottom?: number;
+  marginLeft?: number;
+  marginRight?: number;
+  marginTop?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  zIndex?: number;
+  transition?: Record<string, AnimationSettings | true | false> | true | false;
+
+  // Events
+  onAnimationFinished?: (
+    controller: IAnimationController,
+    propKey: string,
+    endValue: number,
+  ) => void;
+  onAnimationStarted?: (
+    controller: IAnimationController,
+    propKey: string,
+    endValue: number,
+  ) => void;
+  onBeforeLayout?: (this: ElementNode, target: ElementNode) => boolean | void;
+  onCreate?: (target: ElementNode) => void;
+  onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
+  onLayout?: (this: ElementNode, target: ElementNode) => void;
+  onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
 }
+
 export class ElementNode extends Object {
   constructor(name: string) {
     super();
@@ -252,7 +302,7 @@ export class ElementNode extends Object {
   set parent(p) {
     this._parent = p;
     if (this.rendered) {
-      this.lng.parent = p?.lng ?? null;
+      this.lng.parent = (p?.lng as INode) ?? null;
     }
   }
 
@@ -662,14 +712,14 @@ export class ElementNode extends Object {
 
     props.x = props.x || 0;
     props.y = props.y || 0;
-    props.parent = parent.lng;
+    props.parent = parent.lng as INode;
 
     if (node._effects) {
       props.shader = convertEffectsToShader(node._effects);
     }
 
     if (node.isTextNode()) {
-      const textProps = props as IntrinsicTextProps;
+      const textProps = props as TextProps;
       if (Config.fontSettings) {
         for (const key in Config.fontSettings) {
           if (textProps[key] === undefined) {

@@ -76,7 +76,7 @@ export function flattenStyles(
     for (const key in obj) {
       // be careful of 0 values
       if (result[key] === undefined) {
-        result[key as keyof Styles] = obj[key as keyof Styles];
+        result[key as keyof Styles] = obj[key as keyof Styles]!;
       }
     }
   }
