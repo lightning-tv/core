@@ -8,7 +8,7 @@ import { type ElementNode } from './elementNode.js';
 interface Config {
   debug: boolean;
   focusDebug: boolean;
-  animationSettings?: Partial<AnimationSettings>;
+  animationSettings?: Partial<AnimationSettings> | undefined;
   animationsEnabled: boolean;
   fontSettings: Partial<IntrinsicTextNodeStyleProps>;
   rendererOptions?: Partial<RendererMainSettings>;
