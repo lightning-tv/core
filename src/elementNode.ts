@@ -203,7 +203,7 @@ export interface ElementNode
   _style?: Styles;
   _states?: States;
   _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
-  _animationSettings?: Partial<AnimationSettings>;
+  _animationSettings?: Partial<AnimationSettings> | undefined;
   _animationQueue:
     | Array<{
         props: Partial<INodeAnimateProps>;
