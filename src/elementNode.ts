@@ -350,7 +350,7 @@ export class ElementNode extends Object {
     assertTruthy(this.rendered, 'Node must be rendered before animating');
     return (this.lng as INode).animate(
       props,
-      animationSettings || this.animationSettings,
+      animationSettings || this.animationSettings || {},
     );
   }
 
@@ -518,7 +518,7 @@ export class ElementNode extends Object {
     return this._states;
   }
 
-  get animationSettings(): Partial<AnimationSettings> {
+  get animationSettings(): Partial<AnimationSettings> | undefined {
     return this._animationSettings || Config.animationSettings;
   }
 
