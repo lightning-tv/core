@@ -1,14 +1,14 @@
+import type { RendererMainSettings } from '@lightningjs/renderer';
 import type {
+  IntrinsicTextNodeStyleProps,
   AnimationSettings,
-  RendererMainSettings,
-} from '@lightningjs/renderer';
-import type { IntrinsicTextNodeStyleProps } from './intrinsicTypes.js';
+} from './intrinsicTypes.js';
 import { type ElementNode } from './elementNode.js';
 
 interface Config {
   debug: boolean;
   focusDebug: boolean;
-  animationSettings?: Partial<AnimationSettings> | undefined;
+  animationSettings?: AnimationSettings;
   animationsEnabled: boolean;
   fontSettings: Partial<IntrinsicTextNodeStyleProps>;
   rendererOptions?: Partial<RendererMainSettings>;

@@ -9,6 +9,7 @@ import {
   type NodeStyles,
   type TextStyles,
   type IntrinsicTextStyleCommonProps,
+  type AnimationSettings,
   AddColorString,
 } from './intrinsicTypes.js';
 import { type ITextNode } from '@lightningjs/renderer';
@@ -30,7 +31,6 @@ import type {
   INode,
   INodeAnimateProps,
   INodeProps,
-  AnimationSettings,
   LinearGradientEffectProps,
   ITextNodeProps,
   IAnimationController,
@@ -203,14 +203,14 @@ export interface ElementNode
   _style?: Styles;
   _states?: States;
   _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
-  _animationSettings?: Partial<AnimationSettings> | undefined;
+  _animationSettings?: AnimationSettings | undefined;
   _animationQueue:
     | Array<{
         props: Partial<INodeAnimateProps>;
-        animationSettings?: Partial<AnimationSettings>;
+        animationSettings?: AnimationSettings;
       }>
     | undefined;
-  _animationQueueSettings: Partial<AnimationSettings> | undefined;
+  _animationQueueSettings: AnimationSettings | undefined;
   _animationRunning?: boolean;
   children: Array<ElementNode | ElementText>;
 }
@@ -345,7 +345,7 @@ export class ElementNode extends Object {
 
   animate(
     props: Partial<INodeAnimateProps>,
-    animationSettings?: Partial<AnimationSettings>,
+    animationSettings?: AnimationSettings,
   ): IAnimationController {
     assertTruthy(this.rendered, 'Node must be rendered before animating');
     return (this.lng as INode).animate(
@@ -356,7 +356,7 @@ export class ElementNode extends Object {
 
   chain(
     props: Partial<INodeAnimateProps>,
-    animationSettings?: Partial<AnimationSettings>,
+    animationSettings?: AnimationSettings,
   ) {
     if (this._animationRunning) {
       this._animationQueue = [];
@@ -518,11 +518,11 @@ export class ElementNode extends Object {
     return this._states;
   }
 
-  get animationSettings(): Partial<AnimationSettings> | undefined {
+  get animationSettings(): AnimationSettings | undefined {
     return this._animationSettings || Config.animationSettings;
   }
 
-  set animationSettings(animationSettings: Partial<AnimationSettings>) {
+  set animationSettings(animationSettings: AnimationSettings) {
     this._animationSettings = animationSettings;
   }
 

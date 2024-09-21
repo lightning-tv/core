@@ -5,6 +5,7 @@ import {
   type GrayscaleEffectProps,
   type INode,
   type ITextNodeProps,
+  type AnimationSettings as RendererAnimationSettings,
   type LinearGradientEffectProps,
   type NodeFailedPayload,
   type NodeLoadedPayload,
@@ -12,8 +13,10 @@ import {
   type RadialProgressEffectProps,
   INodeProps,
 } from '@lightningjs/renderer';
-import { type ElementNode } from './elementNode.js';
+import { ElementNode } from './elementNode.js';
 import { type NodeStates } from './states.js';
+
+export type AnimationSettings = Partial<RendererAnimationSettings> | undefined;
 
 type AddUndefined<T> = {
   [K in keyof T]: T[K] | undefined;
@@ -68,7 +71,7 @@ export interface IntrinsicFocusProps {
 }
 
 export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
-  animationSettings?: ElementNode['animationSettings'];
+  animationSettings?: AnimationSettings;
   forwardStates?: boolean;
   id?: string | undefined;
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
@@ -126,10 +129,7 @@ export interface IntrinsicNodeStyleCommonProps {
   width?: number;
   height?: number;
   zIndex?: number;
-  transition?:
-    | Record<string, ElementNode['animationSettings'] | true | false>
-    | true
-    | false;
+  transition?: Record<string, AnimationSettings | true | false> | true | false;
 }
 
 export interface IntrinsicTextStyleCommonProps {
