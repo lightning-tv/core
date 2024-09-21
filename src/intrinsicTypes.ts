@@ -1,6 +1,5 @@
 import {
   type IAnimationController,
-  type AnimationSettings,
   type FadeOutEffectProps,
   type GlitchEffectProps,
   type GrayscaleEffectProps,
@@ -69,7 +68,7 @@ export interface IntrinsicFocusProps {
 }
 
 export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
-  animationSettings?: Partial<AnimationSettings> | undefined;
+  animationSettings?: ElementNode['animationSettings'];
   forwardStates?: boolean;
   id?: string | undefined;
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
@@ -128,7 +127,7 @@ export interface IntrinsicNodeStyleCommonProps {
   height?: number;
   zIndex?: number;
   transition?:
-    | Record<string, Partial<AnimationSettings> | true | false>
+    | Record<string, ElementNode['animationSettings'] | true | false>
     | true
     | false;
 }
