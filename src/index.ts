@@ -1,4 +1,4 @@
-export type * from './elementNode.js';
+export * from './elementNode.js';
 export * from './lightningInit.js';
 export * from './nodeTypes.js';
 export * from './utils.js';
