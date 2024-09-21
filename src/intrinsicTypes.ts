@@ -66,42 +66,6 @@ export interface IntrinsicFocusProps {
   forwardFocus?:
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
-  plinko?: boolean;
-  wrap?: boolean;
-  // Events
-  onFocus?: (
-    currentFocusedElm: ElementNode | undefined,
-    prevFocusedElm: ElementNode | undefined,
-  ) => void;
-  onFocusChanged?: (
-    hasFocus: boolean,
-    currentFocusedElm: ElementNode | undefined,
-    prevFocusedElm: ElementNode | undefined,
-  ) => void;
-  onBlur?: (
-    currentFocusedElm: ElementNode | undefined,
-    prevFocusedElm: ElementNode | undefined,
-  ) => void;
-  onKeyPress?: (
-    this: ElementNode,
-    e: KeyboardEvent,
-    mappedKeyEvent: string | undefined,
-    handlerElm: ElementNode,
-    currentFocusedElm: ElementNode,
-  ) => KeyHandlerReturn;
-  onKeyHold?: (
-    this: ElementNode,
-    e: KeyboardEvent,
-    mappedKeyEvent: string | undefined,
-    handlerElm: ElementNode,
-    currentFocusedElm: ElementNode,
-  ) => KeyHandlerReturn;
-  onSelectedChanged?: (
-    container: ElementNode,
-    activeElm: ElementNode,
-    selectedIndex: number,
-    lastSelectedIndex: number | undefined,
-  ) => void;
 }
 
 export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
@@ -179,9 +143,7 @@ export interface IntrinsicTextStyleCommonProps {
 export interface IntrinsicCommonProps
   extends IntrinsicNodeCommonProps,
     IntrinsicNodeStyleCommonProps,
-    IntrinsicTextStyleCommonProps,
-    EventHandlers<KeyMap>,
-    EventHandlers<KeyHoldMap> {}
+    IntrinsicTextStyleCommonProps {}
 
 export interface IntrinsicNodeStyleProps
   extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
@@ -216,45 +178,6 @@ export type NodeStyles = IntrinsicNodeStyleProps;
 export type TextStyles = IntrinsicTextNodeStyleProps;
 export type NodeProps = IntrinsicNodeProps;
 export type TextProps = IntrinsicTextProps;
-
-// Focus + KeyHandling Types
-
-export type KeyNameOrKeyCode = string | number;
-
-export interface DefaultKeyMap {
-  Left: KeyNameOrKeyCode | KeyNameOrKeyCode[];
-  Right: KeyNameOrKeyCode | KeyNameOrKeyCode[];
-  Up: KeyNameOrKeyCode | KeyNameOrKeyCode[];
-  Down: KeyNameOrKeyCode | KeyNameOrKeyCode[];
-  Enter: KeyNameOrKeyCode | KeyNameOrKeyCode[];
-  Last: KeyNameOrKeyCode | KeyNameOrKeyCode[];
-}
-
-export interface DefaultKeyHoldMap {
-  EnterHold: KeyNameOrKeyCode | KeyNameOrKeyCode[];
-}
-
-export type EventHandlers<Map> = {
-  [K in keyof Map as `on${Capitalize<string & K>}`]?: KeyHandler;
-};
-
-export interface KeyMap extends DefaultKeyMap {}
-
-export interface KeyHoldMap extends DefaultKeyHoldMap {}
-
-export type KeyHandlerReturn = boolean | void;
-
-export type KeyHandler = (
-  this: ElementNode,
-  e: KeyboardEvent,
-  target: ElementNode,
-  handlerElm: ElementNode,
-) => KeyHandlerReturn;
-
-export type KeyHoldOptions = {
-  userKeyHoldMap: Partial<KeyHoldMap>;
-  holdThreshold?: number;
-};
 
 // Vue Helper to get component props
 export type ExtractComponentProps<TComponent> = TComponent extends new () => {

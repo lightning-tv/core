@@ -1,11 +1,12 @@
-export * from './elementNode.js';
+export type * from './elementNode.js';
 export * from './lightningInit.js';
 export * from './nodeTypes.js';
 export * from './utils.js';
 export * from './intrinsicTypes.js';
-export { useFocusManager } from './focusManager.js';
 export { Config } from './config.js';
-//export * from '@lightningjs/renderer';
+// export * from "@lightningjs/renderer/webgl";
+// export * from "@lightningjs/renderer/canvas";
+// export * from '@lightningjs/renderer/inspector';
 export type * from '@lightningjs/renderer';
 export { assertTruthy, deg2Rad } from '@lightningjs/renderer/utils';
 // export type * from '@lightningjs/renderer/utils';

@@ -7,8 +7,14 @@
   "browser": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
   "exports": {
-    "types": "./dist/src/index.d.ts",
-    "import": "./dist/src/index.js"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./focusManager": {
+      "types": "./dist/src/focusManager.d.ts",
+      "import": "./dist/src/focusManager.js"
+    }
   },
   "sideEffects": false,
   "scripts": {
@@ -36,7 +42,7 @@
   "author": "Chris Lorenzo",
   "license": "Apache-2.0",
   "dependencies": {
-    "@lightningjs/renderer": "^2.1.0"
+    "@lightningjs/renderer": "^2.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

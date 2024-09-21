@@ -1,12 +1,18 @@
 import { Config } from './config.js';
-import { type ElementNode } from './elementNode.js';
-
+export type * from './focusKeyTypes.js';
+import { ElementNode } from './elementNode.js';
 import type {
   KeyNameOrKeyCode,
   KeyHoldOptions,
   KeyMap,
-  EventHandlers,
-} from './intrinsicTypes.js';
+  FocusNode,
+  KeyHandler,
+} from './focusKeyTypes.js';
+
+declare module '@lightningtv/core' {
+  interface ElementNode extends FocusNode {}
+  interface IntrinsicCommonProps extends FocusNode {}
+}
 
 const keyMapEntries: Record<KeyNameOrKeyCode, string> = {
   ArrowLeft: 'Left',
@@ -139,8 +145,7 @@ const propagateKeyDown = (
   for (const elm of focusPath) {
     finalFocusElm = finalFocusElm || elm;
     if (mappedEvent) {
-      const onKeyHandler =
-        elm[`on${mappedEvent}` as keyof EventHandlers<KeyMap>];
+      const onKeyHandler = elm[`on${mappedEvent}`] as KeyHandler;
       if (onKeyHandler?.call(elm, e, elm, finalFocusElm) === true) {
         break;
       }
