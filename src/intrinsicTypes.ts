@@ -86,6 +86,11 @@ export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
   onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
   onBeforeLayout?: (this: ElementNode, target: ElementNode) => boolean | void;
+  onDestroy?: (
+    this: ElementNode,
+    resolve: (value?: unknown) => void,
+    elm: ElementNode,
+  ) => void;
   onLayout?: (this: ElementNode, target: ElementNode) => void;
   onAnimationStarted?: (
     controller: IAnimationController,

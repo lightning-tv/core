@@ -194,6 +194,11 @@ export interface ElementNode
   flexGrow?: number;
   preFlexwidth?: number;
   preFlexheight?: number;
+  onDestroy?: (
+    this: ElementNode,
+    resolve: (value?: unknown) => void,
+    elm: ElementNode,
+  ) => void;
   text?: string;
   forwardFocus?:
     | number
@@ -442,6 +447,19 @@ export class ElementNode extends Object {
   }
 
   destroy() {
+    if (this.onDestroy) {
+      const elm = this;
+      const destroyPromise = new Promise((resolve) => {
+        elm.onDestroy?.call(elm, resolve, elm);
+      });
+
+      destroyPromise.then(() => elm._destroy());
+    } else {
+      this._destroy();
+    }
+  }
+
+  _destroy() {
     if (this._queueDelete && isINode(this.lng)) {
       this.lng.destroy();
       if (this.parent?.requiresLayout()) {
@@ -449,6 +467,7 @@ export class ElementNode extends Object {
       }
     }
   }
+
   // Must be set before render
   set onEvents(
     events: Array<[string, (target: ElementNode, event?: any) => void]>,
