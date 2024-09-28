@@ -192,6 +192,8 @@ export interface ElementNode
   flexItem?: boolean;
   flexOrder?: number;
   flexGrow?: number;
+  preFlexwidth?: number;
+  preFlexheight?: number;
   text?: string;
   forwardFocus?:
     | number
