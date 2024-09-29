@@ -215,6 +215,8 @@ export interface ElementNode
   right?: number;
   selected?: number;
   skipFocus?: boolean;
+  preFlexwidth?: number;
+  preFlexheight?: number;
   text?: string;
 
   alignItems?: 'flexStart' | 'flexEnd' | 'center';
@@ -259,6 +261,7 @@ export interface ElementNode
   ) => void;
   onBeforeLayout?: (this: ElementNode, target: ElementNode) => boolean | void;
   onCreate?: (target: ElementNode) => void;
+  onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
   onLayout?: (this: ElementNode, target: ElementNode) => void;
   onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
@@ -490,6 +493,22 @@ export class ElementNode extends Object {
   }
 
   destroy() {
+    if (this.onDestroy) {
+      const destroyPromise: unknown = this.onDestroy(this);
+
+      // If onDestroy returns a promise, wait for it to resolve before destroying
+      // Useful with animations waitUntilStopped method which returns promise
+      if (destroyPromise instanceof Promise) {
+        destroyPromise.then(() => this._destroy());
+      } else {
+        this._destroy();
+      }
+    } else {
+      this._destroy();
+    }
+  }
+
+  _destroy() {
     if (this._queueDelete && isINode(this.lng)) {
       this.lng.destroy();
       if (this.parent?.requiresLayout()) {
@@ -497,6 +516,7 @@ export class ElementNode extends Object {
       }
     }
   }
+
   // Must be set before render
   set onEvents(
     events: Array<[string, (target: ElementNode, event?: any) => void]>,
