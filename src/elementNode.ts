@@ -194,11 +194,7 @@ export interface ElementNode
   flexGrow?: number;
   preFlexwidth?: number;
   preFlexheight?: number;
-  onDestroy?: (
-    this: ElementNode,
-    resolve: (value?: unknown) => void,
-    elm: ElementNode,
-  ) => void;
+  onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
   text?: string;
   forwardFocus?:
     | number
@@ -448,12 +444,15 @@ export class ElementNode extends Object {
 
   destroy() {
     if (this.onDestroy) {
-      const elm = this;
-      const destroyPromise = new Promise((resolve) => {
-        elm.onDestroy?.call(elm, resolve, elm);
-      });
+      const destroyPromise: unknown = this.onDestroy(this);
 
-      destroyPromise.then(() => elm._destroy());
+      // If onDestroy returns a promise, wait for it to resolve before destroying
+      // Useful with animations waitUntilStopped method which returns promise
+      if (destroyPromise instanceof Promise) {
+        destroyPromise.then(() => this._destroy());
+      } else {
+        this._destroy();
+      }
     } else {
       this._destroy();
     }
