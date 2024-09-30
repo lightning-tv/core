@@ -52,37 +52,39 @@ export type ShaderEffectDesc = {
   props: StyleEffects[keyof StyleEffects];
 };
 
-type PElementNode = Partial<ElementNode>;
 export type NewOmit<T, K extends PropertyKey> = {
   [P in keyof T as Exclude<P, K>]: T[P];
 };
-export type NodeProps = NewOmit<
-  ElementNode,
-  | 'lineHeight'
-  | 'letterSpacing'
-  | 'wordWrap'
-  | 'verticalAlign'
-  | 'text'
-  | 'fontFamily'
-  | 'fontStretch'
-  | 'fontSize'
-  | 'maxLines'
-  | 'fontWeight'
-  | 'fontStyle'
-  | 'textBaseline'
-  | 'textAlign'
-  | 'textOverflow'
-  | 'contain'
-  | 'overflowSuffix'
->;
-export type TextProps = NewOmit<
-  ElementNode,
-  | 'clipping'
-  | 'src'
-  | 'texture'
-  | 'textureOptions'
-  | 'autosize'
-  | 'children'
-  | 'linearGradient'
-  | 'transition'
->;
+export interface NodeProps
+  extends NewOmit<
+    ElementNode,
+    | 'children'
+    | 'contain'
+    | 'fontFamily'
+    | 'fontSize'
+    | 'fontStretch'
+    | 'fontStyle'
+    | 'fontWeight'
+    | 'letterSpacing'
+    | 'lineHeight'
+    | 'maxLines'
+    | 'overflowSuffix'
+    | 'text'
+    | 'textAlign'
+    | 'textBaseline'
+    | 'textOverflow'
+    | 'verticalAlign'
+    | 'wordWrap'
+  > {}
+export interface TextProps
+  extends NewOmit<
+    ElementNode,
+    | 'autosize'
+    | 'children'
+    | 'clipping'
+    | 'linearGradient'
+    | 'src'
+    | 'texture'
+    | 'textureOptions'
+    | 'transition'
+  > {}
