@@ -3,8 +3,6 @@ import {
   type BorderRadius,
   type BorderStyle,
   type StyleEffects,
-  type NodeStyles,
-  type TextStyles,
   type AnimationSettings,
   AddColorString,
   TextProps,
@@ -161,8 +159,8 @@ const LightningRendererNonAnimatingProps = [
 ];
 
 export type Styles = {
-  [key: string]: NodeStyles;
-} & Partial<NodeStyles>;
+  [key: string]: ElementNode;
+} & Partial<ElementNode>;
 
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
@@ -667,7 +665,7 @@ export class ElementNode extends Object {
         stylesToUndo[styleKey] = this.style[styleKey];
       });
 
-      const newStyles: NodeStyles | TextStyles = states.reduce((acc, state) => {
+      const newStyles: Styles = states.reduce((acc, state) => {
         const styles = this.style[state];
         if (styles) {
           acc = {
@@ -682,7 +680,7 @@ export class ElementNode extends Object {
 
       // Apply transition first
       if (newStyles.transition !== undefined) {
-        this.transition = newStyles.transition as NodeStyles['transition'];
+        this.transition = newStyles.transition as Styles['transition'];
       }
 
       // Apply the styles

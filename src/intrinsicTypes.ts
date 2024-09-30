@@ -11,10 +11,6 @@ import { ElementNode } from './elementNode.js';
 
 export type AnimationSettings = Partial<RendererAnimationSettings> | undefined;
 
-type AddUndefined<T> = {
-  [K in keyof T]: T[K] | undefined;
-};
-
 export type AddColorString<T> = {
   [K in keyof T]: K extends `color${string}` ? string | number : T[K];
 };
@@ -57,16 +53,36 @@ export type ShaderEffectDesc = {
 };
 
 type PElementNode = Partial<ElementNode>;
-export type NodeStyles = PElementNode;
-export type TextStyles = PElementNode;
-export type NodeProps = PElementNode;
-export type TextProps = PElementNode;
-
-// Vue Helper to get component props
-export type ExtractComponentProps<TComponent> = TComponent extends new () => {
-  $props: infer P;
-}
-  ? P
-  : never;
-
-export type ElementNodeProps = ExtractComponentProps<typeof ElementNode>;
+export type NewOmit<T, K extends PropertyKey> = {
+  [P in keyof T as Exclude<P, K>]: T[P];
+};
+export type NodeProps = NewOmit<
+  ElementNode,
+  | 'lineHeight'
+  | 'letterSpacing'
+  | 'wordWrap'
+  | 'verticalAlign'
+  | 'text'
+  | 'fontFamily'
+  | 'fontStretch'
+  | 'fontSize'
+  | 'maxLines'
+  | 'fontWeight'
+  | 'fontStyle'
+  | 'textBaseline'
+  | 'textAlign'
+  | 'textOverflow'
+  | 'contain'
+  | 'overflowSuffix'
+>;
+export type TextProps = NewOmit<
+  ElementNode,
+  | 'clipping'
+  | 'src'
+  | 'texture'
+  | 'textureOptions'
+  | 'autosize'
+  | 'children'
+  | 'linearGradient'
+  | 'transition'
+>;
