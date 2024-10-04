@@ -58,10 +58,6 @@ export type NewOmit<T, K extends PropertyKey> = {
   [P in keyof T as Exclude<P, K>]: T[P];
 };
 
-export type Styles = {
-  [key: string]: [keyof ElementNode];
-} & Partial<ElementNode>;
-
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
   extends Partial<Omit<ITextNode, 'id' | 'parent' | 'shader'>>,
@@ -111,3 +107,7 @@ export interface TextProps
       | 'transition'
     >
   > {}
+
+export type Styles = {
+  [K in keyof ElementNode]?: ElementNode[K];
+};
