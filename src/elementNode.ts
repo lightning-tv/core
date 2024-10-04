@@ -219,7 +219,6 @@ export interface ElementNode
   renderer?: RendererMain;
   right?: number;
   selected?: number;
-  skipFocus?: boolean;
   preFlexwidth?: number;
   preFlexheight?: number;
   text?: string;
@@ -447,10 +446,6 @@ export class ElementNode extends Object {
   }
 
   setFocus() {
-    if (this.skipFocus) {
-      return;
-    }
-
     if (this.rendered) {
       // can be 0
       if (this.forwardFocus !== undefined) {
