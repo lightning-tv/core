@@ -68,42 +68,46 @@ export interface ElementText
     Partial<Omit<ElementNode, '_type'>> {
   id?: string;
   _type: 'text';
-  parent: ElementNode;
+  parent?: ElementNode;
   text: string;
   states?: NodeStates;
   _queueDelete?: boolean;
 }
 
 export interface NodeProps
-  extends NewOmit<
-    ElementNode,
-    | 'children'
-    | 'contain'
-    | 'fontFamily'
-    | 'fontSize'
-    | 'fontStretch'
-    | 'fontStyle'
-    | 'fontWeight'
-    | 'letterSpacing'
-    | 'lineHeight'
-    | 'maxLines'
-    | 'overflowSuffix'
-    | 'text'
-    | 'textAlign'
-    | 'textBaseline'
-    | 'textOverflow'
-    | 'verticalAlign'
-    | 'wordWrap'
+  extends Partial<
+    NewOmit<
+      ElementNode,
+      | 'children'
+      | 'contain'
+      | 'fontFamily'
+      | 'fontSize'
+      | 'fontStretch'
+      | 'fontStyle'
+      | 'fontWeight'
+      | 'letterSpacing'
+      | 'lineHeight'
+      | 'maxLines'
+      | 'overflowSuffix'
+      | 'text'
+      | 'textAlign'
+      | 'textBaseline'
+      | 'textOverflow'
+      | 'verticalAlign'
+      | 'wordWrap'
+    >
   > {}
 export interface TextProps
-  extends NewOmit<
-    ElementNode,
-    | 'autosize'
-    | 'children'
-    | 'clipping'
-    | 'linearGradient'
-    | 'src'
-    | 'texture'
-    | 'textureOptions'
-    | 'transition'
+  extends Partial<
+    NewOmit<
+      ElementNode,
+      | 'autosize'
+      | 'children'
+      | 'clipping'
+      | 'linearGradient'
+      | 'src'
+      | 'texture'
+      | 'textureOptions'
+      | 'transition'
+    >
   > {}
