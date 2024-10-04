@@ -6,8 +6,10 @@ import {
   type LinearGradientEffectProps,
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
+  type ITextNode,
 } from '@lightningjs/renderer';
 import { ElementNode } from './elementNode.js';
+import { NodeStates } from './states.js';
 
 export type AnimationSettings = Partial<RendererAnimationSettings> | undefined;
 
@@ -55,6 +57,23 @@ export type ShaderEffectDesc = {
 export type NewOmit<T, K extends PropertyKey> = {
   [P in keyof T as Exclude<P, K>]: T[P];
 };
+
+export type Styles = {
+  [key: string]: [keyof ElementNode];
+} & Partial<ElementNode>;
+
+/** Node text, children of a ElementNode of type TextNode */
+export interface ElementText
+  extends Partial<Omit<ITextNode, 'id' | 'parent' | 'shader'>>,
+    Partial<Omit<ElementNode, '_type'>> {
+  id?: string;
+  _type: 'text';
+  parent: ElementNode;
+  text: string;
+  states?: NodeStates;
+  _queueDelete?: boolean;
+}
+
 export interface NodeProps
   extends NewOmit<
     ElementNode,

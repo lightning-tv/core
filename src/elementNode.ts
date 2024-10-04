@@ -4,10 +4,11 @@ import {
   type BorderStyle,
   type StyleEffects,
   type AnimationSettings,
+  type ElementText,
+  type Styles,
   AddColorString,
   TextProps,
 } from './intrinsicTypes.js';
-import { type ITextNode } from '@lightningjs/renderer';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
 import {
@@ -164,22 +165,6 @@ const LightningRendererNonAnimatingProps = [
   'verticalAlign',
   'wordWrap',
 ];
-
-export type Styles = {
-  [key: string]: ElementNode;
-} & Partial<ElementNode>;
-
-/** Node text, children of a ElementNode of type TextNode */
-export interface ElementText
-  extends Partial<Omit<ITextNode, 'id' | 'parent' | 'shader'>>,
-    Partial<Omit<ElementNode, '_type'>> {
-  id?: string;
-  _type: 'text';
-  parent?: ElementNode;
-  text: string;
-  states?: States;
-  _queueDelete?: boolean;
-}
 
 export interface ElementNode
   extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>> {
