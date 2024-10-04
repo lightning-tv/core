@@ -34,12 +34,14 @@ export function loadFonts(
 
   for (const font of fonts) {
     if ('type' in font) {
-      stage.fontManager.addFontFace(
-        new SdfTrFontFace(font.type, {
-          ...font,
-          stage,
-        } as SdfTrFontFaceOptions),
-      );
+      if (renderer.stage.renderer.mode === 'webgl') {
+        stage.fontManager.addFontFace(
+          new SdfTrFontFace(font.type, {
+            ...font,
+            stage,
+          } as SdfTrFontFaceOptions),
+        );
+      }
     } else {
       stage.fontManager.addFontFace(new WebTrFontFace(font));
     }
