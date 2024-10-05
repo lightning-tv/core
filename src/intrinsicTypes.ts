@@ -90,13 +90,11 @@ type CleanElementNode = NewOmit<
 >;
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
-  extends Partial<NewOmit<ElementNode, '_type'>>,
+  extends NewOmit<ElementNode, '_type'>,
     RendererText {
-  id?: string;
   _type: 'text';
-  parent?: ElementNode;
+  parent: ElementNode;
   text: string;
-  _queueDelete?: boolean;
 }
 
 export interface NodeProps

@@ -185,6 +185,7 @@ export interface ElementNode extends RendererNode {
   _effects?: StyleEffects;
   _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
   _id: string | undefined;
+  _queueDelete?: boolean;
   _parent: ElementNode | undefined;
   _states?: States;
   _style?: Styles;
