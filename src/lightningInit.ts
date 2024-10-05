@@ -33,7 +33,7 @@ export function loadFonts(
   const stage = renderer.stage;
 
   for (const font of fonts) {
-    if ('type' in font) {
+    if ('type' in font && (font.type === 'msdf' || font.type === 'ssdf')) {
       if (renderer.stage.renderer.mode === 'webgl') {
         stage.fontManager.addFontFace(
           new SdfTrFontFace(font.type, {
@@ -42,7 +42,7 @@ export function loadFonts(
           } as SdfTrFontFaceOptions),
         );
       }
-    } else {
+    } else if ('fontUrl' in font) {
       stage.fontManager.addFontFace(new WebTrFontFace(font));
     }
   }

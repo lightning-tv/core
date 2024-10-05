@@ -45,6 +45,10 @@ export interface DefaultKeyMap {
   Last: KeyNameOrKeyCode | KeyNameOrKeyCode[];
 }
 
+export interface KeyMap extends DefaultKeyMap {
+  [key: string]: KeyNameOrKeyCode | KeyNameOrKeyCode[];
+}
+
 export interface DefaultKeyHoldMap {
   EnterHold: KeyNameOrKeyCode | KeyNameOrKeyCode[];
 }
@@ -52,8 +56,6 @@ export interface DefaultKeyHoldMap {
 export type EventHandlers<Map> = {
   [K in keyof Map as `on${Capitalize<string & K>}`]?: KeyHandler;
 };
-
-export interface KeyMap extends DefaultKeyMap {}
 
 export interface KeyHoldMap extends DefaultKeyHoldMap {}
 
@@ -73,7 +75,7 @@ export type KeyHoldOptions = {
 
 declare module '@lightningtv/core' {
   interface IntrinsicNodeProps
-    extends EventHandlers<KeyMap>,
+    extends EventHandlers<DefaultKeyMap>,
       EventHandlers<KeyHoldMap>,
       FocusNode {}
 }
