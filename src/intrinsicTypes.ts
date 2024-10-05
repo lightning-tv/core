@@ -113,6 +113,7 @@ export interface NodeProps
     > {
   states?: NodeStates;
 }
+export type NodeStyles = NodeProps;
 
 export interface TextProps
   extends RendererText,
@@ -141,7 +142,8 @@ export interface TextProps
     > {
   states?: NodeStates;
 }
-
-export type Styles = {
-  [K in keyof ElementNode]?: ElementNode[K];
-};
+export type TextStyles = TextProps;
+export type Styles = NodeStyles | TextStyles;
+// export type Styles = {
+//   [K in keyof ElementNode]?: ElementNode[K];
+// };
