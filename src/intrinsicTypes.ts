@@ -97,13 +97,12 @@ export interface ElementText
   text: string;
 }
 
-export interface TextNode extends Object {
-  id?: string;
+// Extend ElementNode so users can use it like an ElementNode
+export interface TextNode
+  extends Partial<NewOmit<ElementNode, '_type' | 'parent'>> {
   _type: 'text';
   parent?: ElementText;
-  states?: any;
   text: string;
-  [key: string]: any;
 }
 
 export interface NodeProps
