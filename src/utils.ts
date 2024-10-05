@@ -10,7 +10,7 @@ function hasDebug(node: any) {
 
 export function log(
   msg: string,
-  node: ElementNode | ElementText,
+  node: ElementNode | ElementText | TextNode,
   ...args: any[]
 ) {
   if (isDev) {

@@ -306,8 +306,8 @@ export class ElementNode extends Object {
   }
 
   insertChild(
-    node: ElementNode | ElementText,
-    beforeNode?: ElementNode | ElementText | null,
+    node: ElementNode | ElementText | TextNode,
+    beforeNode?: ElementNode | ElementText | TextNode | null,
   ) {
     node.parent = this;
 
@@ -324,7 +324,7 @@ export class ElementNode extends Object {
     this.children.push(node);
   }
 
-  removeChild(node: ElementNode | ElementText) {
+  removeChild(node: ElementNode | ElementText | TextNode) {
     const nodeIndexToRemove = this.children.indexOf(node);
     if (nodeIndexToRemove >= 0) {
       this.children.splice(nodeIndexToRemove, 1);
