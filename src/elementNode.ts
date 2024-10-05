@@ -9,6 +9,7 @@ import {
   AddColorString,
   TextProps,
   TextNode,
+  NewOmit,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -21,6 +22,8 @@ import {
   flattenStyles,
   isINode,
   isElementNode,
+  isElementText,
+  isTextNode,
 } from './utils.js';
 import { Config } from './config.js';
 import type {
@@ -194,7 +197,7 @@ export interface ElementNode extends RendererNode {
   _undoStyles?: string[];
   autosize?: boolean;
   bottom?: number;
-  children: Array<ElementNode | ElementText | TextNode>;
+  children: Array<ElementNode | ElementText>;
   debug?: boolean;
   flexGrow?: number;
   flexItem?: boolean;
@@ -315,17 +318,17 @@ export class ElementNode extends Object {
       // SolidJS can move nodes around in the children array.
       // We need to insert following DOM insertBefore which moves elements.
       this.removeChild(node);
-      const index = this.children.indexOf(beforeNode);
+      const index = this.children.indexOf(beforeNode as ElementNode);
       if (index >= 0) {
-        this.children.splice(index, 0, node);
+        this.children.splice(index, 0, node as ElementNode);
         return;
       }
     }
-    this.children.push(node);
+    this.children.push(node as ElementNode);
   }
 
   removeChild(node: ElementNode | ElementText | TextNode) {
-    const nodeIndexToRemove = this.children.indexOf(node);
+    const nodeIndexToRemove = this.children.indexOf(node as ElementNode);
     if (nodeIndexToRemove >= 0) {
       this.children.splice(nodeIndexToRemove, 1);
     }
@@ -476,7 +479,7 @@ export class ElementNode extends Object {
     });
   }
 
-  getText() {
+  getText(this: ElementText) {
     let result = '';
     for (let i = 0; i < this.children.length; i++) {
       result += this.children[i]!.text;
@@ -734,7 +737,7 @@ export class ElementNode extends Object {
       props.shader = convertEffectsToShader(node._effects);
     }
 
-    if (node.isTextNode()) {
+    if (isElementText(node)) {
       const textProps = props as TextProps;
       if (Config.fontSettings) {
         for (const key in Config.fontSettings) {
@@ -840,7 +843,7 @@ export class ElementNode extends Object {
         assertTruthy(c, 'Child is undefined');
         if (isElementNode(c)) {
           c.render();
-        } else if (c.text && c._type === NodeType.Text) {
+        } else if (isTextNode(c)) {
           // Solid Show uses an empty text node as a placeholder
           // Vue uses comment nodes for v-if
           console.warn('TextNode outside of <Text>: ', c);

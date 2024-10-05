@@ -90,19 +90,19 @@ type CleanElementNode = NewOmit<
 >;
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
-  extends NewOmit<ElementNode, '_type' | 'parent'>,
+  extends NewOmit<ElementNode, '_type' | 'parent' | 'children'>,
     RendererText {
   _type: 'textNode';
   parent?: ElementNode;
+  children: TextNode[];
   text: string;
 }
 
-// Extend ElementNode so users can use it like an ElementNode
-export interface TextNode
-  extends Partial<NewOmit<ElementNode, '_type' | 'parent'>> {
+export interface TextNode {
   _type: 'text';
   parent?: ElementText;
   text: string;
+  [key: string]: any;
 }
 
 export interface NodeProps

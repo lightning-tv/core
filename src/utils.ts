@@ -53,6 +53,12 @@ export function isElementNode(node: unknown): node is ElementNode {
   return node instanceof ElementNode;
 }
 
+export function isElementText(
+  node: ElementNode | ElementText | TextNode,
+): node is ElementText {
+  return node._type === NodeType.TextNode;
+}
+
 export function isTextNode(
   node: ElementNode | ElementText | TextNode,
 ): node is TextNode {
