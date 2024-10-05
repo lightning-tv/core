@@ -92,14 +92,14 @@ type CleanElementNode = NewOmit<
 export interface ElementText
   extends NewOmit<ElementNode, '_type' | 'parent'>,
     RendererText {
-  _type: 'text';
+  _type: 'textNode';
   parent?: ElementNode;
   text: string;
 }
 
 export interface TextNode extends Object {
   id?: string;
-  _type: 'textNode';
+  _type: 'text';
   parent?: ElementText;
   states?: any;
   text: string;
