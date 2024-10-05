@@ -74,7 +74,7 @@ export type KeyHoldOptions = {
 };
 
 declare module '@lightningtv/core' {
-  interface IntrinsicNodeProps
+  interface NodeProps
     extends EventHandlers<DefaultKeyMap>,
       EventHandlers<KeyHoldMap>,
       FocusNode {}

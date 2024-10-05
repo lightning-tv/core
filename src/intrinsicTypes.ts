@@ -152,6 +152,8 @@ export interface TextProps
 }
 export type TextStyles = TextProps;
 export type Styles = NodeStyles | TextStyles;
-// export type Styles = {
-//   [K in keyof ElementNode]?: ElementNode[K];
-// };
+
+// TODO: deprecated
+export interface IntrinsicNodeProps extends NodeProps {}
+export interface IntrinsicNodeStyleProps extends NodeStyles {}
+export interface IntrinsicTextNodeStyleProps extends TextStyles {}

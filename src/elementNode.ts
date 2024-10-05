@@ -466,10 +466,6 @@ export class ElementNode extends Object {
     }
   }
 
-  isTextNode() {
-    return this._type === NodeType.TextNode;
-  }
-
   _layoutOnLoad() {
     dynamicSizedNodeCount++;
     (this.lng as INode).on('loaded', () => {
