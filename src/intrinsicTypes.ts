@@ -66,7 +66,28 @@ type RendererText = AddColorString<
   Partial<Omit<ITextNodeProps, 'debug' | 'shader' | 'parent'>>
 >;
 
-type CleanElementNode = RemoveUnderscoreProps<ElementNode>;
+type CleanElementNode = NewOmit<
+  RemoveUnderscoreProps<ElementNode>,
+  | 'parent'
+  | 'insertChild'
+  | 'removeChild'
+  | 'selectedNode'
+  | 'shader'
+  | 'animate'
+  | 'chain'
+  | 'start'
+  | 'setFocus'
+  | 'isTextNode'
+  | 'getText'
+  | 'destroy'
+  | 'hasChildren'
+  | 'getChildById'
+  | 'searchChildrenById'
+  | 'states'
+  | 'requiresLayout'
+  | 'updateLayout'
+  | 'render'
+>;
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
   extends Partial<NewOmit<ElementNode, '_type'>>,
@@ -87,7 +108,6 @@ export interface NodeProps
         | 'text'
         | 'lng'
         | 'rendered'
-        | 'states'
         | 'renderer'
         | 'preFlexwidth'
         | 'preFlexHeight'
@@ -97,30 +117,30 @@ export interface NodeProps
 }
 
 export interface TextProps
-  extends Partial<
-    NewOmit<
-      RemoveUnderscoreProps<ElementText>,
-      | 'lng'
-      | 'rendered'
-      | 'renderer'
-      | 'alignItems'
-      | 'autosize'
-      | 'children'
-      | 'data'
-      | 'display'
-      | 'flexBoundary'
-      | 'flexDirection'
-      | 'gap'
-      | 'justifyContent'
-      | 'forwardFocus'
-      | 'forwardStates'
-      | 'linearGradient'
-      | 'src'
-      | 'states'
-      | 'texture'
-      | 'textureOptions'
-    >
-  > {
+  extends RendererText,
+    Partial<
+      NewOmit<
+        CleanElementNode,
+        | 'lng'
+        | 'rendered'
+        | 'renderer'
+        | 'alignItems'
+        | 'autosize'
+        | 'children'
+        | 'data'
+        | 'display'
+        | 'flexBoundary'
+        | 'flexDirection'
+        | 'gap'
+        | 'justifyContent'
+        | 'forwardFocus'
+        | 'forwardStates'
+        | 'linearGradient'
+        | 'src'
+        | 'texture'
+        | 'textureOptions'
+      >
+    > {
   states?: NodeStates;
 }
 
