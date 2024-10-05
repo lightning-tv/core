@@ -523,7 +523,11 @@ export class ElementNode extends Object {
 
   set style(values: Styles | (Styles | undefined)[]) {
     if (isArray(values)) {
-      this._style = flattenStyles(values);
+      if (values.length === 2 && (!values[0] || !values[1])) {
+        this._style = values[1] || values[0] || {};
+      } else {
+        this._style = flattenStyles(values);
+      }
     } else {
       this._style = values;
     }
