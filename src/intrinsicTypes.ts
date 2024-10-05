@@ -6,10 +6,9 @@ import {
   type LinearGradientEffectProps,
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
-  type ITextNode,
+  type ITextNodeProps,
 } from '@lightningjs/renderer';
-import { ElementNode } from './elementNode.js';
-import { NodeStates } from './states.js';
+import { ElementNode, type RendererNode } from './elementNode.js';
 
 export type AnimationSettings = Partial<RendererAnimationSettings> | undefined;
 
@@ -58,55 +57,37 @@ export type NewOmit<T, K extends PropertyKey> = {
   [P in keyof T as Exclude<P, K>]: T[P];
 };
 
+type RendererText = AddColorString<
+  Partial<Omit<ITextNodeProps, 'debug' | 'shader' | 'parent'>>
+>;
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
-  extends Partial<Omit<ITextNode, 'id' | 'parent' | 'shader'>>,
-    Partial<Omit<ElementNode, '_type'>> {
+  extends Partial<NewOmit<ElementNode, '_type'>>,
+    RendererText {
   id?: string;
   _type: 'text';
   parent?: ElementNode;
   text: string;
-  states?: NodeStates;
   _queueDelete?: boolean;
 }
 
 export interface NodeProps
-  extends Partial<
-    NewOmit<
-      ElementNode,
-      | 'children'
-      | 'contain'
-      | 'fontFamily'
-      | 'fontSize'
-      | 'fontStretch'
-      | 'fontStyle'
-      | 'fontWeight'
-      | 'letterSpacing'
-      | 'lineHeight'
-      | 'maxLines'
-      | 'overflowSuffix'
-      | 'text'
-      | 'textAlign'
-      | 'textBaseline'
-      | 'textOverflow'
-      | 'verticalAlign'
-      | 'wordWrap'
-    >
-  > {}
+  extends RendererNode,
+    Partial<NewOmit<ElementNode, 'children' | 'text'>> {}
 export interface TextProps
-  extends Partial<
-    NewOmit<
-      ElementNode,
-      | 'autosize'
-      | 'children'
-      | 'clipping'
-      | 'linearGradient'
-      | 'src'
-      | 'texture'
-      | 'textureOptions'
-      | 'transition'
-    >
-  > {}
+  extends RendererText,
+    Partial<
+      NewOmit<
+        ElementNode,
+        | 'autosize'
+        | 'children'
+        | 'clipping'
+        | 'linearGradient'
+        | 'src'
+        | 'texture'
+        | 'textureOptions'
+      >
+    > {}
 
 export type Styles = {
   [K in keyof ElementNode]?: ElementNode[K];

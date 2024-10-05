@@ -166,8 +166,10 @@ const LightningRendererNonAnimatingProps = [
   'wordWrap',
 ];
 
-export interface ElementNode
-  extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>> {
+export type RendererNode = AddColorString<
+  Partial<Omit<INodeProps, 'parent' | 'shader'>>
+>;
+export interface ElementNode extends RendererNode {
   [key: string]: unknown;
 
   // Properties
@@ -430,7 +432,7 @@ export class ElementNode extends Object {
     this._animationQueueSettings = undefined;
   }
 
-  setFocus() {
+  setFocus(): void {
     if (this.rendered) {
       // can be 0
       if (this.forwardFocus !== undefined) {
