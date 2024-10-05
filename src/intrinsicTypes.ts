@@ -9,6 +9,7 @@ import {
   type ITextNodeProps,
 } from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
+import { NodeStates } from './states.js';
 
 export type AnimationSettings = Partial<RendererAnimationSettings> | undefined;
 
@@ -57,9 +58,15 @@ export type NewOmit<T, K extends PropertyKey> = {
   [P in keyof T as Exclude<P, K>]: T[P];
 };
 
+export type RemoveUnderscoreProps<T> = {
+  [K in keyof T as K extends `_${string}` ? never : K]: T[K];
+};
+
 type RendererText = AddColorString<
   Partial<Omit<ITextNodeProps, 'debug' | 'shader' | 'parent'>>
 >;
+
+type CleanElementNode = RemoveUnderscoreProps<ElementNode>;
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
   extends Partial<NewOmit<ElementNode, '_type'>>,
@@ -73,21 +80,49 @@ export interface ElementText
 
 export interface NodeProps
   extends RendererNode,
-    Partial<NewOmit<ElementNode, 'children' | 'text'>> {}
-export interface TextProps
-  extends RendererText,
     Partial<
       NewOmit<
-        ElementNode,
-        | 'autosize'
+        CleanElementNode,
         | 'children'
-        | 'clipping'
-        | 'linearGradient'
-        | 'src'
-        | 'texture'
-        | 'textureOptions'
+        | 'text'
+        | 'lng'
+        | 'rendered'
+        | 'states'
+        | 'renderer'
+        | 'preFlexwidth'
+        | 'preFlexHeight'
       >
-    > {}
+    > {
+  states?: NodeStates;
+}
+
+export interface TextProps
+  extends Partial<
+    NewOmit<
+      RemoveUnderscoreProps<ElementText>,
+      | 'lng'
+      | 'rendered'
+      | 'renderer'
+      | 'alignItems'
+      | 'autosize'
+      | 'children'
+      | 'data'
+      | 'display'
+      | 'flexBoundary'
+      | 'flexDirection'
+      | 'gap'
+      | 'justifyContent'
+      | 'forwardFocus'
+      | 'forwardStates'
+      | 'linearGradient'
+      | 'src'
+      | 'states'
+      | 'texture'
+      | 'textureOptions'
+    >
+  > {
+  states?: NodeStates;
+}
 
 export type Styles = {
   [K in keyof ElementNode]?: ElementNode[K];

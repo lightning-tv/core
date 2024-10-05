@@ -190,6 +190,7 @@ export interface ElementNode extends RendererNode {
   _style?: Styles;
   _type: 'element' | 'textNode';
   _undoStyles?: string[];
+  autosize?: boolean;
   bottom?: number;
   children: Array<ElementNode | ElementText>;
   debug?: boolean;
@@ -228,6 +229,8 @@ export interface ElementNode extends RendererNode {
     | 'spaceBetween'
     | 'spaceEvenly';
   linearGradient?: LinearGradientEffectProps;
+  radialGradient?: RadialGradientEffectProps;
+  radialProgress?: RadialProgressEffectProps;
   marginBottom?: number;
   marginLeft?: number;
   marginRight?: number;
