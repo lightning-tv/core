@@ -1,7 +1,8 @@
 import { INode } from '@lightningjs/renderer';
 import { Config, isDev } from './config.js';
-import type { Styles, ElementText } from './intrinsicTypes.js';
+import type { Styles, ElementText, TextNode } from './intrinsicTypes.js';
 import { ElementNode } from './elementNode.js';
+import { NodeType } from './nodeTypes.js';
 
 function hasDebug(node: any) {
   return isObject(node) && node.debug;
@@ -50,6 +51,12 @@ export function isINode(node: object): node is INode {
 
 export function isElementNode(node: unknown): node is ElementNode {
   return node instanceof ElementNode;
+}
+
+export function isTextNode(
+  node: ElementNode | ElementText | TextNode,
+): node is TextNode {
+  return node._type === NodeType.Text;
 }
 
 export function keyExists(

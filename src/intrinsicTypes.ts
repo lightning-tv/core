@@ -97,6 +97,15 @@ export interface ElementText
   text: string;
 }
 
+export interface TextNode extends Object {
+  id?: string;
+  _type: 'textNode';
+  parent?: ElementText;
+  states?: any;
+  text: string;
+  [key: string]: any;
+}
+
 export interface NodeProps
   extends RendererNode,
     Partial<

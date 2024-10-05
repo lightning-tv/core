@@ -8,6 +8,7 @@ import {
   type Styles,
   AddColorString,
   TextProps,
+  TextNode,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -193,7 +194,7 @@ export interface ElementNode extends RendererNode {
   _undoStyles?: string[];
   autosize?: boolean;
   bottom?: number;
-  children: Array<ElementNode | ElementText>;
+  children: Array<ElementNode | ElementText | TextNode>;
   debug?: boolean;
   flexGrow?: number;
   flexItem?: boolean;
