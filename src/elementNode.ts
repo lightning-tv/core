@@ -521,7 +521,7 @@ export class ElementNode extends Object {
     return this._events;
   }
 
-  set style(values: Styles | (Styles | undefined)[]) {
+  set style(values: Styles | Array<Styles | undefined>) {
     if (isArray(values)) {
       if (values.length === 2 && (!values[0] || !values[1])) {
         this._style = values[1] || values[0] || {};
