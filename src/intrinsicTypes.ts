@@ -121,7 +121,9 @@ export interface NodeProps
     > {
   states?: NodeStates;
 }
-export type NodeStyles = NodeProps;
+export interface NodeStyles extends NodeProps {
+  [key: string]: NodeProps[keyof NodeProps] | NodeProps | undefined;
+}
 
 export interface TextProps
   extends RendererText,
@@ -150,7 +152,11 @@ export interface TextProps
     > {
   states?: NodeStates;
 }
-export type TextStyles = TextProps;
+
+export interface TextStyles extends TextProps {
+  [key: string]: TextProps[keyof TextProps] | TextProps | undefined;
+}
+
 export type Styles = NodeStyles | TextStyles;
 
 // TODO: deprecated
