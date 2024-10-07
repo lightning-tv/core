@@ -87,6 +87,7 @@ type CleanElementNode = NewOmit<
   | 'requiresLayout'
   | 'updateLayout'
   | 'render'
+  | 'style'
 >;
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
@@ -96,6 +97,7 @@ export interface ElementText
   parent?: ElementNode;
   children: TextNode[];
   text: string;
+  style: TextStyles;
 }
 
 export interface TextNode {
@@ -120,6 +122,7 @@ export interface NodeProps
       >
     > {
   states?: NodeStates;
+  style?: NodeStyles | Array<NodeStyles | undefined>;
 }
 export interface NodeStyles extends NodeProps {
   [key: string]: NodeProps[keyof NodeProps] | NodeProps | undefined;
@@ -151,6 +154,7 @@ export interface TextProps
       >
     > {
   states?: NodeStates;
+  style?: TextStyles | Array<TextStyles | undefined>;
 }
 
 export interface TextStyles extends TextProps {
