@@ -1,6 +1,8 @@
 import { INode } from '@lightningjs/renderer';
 import { Config, isDev } from './config.js';
-import { ElementNode, Styles, ElementText } from './elementNode.js';
+import type { Styles, ElementText, TextNode } from './intrinsicTypes.js';
+import { ElementNode } from './elementNode.js';
+import { NodeType } from './nodeTypes.js';
 
 function hasDebug(node: any) {
   return isObject(node) && node.debug;
@@ -8,7 +10,7 @@ function hasDebug(node: any) {
 
 export function log(
   msg: string,
-  node: ElementNode | ElementText,
+  node: ElementNode | ElementText | TextNode,
   ...args: any[]
 ) {
   if (isDev) {
@@ -51,6 +53,18 @@ export function isElementNode(node: unknown): node is ElementNode {
   return node instanceof ElementNode;
 }
 
+export function isElementText(
+  node: ElementNode | ElementText | TextNode,
+): node is ElementText {
+  return node._type === NodeType.TextNode;
+}
+
+export function isTextNode(
+  node: ElementNode | ElementText | TextNode,
+): node is TextNode {
+  return node._type === NodeType.Text;
+}
+
 export function keyExists(
   obj: Record<string, unknown>,
   keys: (string | number | symbol)[],
@@ -76,7 +90,7 @@ export function flattenStyles(
     for (const key in obj) {
       // be careful of 0 values
       if (result[key] === undefined) {
-        result[key as keyof Styles] = obj[key as keyof Styles];
+        result[key as keyof Styles] = obj[key as keyof Styles]!;
       }
     }
   }

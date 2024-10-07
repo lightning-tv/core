@@ -1,8 +1,5 @@
 import type { RendererMainSettings } from '@lightningjs/renderer';
-import type {
-  IntrinsicTextNodeStyleProps,
-  AnimationSettings,
-} from './intrinsicTypes.js';
+import type { TextProps, AnimationSettings } from './intrinsicTypes.js';
 import { type ElementNode } from './elementNode.js';
 
 interface Config {
@@ -10,7 +7,7 @@ interface Config {
   focusDebug: boolean;
   animationSettings?: AnimationSettings;
   animationsEnabled: boolean;
-  fontSettings: Partial<IntrinsicTextNodeStyleProps>;
+  fontSettings: Partial<TextProps>;
   rendererOptions?: Partial<RendererMainSettings>;
   setActiveElement: (elm: ElementNode) => void;
 }

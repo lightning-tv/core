@@ -2,17 +2,15 @@ import { renderer, createShader } from './lightningInit.js';
 import {
   type BorderRadius,
   type BorderStyle,
-  type IntrinsicCommonProps,
-  type IntrinsicNodeProps,
-  type IntrinsicTextProps,
   type StyleEffects,
-  type NodeStyles,
-  type TextStyles,
-  type IntrinsicTextStyleCommonProps,
   type AnimationSettings,
+  type ElementText,
+  type Styles,
   AddColorString,
+  TextProps,
+  TextNode,
+  NewOmit,
 } from './intrinsicTypes.js';
-import { type ITextNode } from '@lightningjs/renderer';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
 import {
@@ -24,6 +22,8 @@ import {
   flattenStyles,
   isINode,
   isElementNode,
+  isElementText,
+  isTextNode,
 } from './utils.js';
 import { Config } from './config.js';
 import type {
@@ -38,6 +38,8 @@ import type {
   ShaderController,
   RadialGradientEffectProps,
   RadialProgressEffectProps,
+  NodeFailedPayload,
+  NodeLoadedPayload,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -168,62 +170,102 @@ const LightningRendererNonAnimatingProps = [
   'wordWrap',
 ];
 
-export type Styles = {
-  [key: string]: NodeStyles | TextStyles | undefined;
-} & (NodeStyles | TextStyles);
-
-/** Node text, children of a ElementNode of type TextNode */
-export interface ElementText
-  extends Partial<Omit<ITextNode, 'id' | 'parent' | 'shader'>>,
-    Partial<Omit<ElementNode, '_type'>>,
-    IntrinsicTextStyleCommonProps {
-  id?: string;
-  _type: 'text';
-  parent?: ElementNode;
-  text: string;
-  states?: States;
-  _queueDelete?: boolean;
-}
-export interface ElementNode
-  extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
-    IntrinsicCommonProps {
+export type RendererNode = AddColorString<
+  Partial<Omit<INodeProps, 'parent' | 'shader'>>
+>;
+export interface ElementNode extends RendererNode {
   [key: string]: unknown;
-  debug?: boolean;
-  _id: string | undefined;
-  _type: 'element' | 'textNode';
-  lng: INode | IntrinsicNodeProps | IntrinsicTextProps;
-  rendered: boolean;
-  renderer?: RendererMain;
-  selected?: number;
-  skipFocus?: boolean;
-  flexItem?: boolean;
-  flexOrder?: number;
-  flexGrow?: number;
-  preFlexwidth?: number;
-  preFlexheight?: number;
-  onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
-  text?: string;
-  forwardFocus?:
-    | number
-    | ((this: ElementNode, elm: ElementNode) => boolean | void);
 
-  _undoStyles?: string[];
-  _effects?: StyleEffects;
-  _parent: ElementNode | undefined;
-  _style?: Styles;
-  _states?: States;
-  _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
-  _animationSettings?: AnimationSettings | undefined;
-  _animationQueue:
+  // Properties
+  _animationQueue?:
     | Array<{
         props: Partial<INodeAnimateProps>;
         animationSettings?: AnimationSettings;
       }>
     | undefined;
-  _animationQueueSettings: AnimationSettings | undefined;
+  _animationQueueSettings?: AnimationSettings;
   _animationRunning?: boolean;
+  _animationSettings?: AnimationSettings;
+  _effects?: StyleEffects;
+  _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
+  _id: string | undefined;
+  _queueDelete?: boolean;
+  _parent: ElementNode | undefined;
+  _states?: States;
+  _style?: Styles;
+  _type: 'element' | 'textNode';
+  _undoStyles?: string[];
+  autosize?: boolean;
+  bottom?: number;
   children: Array<ElementNode | ElementText>;
+  debug?: boolean;
+  flexGrow?: number;
+  flexItem?: boolean;
+  flexOrder?: number;
+  forwardFocus?:
+    | number
+    | ((this: ElementNode, elm: ElementNode) => boolean | void);
+  forwardStates?: boolean;
+  lng: INode | Partial<ElementNode>;
+  ref?: ElementNode | ((node: ElementNode) => void) | undefined;
+  rendered: boolean;
+  renderer?: RendererMain;
+  right?: number;
+  selected?: number;
+  preFlexwidth?: number;
+  preFlexheight?: number;
+  text?: string;
+
+  alignItems?: 'flexStart' | 'flexEnd' | 'center';
+  border?: BorderStyle;
+  borderBottom?: BorderStyle;
+  borderLeft?: BorderStyle;
+  borderRadius?: BorderRadius;
+  borderRight?: BorderStyle;
+  borderTop?: BorderStyle;
+  display?: 'flex' | 'block';
+  flexBoundary?: 'contain' | 'fixed';
+  flexDirection?: 'row' | 'column';
+  gap?: number;
+  justifyContent?:
+    | 'flexStart'
+    | 'flexEnd'
+    | 'center'
+    | 'spaceBetween'
+    | 'spaceEvenly';
+  linearGradient?: LinearGradientEffectProps;
+  radialGradient?: RadialGradientEffectProps;
+  radialProgress?: RadialProgressEffectProps;
+  marginBottom?: number;
+  marginLeft?: number;
+  marginRight?: number;
+  marginTop?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  zIndex?: number;
+  transition?: Record<string, AnimationSettings | true | false> | true | false;
+
+  // Events
+  onAnimationFinished?: (
+    controller: IAnimationController,
+    propKey: string,
+    endValue: number,
+  ) => void;
+  onAnimationStarted?: (
+    controller: IAnimationController,
+    propKey: string,
+    endValue: number,
+  ) => void;
+  onBeforeLayout?: (this: ElementNode, target: ElementNode) => boolean | void;
+  onCreate?: (target: ElementNode) => void;
+  onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
+  onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
+  onLayout?: (this: ElementNode, target: ElementNode) => void;
+  onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
 }
+
 export class ElementNode extends Object {
   constructor(name: string) {
     super();
@@ -262,13 +304,13 @@ export class ElementNode extends Object {
   set parent(p) {
     this._parent = p;
     if (this.rendered) {
-      this.lng.parent = p?.lng ?? null;
+      this.lng.parent = (p?.lng as INode) ?? null;
     }
   }
 
   insertChild(
-    node: ElementNode | ElementText,
-    beforeNode?: ElementNode | ElementText | null,
+    node: ElementNode | ElementText | TextNode,
+    beforeNode?: ElementNode | ElementText | TextNode | null,
   ) {
     node.parent = this;
 
@@ -276,17 +318,17 @@ export class ElementNode extends Object {
       // SolidJS can move nodes around in the children array.
       // We need to insert following DOM insertBefore which moves elements.
       this.removeChild(node);
-      const index = this.children.indexOf(beforeNode);
+      const index = this.children.indexOf(beforeNode as ElementNode);
       if (index >= 0) {
-        this.children.splice(index, 0, node);
+        this.children.splice(index, 0, node as ElementNode);
         return;
       }
     }
-    this.children.push(node);
+    this.children.push(node as ElementNode);
   }
 
-  removeChild(node: ElementNode | ElementText) {
-    const nodeIndexToRemove = this.children.indexOf(node);
+  removeChild(node: ElementNode | ElementText | TextNode) {
+    const nodeIndexToRemove = this.children.indexOf(node as ElementNode);
     if (nodeIndexToRemove >= 0) {
       this.children.splice(nodeIndexToRemove, 1);
     }
@@ -398,11 +440,7 @@ export class ElementNode extends Object {
     this._animationQueueSettings = undefined;
   }
 
-  setFocus() {
-    if (this.skipFocus) {
-      return;
-    }
-
+  setFocus(): void {
     if (this.rendered) {
       // can be 0
       if (this.forwardFocus !== undefined) {
@@ -428,10 +466,6 @@ export class ElementNode extends Object {
     }
   }
 
-  isTextNode() {
-    return this._type === NodeType.TextNode;
-  }
-
   _layoutOnLoad() {
     dynamicSizedNodeCount++;
     (this.lng as INode).on('loaded', () => {
@@ -441,7 +475,7 @@ export class ElementNode extends Object {
     });
   }
 
-  getText() {
+  getText(this: ElementText) {
     let result = '';
     for (let i = 0; i < this.children.length; i++) {
       result += this.children[i]!.text;
@@ -487,9 +521,13 @@ export class ElementNode extends Object {
     return this._events;
   }
 
-  set style(values: Styles | (Styles | undefined)[]) {
+  set style(values: Styles | Array<Styles | undefined>) {
     if (isArray(values)) {
-      this._style = flattenStyles(values);
+      if (values.length === 2 && (!values[0] || !values[1])) {
+        this._style = values[1] || values[0] || {};
+      } else {
+        this._style = flattenStyles(values);
+      }
     } else {
       this._style = values;
     }
@@ -624,7 +662,7 @@ export class ElementNode extends Object {
         stylesToUndo[styleKey] = this.style[styleKey];
       });
 
-      const newStyles: NodeStyles | TextStyles = states.reduce((acc, state) => {
+      const newStyles: Styles = states.reduce((acc, state) => {
         const styles = this.style[state];
         if (styles) {
           acc = {
@@ -639,7 +677,7 @@ export class ElementNode extends Object {
 
       // Apply transition first
       if (newStyles.transition !== undefined) {
-        this.transition = newStyles.transition as NodeStyles['transition'];
+        this.transition = newStyles.transition as Styles['transition'];
       }
 
       // Apply the styles
@@ -689,14 +727,14 @@ export class ElementNode extends Object {
 
     props.x = props.x || 0;
     props.y = props.y || 0;
-    props.parent = parent.lng;
+    props.parent = parent.lng as INode;
 
     if (node._effects) {
       props.shader = convertEffectsToShader(node._effects);
     }
 
-    if (node.isTextNode()) {
-      const textProps = props as IntrinsicTextProps;
+    if (isElementText(node)) {
+      const textProps = props as TextProps;
       if (Config.fontSettings) {
         for (const key in Config.fontSettings) {
           if (textProps[key] === undefined) {
@@ -801,7 +839,7 @@ export class ElementNode extends Object {
         assertTruthy(c, 'Child is undefined');
         if (isElementNode(c)) {
           c.render();
-        } else if (c.text && c._type === NodeType.Text) {
+        } else if (isTextNode(c)) {
           // Solid Show uses an empty text node as a placeholder
           // Vue uses comment nodes for v-if
           console.warn('TextNode outside of <Text>: ', c);

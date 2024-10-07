@@ -1,26 +1,17 @@
 import {
-  type IAnimationController,
   type FadeOutEffectProps,
   type GlitchEffectProps,
   type GrayscaleEffectProps,
-  type INode,
-  type ITextNodeProps,
   type AnimationSettings as RendererAnimationSettings,
   type LinearGradientEffectProps,
-  type NodeFailedPayload,
-  type NodeLoadedPayload,
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
-  INodeProps,
+  type ITextNodeProps,
 } from '@lightningjs/renderer';
-import { ElementNode } from './elementNode.js';
-import { type NodeStates } from './states.js';
+import { ElementNode, type RendererNode } from './elementNode.js';
+import { NodeStates } from './states.js';
 
 export type AnimationSettings = Partial<RendererAnimationSettings> | undefined;
-
-type AddUndefined<T> = {
-  [K in keyof T]: T[K] | undefined;
-};
 
 export type AddColorString<T> = {
   [K in keyof T]: K extends `color${string}` ? string | number : T[K];
@@ -63,127 +54,116 @@ export type ShaderEffectDesc = {
   props: StyleEffects[keyof StyleEffects];
 };
 
-export interface IntrinsicFocusProps {
-  autofocus?: boolean;
-  forwardFocus?:
-    | number
-    | ((this: ElementNode, elm: ElementNode) => boolean | void);
+export type NewOmit<T, K extends PropertyKey> = {
+  [P in keyof T as Exclude<P, K>]: T[P];
+};
+
+export type RemoveUnderscoreProps<T> = {
+  [K in keyof T as K extends `_${string}` ? never : K]: T[K];
+};
+
+type RendererText = AddColorString<
+  Partial<Omit<ITextNodeProps, 'debug' | 'shader' | 'parent'>>
+>;
+
+type CleanElementNode = NewOmit<
+  RemoveUnderscoreProps<ElementNode>,
+  | 'parent'
+  | 'insertChild'
+  | 'removeChild'
+  | 'selectedNode'
+  | 'shader'
+  | 'animate'
+  | 'chain'
+  | 'start'
+  | 'setFocus'
+  | 'isTextNode'
+  | 'getText'
+  | 'destroy'
+  | 'hasChildren'
+  | 'getChildById'
+  | 'searchChildrenById'
+  | 'states'
+  | 'requiresLayout'
+  | 'updateLayout'
+  | 'render'
+  | 'style'
+>;
+/** Node text, children of a ElementNode of type TextNode */
+export interface ElementText
+  extends NewOmit<ElementNode, '_type' | 'parent' | 'children'>,
+    RendererText {
+  _type: 'textNode';
+  parent?: ElementNode;
+  children: TextNode[];
+  text: string;
+  style: TextStyles;
 }
 
-export interface IntrinsicNodeCommonProps extends IntrinsicFocusProps {
-  animationSettings?: AnimationSettings;
-  forwardStates?: boolean;
-  id?: string | undefined;
-  ref?: ElementNode | ((node: ElementNode) => void) | undefined;
-  right?: number;
-  bottom?: number;
-  selected?: number;
-  skipFocus?: boolean;
+export interface TextNode {
+  _type: 'text';
+  parent?: ElementText;
+  text: string;
+  [key: string]: any;
+}
+
+export interface NodeProps
+  extends RendererNode,
+    Partial<
+      NewOmit<
+        CleanElementNode,
+        | 'children'
+        | 'text'
+        | 'lng'
+        | 'rendered'
+        | 'renderer'
+        | 'preFlexwidth'
+        | 'preFlexHeight'
+      >
+    > {
   states?: NodeStates;
-  text?: string;
-  // Events
-  onCreate?: (target: ElementNode) => void;
-  onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
-  onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
-  onBeforeLayout?: (this: ElementNode, target: ElementNode) => boolean | void;
-  onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
-  onLayout?: (this: ElementNode, target: ElementNode) => void;
-  onAnimationStarted?: (
-    controller: IAnimationController,
-    propKey: string,
-    endValue: number,
-  ) => void;
-  onAnimationFinished?: (
-    controller: IAnimationController,
-    propKey: string,
-    endValue: number,
-  ) => void;
+  style?: NodeStyles | Array<NodeStyles | undefined>;
+}
+export interface NodeStyles extends NodeProps {
+  [key: string]: NodeProps[keyof NodeProps] | NodeProps | undefined;
 }
 
-export interface IntrinsicNodeStyleCommonProps {
-  alignItems?: 'flexStart' | 'flexEnd' | 'center';
-  border?: BorderStyle;
-  borderBottom?: BorderStyle;
-  borderLeft?: BorderStyle;
-  borderRadius?: BorderRadius;
-  borderRight?: BorderStyle;
-  borderTop?: BorderStyle;
-  display?: 'flex' | 'block';
-  effects?: Effects;
-  flexBoundary?: 'contain' | 'fixed';
-  flexDirection?: 'row' | 'column';
-  flexItem?: boolean;
-  gap?: number;
-  justifyContent?:
-    | 'flexStart'
-    | 'flexEnd'
-    | 'center'
-    | 'spaceBetween'
-    | 'spaceEvenly';
-  linearGradient?: LinearGradientEffectProps;
-  marginBottom?: number;
-  marginLeft?: number;
-  marginRight?: number;
-  marginTop?: number;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  zIndex?: number;
-  transition?: Record<string, AnimationSettings | true | false> | true | false;
+export interface TextProps
+  extends RendererText,
+    Partial<
+      NewOmit<
+        CleanElementNode,
+        | 'lng'
+        | 'rendered'
+        | 'renderer'
+        | 'alignItems'
+        | 'autosize'
+        | 'children'
+        | 'data'
+        | 'display'
+        | 'flexBoundary'
+        | 'flexDirection'
+        | 'gap'
+        | 'justifyContent'
+        | 'forwardFocus'
+        | 'forwardStates'
+        | 'linearGradient'
+        | 'src'
+        | 'texture'
+        | 'textureOptions'
+      >
+    > {
+  states?: NodeStates;
+  style?: TextStyles | Array<TextStyles | undefined>;
 }
 
-export interface IntrinsicTextStyleCommonProps {
-  marginLeft?: number;
-  marginRight?: number;
-  marginTop?: number;
-  marginBottom?: number;
+export interface TextStyles extends TextProps {
+  [key: string]: TextProps[keyof TextProps] | TextProps | undefined;
 }
 
-export interface IntrinsicCommonProps
-  extends IntrinsicNodeCommonProps,
-    IntrinsicNodeStyleCommonProps,
-    IntrinsicTextStyleCommonProps {}
+export type Styles = NodeStyles | TextStyles;
 
-export interface IntrinsicNodeStyleProps
-  extends AddColorString<Partial<Omit<INodeProps, 'parent' | 'shader'>>>,
-    IntrinsicNodeStyleCommonProps {
-  [key: string]: unknown;
-}
-
-export interface IntrinsicTextNodeStyleProps
-  extends AddColorString<Partial<Omit<ITextNodeProps, 'parent' | 'shader'>>>,
-    IntrinsicTextStyleCommonProps {
-  [key: string]: unknown;
-}
-
-export interface IntrinsicNodeProps
-  extends AddUndefined<IntrinsicNodeCommonProps & IntrinsicNodeStyleProps> {
-  style?:
-    | IntrinsicNodeStyleProps
-    | (IntrinsicNodeStyleProps | undefined)[]
-    | undefined;
-}
-
-export interface IntrinsicTextProps
-  extends AddUndefined<IntrinsicNodeCommonProps & IntrinsicTextNodeStyleProps> {
-  style?:
-    | IntrinsicTextNodeStyleProps
-    | (IntrinsicTextNodeStyleProps | undefined)[]
-    | undefined;
-  children?: string | number | (string | number | undefined)[];
-}
-
-export type NodeStyles = IntrinsicNodeStyleProps;
-export type TextStyles = IntrinsicTextNodeStyleProps;
-export type NodeProps = IntrinsicNodeProps;
-export type TextProps = IntrinsicTextProps;
-
-// Vue Helper to get component props
-export type ExtractComponentProps<TComponent> = TComponent extends new () => {
-  $props: infer P;
-}
-  ? P
-  : never;
-
-export type ElementNodeProps = ExtractComponentProps<typeof ElementNode>;
+// TODO: deprecated
+export interface IntrinsicNodeProps extends NodeProps {}
+export interface IntrinsicNodeStyleProps extends NodeStyles {}
+export interface IntrinsicTextNodeStyleProps extends TextStyles {}
