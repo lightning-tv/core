@@ -1,15 +1,14 @@
 import { type ElementNode } from './elementNode.js';
-import { isTextNode } from './utils.js';
-import { ElementText } from './intrinsicTypes.js';
+import { NodeType } from './nodeTypes.js';
 
 export default function (node: ElementNode): boolean {
-  const children: ElementNode[] = [];
+  const children = [];
   let hasOrder = false;
   let growSize = 0;
   for (let i = 0; i < node.children.length; i++) {
     const c = node.children[i]!;
     // Filter empty text nodes which are place holders for <Show> and elements missing dimensions
-    if (isTextNode(c) || c.flexItem === false) {
+    if (c._type === NodeType.Text || c.flexItem === false) {
       continue;
     }
 
@@ -21,7 +20,7 @@ export default function (node: ElementNode): boolean {
       growSize += c.flexGrow;
     }
 
-    children.push(c as ElementNode);
+    children.push(c);
   }
 
   if (hasOrder) {
