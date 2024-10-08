@@ -529,7 +529,7 @@ export class ElementNode extends Object {
       } else if (v.length === 1) {
         this._style = isArray(v[0]) ? flattenStyles(v[0]) : v[0];
       } else {
-        this._style = flattenStyles(values);
+        this._style = flattenStyles(v);
       }
     } else {
       this._style = values;
