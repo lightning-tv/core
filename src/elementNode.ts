@@ -523,11 +523,13 @@ export class ElementNode extends Object {
 
   set style(values: (Styles | undefined)[] | Styles) {
     if (isArray(values)) {
-      // optimize for the most common case which is props.styles is undefined
-      if ((values.length === 2 && isArray(values[0])) || isArray(values[1])) {
-        this._style = flattenStyles(values);
+      const v = values.filter(Boolean);
+      if (v.length === 0) {
+        return;
+      } else if (v.length === 1) {
+        this._style = isArray(v[0]) ? flattenStyles(v[0]) : v[0];
       } else {
-        this._style = values[1] || values[0] || {};
+        this._style = flattenStyles(values);
       }
     } else {
       this._style = values;
