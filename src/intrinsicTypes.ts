@@ -122,11 +122,12 @@ export interface NodeProps
       >
     > {
   states?: NodeStates;
-  style?: NodeStyles | Array<NodeStyles | undefined>;
+  style?: NestedNodeStyles;
 }
 export interface NodeStyles extends NodeProps {
   [key: string]: NodeProps[keyof NodeProps] | NodeProps | undefined;
 }
+type NestedNodeStyles = NodeStyles | Array<NestedNodeStyles | undefined>;
 
 export interface TextProps
   extends RendererText,
@@ -154,12 +155,13 @@ export interface TextProps
       >
     > {
   states?: NodeStates;
-  style?: TextStyles | Array<TextStyles | undefined>;
+  style?: NestedTextStyles;
 }
 
 export interface TextStyles extends TextProps {
   [key: string]: TextProps[keyof TextProps] | TextProps | undefined;
 }
+type NestedTextStyles = TextStyles | Array<NestedTextStyles | undefined>;
 
 export type Styles = NodeStyles | TextStyles;
 
