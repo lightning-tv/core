@@ -97,3 +97,26 @@ export function flattenStyles(
 
   return result;
 }
+
+export function logRenderTree(node: ElementNode) {
+  const tree = [node];
+  let parent = node.parent;
+  while (parent) {
+    tree.push(parent);
+    parent = parent.parent;
+  }
+  tree.reverse();
+
+  let output = '';
+  tree.forEach((node, i) => {
+    const props = JSON.stringify(node._rendererProps, null, 2);
+    const parent = i === 0 ? 'rootNode' : `node${i - 1}`;
+    output += `
+      const props${i} = ${props};
+      props${i}.parent = ${parent};
+      const node${i} = renderer.createNode(props${i});
+    `;
+  });
+
+  return output;
+}
