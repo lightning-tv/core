@@ -24,8 +24,9 @@ import {
   isElementNode,
   isElementText,
   isTextNode,
+  logRenderTree,
 } from './utils.js';
-import { Config } from './config.js';
+import { Config, isDev } from './config.js';
 import type {
   RendererMain,
   INode,
@@ -191,6 +192,7 @@ export interface ElementNode extends RendererNode {
   _id: string | undefined;
   _queueDelete?: boolean;
   _parent: ElementNode | undefined;
+  _rendererProps?: any;
   _states?: States;
   _style?: Styles;
   _type: 'element' | 'textNode';
@@ -259,7 +261,7 @@ export interface ElementNode extends RendererNode {
     endValue: number,
   ) => void;
   onBeforeLayout?: (this: ElementNode, target: ElementNode) => boolean | void;
-  onCreate?: (target: ElementNode) => void;
+  onCreate?: (this: ElementNode, target: ElementNode) => void;
   onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
   onLayout?: (this: ElementNode, target: ElementNode) => void;
@@ -807,6 +809,10 @@ export class ElementNode extends Object {
     }
 
     node.rendered = true;
+    if (isDev) {
+      // Store props so we can recreate raw renderer code
+      node._rendererProps = props;
+    }
 
     if (node.autosize && parent.requiresLayout()) {
       node._layoutOnLoad();
@@ -893,6 +899,12 @@ function createEffectAccessor<T>(key: keyof StyleEffects) {
     get(this: ElementNode): T | undefined {
       return this.effects?.[key] as T | undefined;
     },
+  };
+}
+
+if (isDev) {
+  ElementNode.prototype.lngTree = function () {
+    return logRenderTree(this);
   };
 }
 
