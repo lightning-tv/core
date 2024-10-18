@@ -109,11 +109,17 @@ export function logRenderTree(node: ElementNode) {
 
   let output = '';
   tree.forEach((node, i) => {
+    node._rendererProps.parent = undefined;
+    node._rendererProps.shader = undefined;
     const props = JSON.stringify(node._rendererProps, null, 2);
+    const effects = node._effects
+      ? `props${i}.shader = convertEffectsToShader(${JSON.stringify(node._effects, null, 2)})`
+      : '';
     const parent = i === 0 ? 'rootNode' : `node${i - 1}`;
     output += `
       const props${i} = ${props};
       props${i}.parent = ${parent};
+      ${effects}
       const node${i} = renderer.createNode(props${i});
     `;
   });
