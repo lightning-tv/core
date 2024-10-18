@@ -109,6 +109,9 @@ export function logRenderTree(node: ElementNode) {
 
   let output = '';
   tree.forEach((node, i) => {
+    if (!node._rendererProps) {
+      return;
+    }
     node._rendererProps.parent = undefined;
     node._rendererProps.shader = undefined;
     const props = JSON.stringify(node._rendererProps, null, 2);
