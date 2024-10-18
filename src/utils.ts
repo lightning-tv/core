@@ -107,7 +107,18 @@ export function logRenderTree(node: ElementNode) {
   }
   tree.reverse();
 
-  let output = '';
+  let output = `
+function convertEffectsToShader(styleEffects) {
+  const effects = [];
+  let index = 0;
+
+  for (const [type, props] of Object.entries(styleEffects)) {
+    effects.push({ type, props });
+    index++;
+  }
+  return createShader('DynamicShader', { effects });
+}
+`;
   tree.forEach((node, i) => {
     if (!node._rendererProps) {
       return;
@@ -116,15 +127,15 @@ export function logRenderTree(node: ElementNode) {
     node._rendererProps.shader = undefined;
     const props = JSON.stringify(node._rendererProps, null, 2);
     const effects = node._effects
-      ? `props${i}.shader = convertEffectsToShader(${JSON.stringify(node._effects, null, 2)})`
+      ? `props${i}.shader = convertEffectsToShader(${JSON.stringify(node._effects, null, 2)});`
       : '';
     const parent = i === 0 ? 'rootNode' : `node${i - 1}`;
     output += `
-      const props${i} = ${props};
-      props${i}.parent = ${parent};
-      ${effects}
-      const node${i} = renderer.createNode(props${i});
-    `;
+const props${i} = ${props};
+props${i}.parent = ${parent};
+${effects}
+const node${i} = renderer.createNode(props${i});
+`;
   });
 
   return output;
