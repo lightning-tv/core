@@ -174,6 +174,15 @@ const LightningRendererNonAnimatingProps = [
 export type RendererNode = AddColorString<
   Partial<Omit<INodeProps, 'parent' | 'shader'>>
 >;
+type AnimationEvents = 'animating' | 'tick' | 'finished';
+type AnimationEventHandler = (
+  controller: IAnimationController,
+  name: string,
+  endValue: number,
+  props?: any,
+) => void;
+type NodeEvents = 'loaded' | 'failed' | 'freed';
+type EventHandler = (target: ElementNode, event?: Event) => void;
 export interface ElementNode extends RendererNode {
   [key: string]: unknown;
 
@@ -188,7 +197,6 @@ export interface ElementNode extends RendererNode {
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
   _effects?: StyleEffects;
-  _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
   _id: string | undefined;
   _queueDelete?: boolean;
   _parent: ElementNode | undefined;
@@ -250,16 +258,8 @@ export interface ElementNode extends RendererNode {
   transition?: Record<string, AnimationSettings | true | false> | true | false;
 
   // Events
-  onAnimationFinished?: (
-    controller: IAnimationController,
-    propKey: string,
-    endValue: number,
-  ) => void;
-  onAnimationStarted?: (
-    controller: IAnimationController,
-    propKey: string,
-    endValue: number,
-  ) => void;
+  onAnimation?: Record<AnimationEvents, AnimationEventHandler>;
+  onEvent?: Record<NodeEvents, EventHandler>;
   onCreate?: (this: ElementNode, target: ElementNode) => void;
   onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
@@ -378,16 +378,19 @@ export class ElementNode extends Object {
         animationSettings,
       );
 
-      if (isFunc(this.onAnimationStarted)) {
-        animationController.once('animating', (controller) => {
-          this.onAnimationStarted?.call(this, controller, name, value);
-        });
-      }
-
-      if (isFunc(this.onAnimationFinished)) {
-        animationController.once('stopped', (controller) => {
-          this.onAnimationFinished?.call(this, controller, name, value);
-        });
+      if (this.onAnimation) {
+        const animationEvents = Object.keys(
+          this.onAnimation,
+        ) as AnimationEvents[];
+        for (const event of animationEvents) {
+          const handler = this.onAnimation[event];
+          animationController.on(
+            event,
+            (controller: IAnimationController, props?: any) => {
+              handler.call(this, controller, name, value, props);
+            },
+          );
+        }
       }
 
       return animationController.start();
@@ -507,19 +510,6 @@ export class ElementNode extends Object {
         this.parent.updateLayout();
       }
     }
-  }
-
-  // Must be set before render
-  set onEvents(
-    events: Array<[string, (target: ElementNode, event?: any) => void]>,
-  ) {
-    this._events = events;
-  }
-
-  get onEvents():
-    | Array<[string, (target: ElementNode, event?: any) => void]>
-    | undefined {
-    return this._events;
   }
 
   set style(values: (Styles | undefined)[] | Styles) {
@@ -822,10 +812,11 @@ export class ElementNode extends Object {
 
     isFunc(this.onCreate) && this.onCreate.call(this, node);
 
-    node.onEvents &&
-      node.onEvents.forEach(([name, handler]) => {
+    if (node.onEvent) {
+      for (const [name, handler] of Object.entries(node.onEvent)) {
         (node.lng as INode).on(name, (inode, data) => handler(node, data));
-      });
+      }
+    }
 
     // L3 Inspector adds div to the lng object
     //@ts-expect-error - div is not in the typings
