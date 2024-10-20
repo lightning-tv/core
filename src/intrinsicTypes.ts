@@ -125,7 +125,7 @@ export interface NodeProps
   style?: NestedNodeStyles;
 }
 export interface NodeStyles extends NodeProps {
-  [key: string]: NodeProps[keyof NodeProps] | NodeProps | undefined;
+  [key: `$${string}`]: NodeProps;
 }
 type NestedNodeStyles = NodeStyles | Array<NestedNodeStyles | undefined>;
 
@@ -159,7 +159,7 @@ export interface TextProps
 }
 
 export interface TextStyles extends TextProps {
-  [key: string]: TextProps[keyof TextProps] | TextProps | undefined;
+  [key: `$${string}`]: TextProps;
 }
 type NestedTextStyles = TextStyles | Array<NestedTextStyles | undefined>;
 

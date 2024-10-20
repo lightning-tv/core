@@ -69,7 +69,7 @@ export function keyExists(
   obj: Record<string, unknown>,
   keys: (string | number | symbol)[],
 ) {
-  for (const key of keys) {
+  for (const key in keys) {
     if (key in obj) {
       return true;
     }

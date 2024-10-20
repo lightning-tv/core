@@ -106,8 +106,8 @@ const updateFocusPath = (
   let current = currentFocusedElm;
   const fp: ElementNode[] = [];
   while (current) {
-    if (!current.states.has('focus') || current === currentFocusedElm) {
-      current.states.add('focus');
+    if (!current.states.has('$focus') || current === currentFocusedElm) {
+      current.states.add('$focus');
       current.onFocus?.call(current, currentFocusedElm, prevFocusedElm);
       current.onFocusChanged?.call(
         current,
@@ -122,7 +122,7 @@ const updateFocusPath = (
 
   focusPath.forEach((elm) => {
     if (!fp.includes(elm)) {
-      elm.states.remove('focus');
+      elm.states.remove('$focus');
       elm.onBlur?.call(elm, currentFocusedElm, prevFocusedElm);
       elm.onFocusChanged?.call(elm, false, currentFocusedElm, prevFocusedElm);
     }

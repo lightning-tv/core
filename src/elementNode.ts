@@ -260,7 +260,6 @@ export interface ElementNode extends RendererNode {
     propKey: string,
     endValue: number,
   ) => void;
-  onBeforeLayout?: (this: ElementNode, target: ElementNode) => boolean | void;
   onCreate?: (this: ElementNode, target: ElementNode) => void;
   onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
@@ -614,7 +613,7 @@ export class ElementNode extends Object {
   }
 
   requiresLayout() {
-    return this.display === 'flex' || this.onBeforeLayout || this.onLayout;
+    return this.display === 'flex' || this.onLayout;
   }
 
   set updateLayoutOn(v: any) {
@@ -629,10 +628,6 @@ export class ElementNode extends Object {
     if (this.hasChildren) {
       log('Layout: ', this);
       let changedLayout = false;
-      if (isFunc(this.onBeforeLayout)) {
-        console.warn('onBeforeLayout is deprecated');
-        changedLayout = this.onBeforeLayout.call(this, this) || false;
-      }
 
       if (this.display === 'flex') {
         if (calculateFlex(this) || changedLayout) {
@@ -664,18 +659,17 @@ export class ElementNode extends Object {
       const stylesToUndo: { [key: string]: any } = {};
 
       this._undoStyles.forEach((styleKey) => {
+        if (isDev) {
+          if (!this.style[styleKey]) {
+            console.warn('fallback style key not found: ', styleKey);
+          }
+        }
         stylesToUndo[styleKey] = this.style[styleKey];
       });
 
       const newStyles: Styles = states.reduce((acc, state) => {
-        const styles = this.style[state];
-        if (styles) {
-          acc = {
-            ...acc,
-            ...styles,
-          };
-        }
-        return acc;
+        const styles = this.style![state];
+        return styles ? { ...acc, ...styles } : acc;
       }, {});
 
       this._undoStyles = Object.keys(newStyles);
