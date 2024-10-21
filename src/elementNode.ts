@@ -73,7 +73,9 @@ function convertEffectsToShader(
   const effects: EffectDescUnion[] = [];
 
   for (const [type, props] of Object.entries(styleEffects)) {
-    effects.push({ type, props } as EffectDescUnion);
+    if (type !== '_shader') {
+      effects.push({ type, props } as EffectDescUnion);
+    }
   }
   return createShader('DynamicShader', { effects });
 }
