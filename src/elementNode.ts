@@ -282,8 +282,7 @@ export class ElementNode extends Object {
   set effects(v: StyleEffects) {
     this._effects = v;
     if (this.rendered) {
-      v._shader = v._shader || convertEffectsToShader(v);
-      this.shader = v._shader;
+      this.shader = convertEffectsToShader(v);
     }
   }
 
@@ -692,15 +691,18 @@ export class ElementNode extends Object {
         }, stylesToUndo || {});
       }
 
-      this._undoStyles = Object.keys(newStyles);
+      if (newStyles) {
+        this._undoStyles = Object.keys(newStyles);
+        // Apply transition first
+        if (newStyles.transition !== undefined) {
+          this.transition = newStyles.transition as Styles['transition'];
+        }
 
-      // Apply transition first
-      if (newStyles.transition !== undefined) {
-        this.transition = newStyles.transition as Styles['transition'];
+        // Apply the styles
+        Object.assign(this, newStyles);
+      } else {
+        this._undoStyles = [];
       }
-
-      // Apply the styles
-      Object.assign(this, newStyles);
     }
   }
 
