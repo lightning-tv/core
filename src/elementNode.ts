@@ -71,11 +71,9 @@ function convertEffectsToShader(
   styleEffects: StyleEffects,
 ): ShaderController<'DynamicShader'> {
   const effects: EffectDescUnion[] = [];
-  let index = 0;
 
   for (const [type, props] of Object.entries(styleEffects)) {
-    effects.push({ name: `effect${index}`, type, props } as EffectDescUnion);
-    index++;
+    effects.push({ type, props } as EffectDescUnion);
   }
   return createShader('DynamicShader', { effects });
 }
@@ -719,7 +717,16 @@ export class ElementNode extends Object {
     props.parent = parent.lng as INode;
 
     if (node._effects) {
-      props.shader = convertEffectsToShader(node._effects);
+      let shader;
+      // states can change effects so don't use cached shader
+      if (node.style?.effects && !this._states) {
+        node.style._shader =
+          node.style._shader || convertEffectsToShader(node._effects);
+        shader = node.style._shader;
+      } else {
+        shader = convertEffectsToShader(node._effects);
+      }
+      props.shader = shader;
     }
 
     if (isElementText(node)) {

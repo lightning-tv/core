@@ -7,6 +7,7 @@ import {
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
   type ITextNodeProps,
+  ShaderController,
 } from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
@@ -124,8 +125,9 @@ export interface NodeProps
   states?: NodeStates;
   style?: NestedNodeStyles;
 }
-export interface NodeStyles extends NodeProps {
+export interface NodeStyles extends NewOmit<NodeProps, 'style'> {
   [key: `$${string}`]: NodeProps;
+  _shader?: ShaderController<'DynamicShader'>;
 }
 type NestedNodeStyles = NodeStyles | Array<NestedNodeStyles | undefined>;
 
@@ -158,8 +160,9 @@ export interface TextProps
   style?: NestedTextStyles;
 }
 
-export interface TextStyles extends TextProps {
+export interface TextStyles extends NewOmit<TextProps, 'style'> {
   [key: `$${string}`]: TextProps;
+  _shader?: ShaderController<'DynamicShader'>;
 }
 type NestedTextStyles = TextStyles | Array<NestedTextStyles | undefined>;
 
