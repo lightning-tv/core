@@ -281,7 +281,8 @@ export class ElementNode extends Object {
   set effects(v: StyleEffects) {
     this._effects = v;
     if (this.rendered) {
-      this.shader = convertEffectsToShader(v);
+      v._shader = v._shader || convertEffectsToShader(v);
+      this.shader = v._shader;
     }
   }
 
@@ -648,7 +649,7 @@ export class ElementNode extends Object {
 
       this._undoStyles.forEach((styleKey) => {
         if (isDev) {
-          if (!this.style[styleKey]) {
+          if (this.style[styleKey] === undefined) {
             console.warn('fallback style key not found: ', styleKey);
           }
         }
@@ -720,9 +721,10 @@ export class ElementNode extends Object {
       let shader;
       // states can change effects so don't use cached shader
       if (node.style?.effects && !this._states) {
-        node.style._shader =
-          node.style._shader || convertEffectsToShader(node._effects);
-        shader = node.style._shader;
+        const effects = node.style.effects;
+        effects._shader =
+          effects._shader || convertEffectsToShader(node._effects);
+        shader = effects._shader;
       } else {
         shader = convertEffectsToShader(node._effects);
       }

@@ -35,6 +35,7 @@ export interface Effects {
   glitch?: GlitchEffectProps;
   radialProgress?: RadialProgressEffectProps;
   holePunch?: any; // shoud be HolePunchEffectProps;
+  _shader?: ShaderController<'DynamicShader'>;
 }
 
 export interface BorderEffects {
@@ -127,7 +128,6 @@ export interface NodeProps
 }
 export interface NodeStyles extends NewOmit<NodeProps, 'style'> {
   [key: `$${string}`]: NodeProps;
-  _shader?: ShaderController<'DynamicShader'>;
 }
 type NestedNodeStyles = NodeStyles | Array<NestedNodeStyles | undefined>;
 
@@ -162,7 +162,6 @@ export interface TextProps
 
 export interface TextStyles extends NewOmit<TextProps, 'style'> {
   [key: `$${string}`]: TextProps;
-  _shader?: ShaderController<'DynamicShader'>;
 }
 type NestedTextStyles = TextStyles | Array<NestedTextStyles | undefined>;
 
