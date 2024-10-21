@@ -644,22 +644,35 @@ export class ElementNode extends Object {
     const states = this.states;
 
     if (this._undoStyles || (this.style && keyExists(this.style, states))) {
-      this._undoStyles = this._undoStyles || [];
-      const stylesToUndo: { [key: string]: any } = {};
-
-      this._undoStyles.forEach((styleKey) => {
-        if (isDev) {
-          if (this.style[styleKey] === undefined) {
-            console.warn('fallback style key not found: ', styleKey);
+      let stylesToUndo: { [key: string]: any } | undefined;
+      if (this._undoStyles && this._undoStyles.length) {
+        stylesToUndo = {};
+        this._undoStyles.forEach((styleKey) => {
+          if (isDev) {
+            if (this.style[styleKey] === undefined) {
+              console.warn('fallback style key not found: ', styleKey);
+            }
           }
-        }
-        stylesToUndo[styleKey] = this.style[styleKey];
-      });
+          stylesToUndo![styleKey] = this.style[styleKey];
+        });
+      }
 
-      const newStyles: Styles = states.reduce((acc, state) => {
-        const styles = this.style![state];
-        return styles ? { ...acc, ...styles } : acc;
-      }, {});
+      const numStates = states.length;
+      if (numStates === 0) {
+        Object.assign(this, stylesToUndo);
+        this._undoStyles = [];
+        return;
+      }
+
+      let newStyles: Styles;
+      if (numStates === 1) {
+        newStyles = this.style![states[0] as keyof Styles] as Styles;
+      } else {
+        newStyles = states.reduce((acc, state) => {
+          const styles = this.style![state];
+          return styles ? { ...acc, ...styles } : acc;
+        }, {});
+      }
 
       this._undoStyles = Object.keys(newStyles);
 
@@ -668,8 +681,9 @@ export class ElementNode extends Object {
         this.transition = newStyles.transition as Styles['transition'];
       }
 
+      newStyles = stylesToUndo ? { ...stylesToUndo, ...newStyles } : newStyles;
       // Apply the styles
-      Object.assign(this, stylesToUndo, newStyles);
+      Object.assign(this, newStyles);
     }
   }
 
