@@ -1,6 +1,6 @@
 {
   "name": "@lightningtv/core",
-  "version": "2.2.8",
+  "version": "2.2.9-beta.1",
   "description": "Lightning TV Core for Universal Renderers",
   "type": "module",
   "main": "./dist/src/index.js",

@@ -69,9 +69,11 @@ function flushLayout() {
 
 const shaderCache = new Map();
 function convertEffectsToShader(
+  node: ElementNode,
   styleEffects: StyleEffects,
 ): ShaderController<'DynamicShader'> {
-  const cacheKey = JSON.stringify(styleEffects);
+  const cacheKey =
+    `${node.width},${node.height}` + JSON.stringify(styleEffects);
   if (shaderCache.has(cacheKey)) {
     return shaderCache.get(cacheKey) as ShaderController<'DynamicShader'>;
   }
@@ -289,7 +291,7 @@ export class ElementNode extends Object {
   set effects(v: StyleEffects) {
     this._effects = v;
     if (this.rendered) {
-      this.shader = convertEffectsToShader(v);
+      this.shader = convertEffectsToShader(this, v);
     }
   }
 
@@ -758,7 +760,7 @@ export class ElementNode extends Object {
     props.parent = parent.lng as INode;
 
     if (node._effects) {
-      props.shader = convertEffectsToShader(node._effects);
+      props.shader = convertEffectsToShader(node, node._effects);
     }
 
     if (isElementText(node)) {
