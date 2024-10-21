@@ -667,11 +667,14 @@ export class ElementNode extends Object {
       let newStyles: Styles;
       if (numStates === 1) {
         newStyles = this.style![states[0] as keyof Styles] as Styles;
+        newStyles = stylesToUndo
+          ? { ...stylesToUndo, ...newStyles }
+          : newStyles;
       } else {
         newStyles = states.reduce((acc, state) => {
           const styles = this.style![state];
           return styles ? { ...acc, ...styles } : acc;
-        }, {});
+        }, stylesToUndo || {});
       }
 
       this._undoStyles = Object.keys(newStyles);
@@ -681,7 +684,6 @@ export class ElementNode extends Object {
         this.transition = newStyles.transition as Styles['transition'];
       }
 
-      newStyles = stylesToUndo ? { ...stylesToUndo, ...newStyles } : newStyles;
       // Apply the styles
       Object.assign(this, newStyles);
     }
