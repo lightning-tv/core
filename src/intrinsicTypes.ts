@@ -7,6 +7,8 @@ import {
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
   type ITextNodeProps,
+  type ShaderController,
+  type HolePunchEffectProps,
 } from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
@@ -33,7 +35,8 @@ export interface Effects {
   grayscale?: GrayscaleEffectProps;
   glitch?: GlitchEffectProps;
   radialProgress?: RadialProgressEffectProps;
-  holePunch?: any; // shoud be HolePunchEffectProps;
+  holePunch?: HolePunchEffectProps;
+  _shader?: ShaderController<'DynamicShader'>;
 }
 
 export interface BorderEffects {
