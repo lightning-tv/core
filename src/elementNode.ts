@@ -660,23 +660,38 @@ export class ElementNode extends Object {
     const states = this.states;
 
     if (this._undoStyles || (this.style && keyExists(this.style, states))) {
-      this._undoStyles = this._undoStyles || [];
-      const stylesToUndo: { [key: string]: any } = {};
+      let stylesToUndo: { [key: string]: any } | undefined;
+      if (this._undoStyles && this._undoStyles.length) {
+        stylesToUndo = {};
+        this._undoStyles.forEach((styleKey) => {
+          if (isDev) {
+            if (this.style[styleKey] === undefined) {
+              console.warn('fallback style key not found: ', styleKey);
+            }
+          }
+          stylesToUndo![styleKey] = this.style[styleKey];
+        });
+      }
 
-      this._undoStyles.forEach((styleKey) => {
-        stylesToUndo[styleKey] = this.style[styleKey];
-      });
+      const numStates = states.length;
+      if (numStates === 0) {
+        Object.assign(this, stylesToUndo);
+        this._undoStyles = [];
+        return;
+      }
 
-      const newStyles: Styles = states.reduce((acc, state) => {
-        const styles = this.style[state];
-        if (styles) {
-          acc = {
-            ...acc,
-            ...styles,
-          };
-        }
-        return acc;
-      }, {});
+      let newStyles: Styles;
+      if (numStates === 1) {
+        newStyles = this.style![states[0] as keyof Styles] as Styles;
+        newStyles = stylesToUndo
+          ? { ...stylesToUndo, ...newStyles }
+          : newStyles;
+      } else {
+        newStyles = states.reduce((acc, state) => {
+          const styles = this.style![state];
+          return styles ? { ...acc, ...styles } : acc;
+        }, stylesToUndo || {});
+      }
 
       this._undoStyles = Object.keys(newStyles);
 
@@ -686,7 +701,7 @@ export class ElementNode extends Object {
       }
 
       // Apply the styles
-      Object.assign(this, stylesToUndo, newStyles);
+      Object.assign(this, newStyles);
     }
   }
 
