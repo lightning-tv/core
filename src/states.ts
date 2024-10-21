@@ -27,7 +27,8 @@ export default class States extends Array<DollarString> {
   }
 
   has(state: DollarString) {
-    return this.indexOf(state) >= 0;
+    // temporary check for $ prefix
+    return this.indexOf(state) >= 0 || this.indexOf(`$${state}`) >= 0;
   }
 
   is(state: DollarString) {
