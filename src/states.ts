@@ -64,7 +64,17 @@ export default class States extends Array<string> {
       this.push(newStates);
     } else {
       for (const state in newStates) {
-        this.toggle(state, newStates[state]);
+        const value = newStates[state];
+        if (value) {
+          if (!this.has(state)) {
+            this.push(state);
+          }
+        } else {
+          const stateIndexToRemove = this.indexOf(state);
+          if (stateIndexToRemove >= 0) {
+            this.splice(stateIndexToRemove, 1);
+          }
+        }
       }
     }
     return this;
