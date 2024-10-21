@@ -531,6 +531,11 @@ export class ElementNode extends Object {
   }
 
   set style(values: (Styles | undefined)[] | Styles) {
+    if (this._style) {
+      console.warn('Style already set and should be kept read only');
+      // return;
+    }
+
     if (isArray(values)) {
       const v = values.filter(Boolean);
       if (v.length === 0) {
@@ -759,10 +764,6 @@ export class ElementNode extends Object {
     props.y = props.y || 0;
     props.parent = parent.lng as INode;
 
-    if (node._effects) {
-      props.shader = convertEffectsToShader(node, node._effects);
-    }
-
     if (isElementText(node)) {
       const textProps = props as TextProps;
       if (Config.fontSettings) {
@@ -799,6 +800,10 @@ export class ElementNode extends Object {
         }
       }
 
+      if (node._effects) {
+        props.shader = convertEffectsToShader(node, node._effects);
+      }
+
       log('Rendering: ', this, props);
       node.lng = renderer.createTextNode(props as unknown as ITextNodeProps);
       if (parent.requiresLayout()) {
@@ -827,6 +832,10 @@ export class ElementNode extends Object {
           // to set color '#ffffffff'
           props.color = 0x00000000;
         }
+      }
+
+      if (node._effects) {
+        props.shader = convertEffectsToShader(node, node._effects);
       }
 
       log('Rendering: ', this, props);
