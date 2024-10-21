@@ -71,11 +71,9 @@ function convertEffectsToShader(
   styleEffects: StyleEffects,
 ): ShaderController<'DynamicShader'> {
   const effects: EffectDescUnion[] = [];
-  let index = 0;
 
   for (const [type, props] of Object.entries(styleEffects)) {
-    effects.push({ name: `effect${index}`, type, props } as EffectDescUnion);
-    index++;
+    effects.push({ type, props } as EffectDescUnion);
   }
   return createShader('DynamicShader', { effects });
 }
@@ -174,6 +172,15 @@ const LightningRendererNonAnimatingProps = [
 export type RendererNode = AddColorString<
   Partial<Omit<INodeProps, 'parent' | 'shader'>>
 >;
+type AnimationEvents = 'animating' | 'tick' | 'finished';
+type AnimationEventHandler = (
+  controller: IAnimationController,
+  name: string,
+  endValue: number,
+  props?: any,
+) => void;
+type NodeEvents = 'loaded' | 'failed' | 'freed';
+type EventHandler = (target: ElementNode, event?: Event) => void;
 export interface ElementNode extends RendererNode {
   [key: string]: unknown;
 
@@ -188,7 +195,6 @@ export interface ElementNode extends RendererNode {
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
   _effects?: StyleEffects;
-  _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
   _id: string | undefined;
   _queueDelete?: boolean;
   _parent: ElementNode | undefined;
@@ -250,17 +256,8 @@ export interface ElementNode extends RendererNode {
   transition?: Record<string, AnimationSettings | true | false> | true | false;
 
   // Events
-  onAnimationFinished?: (
-    controller: IAnimationController,
-    propKey: string,
-    endValue: number,
-  ) => void;
-  onAnimationStarted?: (
-    controller: IAnimationController,
-    propKey: string,
-    endValue: number,
-  ) => void;
-  onBeforeLayout?: (this: ElementNode, target: ElementNode) => boolean | void;
+  onAnimation?: Record<AnimationEvents, AnimationEventHandler>;
+  onEvent?: Record<NodeEvents, EventHandler>;
   onCreate?: (this: ElementNode, target: ElementNode) => void;
   onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
@@ -284,7 +281,8 @@ export class ElementNode extends Object {
   set effects(v: StyleEffects) {
     this._effects = v;
     if (this.rendered) {
-      this.shader = convertEffectsToShader(v);
+      v._shader = v._shader || convertEffectsToShader(v);
+      this.shader = v._shader;
     }
   }
 
@@ -379,16 +377,19 @@ export class ElementNode extends Object {
         animationSettings,
       );
 
-      if (isFunc(this.onAnimationStarted)) {
-        animationController.once('animating', (controller) => {
-          this.onAnimationStarted?.call(this, controller, name, value);
-        });
-      }
-
-      if (isFunc(this.onAnimationFinished)) {
-        animationController.once('stopped', (controller) => {
-          this.onAnimationFinished?.call(this, controller, name, value);
-        });
+      if (this.onAnimation) {
+        const animationEvents = Object.keys(
+          this.onAnimation,
+        ) as AnimationEvents[];
+        for (const event of animationEvents) {
+          const handler = this.onAnimation[event];
+          animationController.on(
+            event,
+            (controller: IAnimationController, props?: any) => {
+              handler.call(this, controller, name, value, props);
+            },
+          );
+        }
       }
 
       return animationController.start();
@@ -510,19 +511,6 @@ export class ElementNode extends Object {
     }
   }
 
-  // Must be set before render
-  set onEvents(
-    events: Array<[string, (target: ElementNode, event?: any) => void]>,
-  ) {
-    this._events = events;
-  }
-
-  get onEvents():
-    | Array<[string, (target: ElementNode, event?: any) => void]>
-    | undefined {
-    return this._events;
-  }
-
   set style(values: (Styles | undefined)[] | Styles) {
     if (isArray(values)) {
       const v = values.filter(Boolean);
@@ -614,7 +602,7 @@ export class ElementNode extends Object {
   }
 
   requiresLayout() {
-    return this.display === 'flex' || this.onBeforeLayout || this.onLayout;
+    return this.display === 'flex' || this.onLayout;
   }
 
   set updateLayoutOn(v: any) {
@@ -629,10 +617,6 @@ export class ElementNode extends Object {
     if (this.hasChildren) {
       log('Layout: ', this);
       let changedLayout = false;
-      if (isFunc(this.onBeforeLayout)) {
-        console.warn('onBeforeLayout is deprecated');
-        changedLayout = this.onBeforeLayout.call(this, this) || false;
-      }
 
       if (this.display === 'flex') {
         if (calculateFlex(this) || changedLayout) {
@@ -660,23 +644,38 @@ export class ElementNode extends Object {
     const states = this.states;
 
     if (this._undoStyles || (this.style && keyExists(this.style, states))) {
-      this._undoStyles = this._undoStyles || [];
-      const stylesToUndo: { [key: string]: any } = {};
+      let stylesToUndo: { [key: string]: any } | undefined;
+      if (this._undoStyles && this._undoStyles.length) {
+        stylesToUndo = {};
+        this._undoStyles.forEach((styleKey) => {
+          if (isDev) {
+            if (this.style[styleKey] === undefined) {
+              console.warn('fallback style key not found: ', styleKey);
+            }
+          }
+          stylesToUndo![styleKey] = this.style[styleKey];
+        });
+      }
 
-      this._undoStyles.forEach((styleKey) => {
-        stylesToUndo[styleKey] = this.style[styleKey];
-      });
+      const numStates = states.length;
+      if (numStates === 0) {
+        Object.assign(this, stylesToUndo);
+        this._undoStyles = [];
+        return;
+      }
 
-      const newStyles: Styles = states.reduce((acc, state) => {
-        const styles = this.style[state];
-        if (styles) {
-          acc = {
-            ...acc,
-            ...styles,
-          };
-        }
-        return acc;
-      }, {});
+      let newStyles: Styles;
+      if (numStates === 1) {
+        newStyles = this.style![states[0] as keyof Styles] as Styles;
+        newStyles = stylesToUndo
+          ? { ...stylesToUndo, ...newStyles }
+          : newStyles;
+      } else {
+        newStyles = states.reduce((acc, state) => {
+          const styles = this.style![state];
+          return styles ? { ...acc, ...styles } : acc;
+        }, stylesToUndo || {});
+      }
 
       this._undoStyles = Object.keys(newStyles);
 
@@ -686,7 +685,7 @@ export class ElementNode extends Object {
       }
 
       // Apply the styles
-      Object.assign(this, stylesToUndo, newStyles);
+      Object.assign(this, newStyles);
     }
   }
 
@@ -735,7 +734,17 @@ export class ElementNode extends Object {
     props.parent = parent.lng as INode;
 
     if (node._effects) {
-      props.shader = convertEffectsToShader(node._effects);
+      let shader;
+      // states can change effects so don't use cached shader
+      if (node.style?.effects && !this._states) {
+        const effects = node.style.effects;
+        effects._shader =
+          effects._shader || convertEffectsToShader(node._effects);
+        shader = effects._shader;
+      } else {
+        shader = convertEffectsToShader(node._effects);
+      }
+      props.shader = shader;
     }
 
     if (isElementText(node)) {
@@ -828,10 +837,11 @@ export class ElementNode extends Object {
 
     isFunc(this.onCreate) && this.onCreate.call(this, node);
 
-    node.onEvents &&
-      node.onEvents.forEach(([name, handler]) => {
+    if (node.onEvent) {
+      for (const [name, handler] of Object.entries(node.onEvent)) {
         (node.lng as INode).on(name, (inode, data) => handler(node, data));
-      });
+      }
+    }
 
     // L3 Inspector adds div to the lng object
     //@ts-expect-error - div is not in the typings

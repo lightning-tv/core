@@ -7,6 +7,7 @@ import {
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
   type ITextNodeProps,
+  ShaderController,
 } from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
@@ -34,6 +35,7 @@ export interface Effects {
   glitch?: GlitchEffectProps;
   radialProgress?: RadialProgressEffectProps;
   holePunch?: any; // shoud be HolePunchEffectProps;
+  _shader?: ShaderController<'DynamicShader'>;
 }
 
 export interface BorderEffects {
@@ -124,8 +126,8 @@ export interface NodeProps
   states?: NodeStates;
   style?: NestedNodeStyles;
 }
-export interface NodeStyles extends NodeProps {
-  [key: string]: NodeProps[keyof NodeProps] | NodeProps | undefined;
+export interface NodeStyles extends NewOmit<NodeProps, 'style'> {
+  [key: `$${string}`]: NodeProps;
 }
 type NestedNodeStyles = NodeStyles | Array<NestedNodeStyles | undefined>;
 
@@ -158,8 +160,8 @@ export interface TextProps
   style?: NestedTextStyles;
 }
 
-export interface TextStyles extends TextProps {
-  [key: string]: TextProps[keyof TextProps] | TextProps | undefined;
+export interface TextStyles extends NewOmit<TextProps, 'style'> {
+  [key: `$${string}`]: TextProps;
 }
 type NestedTextStyles = TextStyles | Array<NestedTextStyles | undefined>;
 
