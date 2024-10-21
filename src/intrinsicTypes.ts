@@ -36,7 +36,6 @@ export interface Effects {
   glitch?: GlitchEffectProps;
   radialProgress?: RadialProgressEffectProps;
   holePunch?: HolePunchEffectProps;
-  _shader?: ShaderController<'DynamicShader'>;
 }
 
 export interface BorderEffects {

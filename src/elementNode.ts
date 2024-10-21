@@ -67,17 +67,22 @@ function flushLayout() {
   }, 0);
 }
 
+const shaderCache = new Map();
 function convertEffectsToShader(
   styleEffects: StyleEffects,
 ): ShaderController<'DynamicShader'> {
-  const effects: EffectDescUnion[] = [];
-
-  for (const [type, props] of Object.entries(styleEffects)) {
-    if (type !== '_shader') {
-      effects.push({ type, props } as EffectDescUnion);
-    }
+  const cacheKey = JSON.stringify(styleEffects);
+  if (shaderCache.has(cacheKey)) {
+    return shaderCache.get(cacheKey) as ShaderController<'DynamicShader'>;
   }
-  return createShader('DynamicShader', { effects });
+
+  const effects: EffectDescUnion[] = [];
+  for (const [type, props] of Object.entries(styleEffects)) {
+    effects.push({ type, props } as EffectDescUnion);
+  }
+  const shader = createShader('DynamicShader', { effects });
+  shaderCache.set(cacheKey, shader);
+  return shader;
 }
 
 function borderAccessor(
@@ -753,17 +758,7 @@ export class ElementNode extends Object {
     props.parent = parent.lng as INode;
 
     if (node._effects) {
-      let shader;
-      // states can change effects so don't use cached shader
-      if (node.style?.effects && !this._states) {
-        const effects = node.style.effects;
-        effects._shader =
-          effects._shader || convertEffectsToShader(node._effects);
-        shader = effects._shader;
-      } else {
-        shader = convertEffectsToShader(node._effects);
-      }
-      props.shader = shader;
+      props.shader = convertEffectsToShader(node._effects);
     }
 
     if (isElementText(node)) {
