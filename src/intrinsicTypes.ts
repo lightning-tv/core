@@ -7,8 +7,8 @@ import {
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
   type ITextNodeProps,
-  type ShaderController,
   type HolePunchEffectProps,
+  IAnimationController,
 } from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
@@ -171,3 +171,13 @@ export type Styles = NodeStyles | TextStyles;
 export interface IntrinsicNodeProps extends NodeProps {}
 export interface IntrinsicNodeStyleProps extends NodeStyles {}
 export interface IntrinsicTextNodeStyleProps extends TextStyles {}
+
+export type AnimationEvents = 'animating' | 'tick' | 'finished';
+export type AnimationEventHandler = (
+  controller: IAnimationController,
+  name: string,
+  endValue: number,
+  props?: any,
+) => void;
+export type NodeEvents = 'loaded' | 'failed' | 'freed';
+export type EventHandler = (target: ElementNode, event?: Event) => void;
