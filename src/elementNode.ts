@@ -269,10 +269,51 @@ export interface ElementNode extends RendererNode {
   height?: number;
   zIndex?: number;
   transition?: Record<string, AnimationSettings | true | false> | true | false;
-
+  /**
+   * Optional handlers for animation events.
+   *
+   * Available animation events:
+   * - 'animating': Fired when the animation is in progress.
+   * - 'tick': Fired at each tick or frame update of the animation.
+   * - 'stopped': Fired when the animation stops.
+   *
+   * Each event handler is optional and maps to a corresponding event.
+   *
+   * @typedef {'animating' | 'tick' | 'stopped'} AnimationEvents
+   *
+   * @typedef {function(controller: IAnimationController, name: string, endValue: number, props?: any): void} AnimationEventHandler
+   *
+   * @type {Partial<Record<AnimationEvents, AnimationEventHandler>>}
+   *
+   * @property {AnimationEventHandler} [animating] - Handler for the 'animating' event.
+   * @property {AnimationEventHandler} [tick] - Handler for the 'tick' event.
+   * @property {AnimationEventHandler} [stopped] - Handler for the 'stopped' event.
+   *
+   * @see https://lightning-tv.github.io/solid/#/essentials/transitions?id=animation-callbacks
+   */
   onAnimation?: Partial<Record<AnimationEvents, AnimationEventHandler>>;
   onCreate?: (this: ElementNode, target: ElementNode) => void;
   onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
+  /**
+   * Listen to Events coming from the renderer
+   * @param NodeEvents/**
+   *
+   * Available events:
+   * - 'loaded'
+   * - 'failed'
+   * - 'freed'
+   * - 'inBounds'
+   * - 'outOfBounds'
+   * - 'inViewport'
+   * - 'outOfViewport'
+   *
+   * @typedef {'loaded' | 'failed' | 'freed' | 'inBounds' | 'outOfBounds' | 'inViewport' | 'outOfViewport'} NodeEvents
+   *
+   * @param {Partial<Record<NodeEvents, EventHandler>>} events - An object where the keys are event names from NodeEvents and the values are the respective event handlers.
+   * @returns {void}
+   *
+   * @see https://lightning-tv.github.io/solid/#/essentials/events
+   */
   onEvent?: Partial<Record<NodeEvents, EventHandler>>;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
   onLayout?: (this: ElementNode, target: ElementNode) => void;
