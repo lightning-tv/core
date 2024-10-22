@@ -179,5 +179,12 @@ export type AnimationEventHandler = (
   endValue: number,
   props?: any,
 ) => void;
-export type NodeEvents = 'loaded' | 'failed' | 'freed';
+export type NodeEvents =
+  | 'loaded'
+  | 'failed'
+  | 'freed'
+  | 'inBounds'
+  | 'outOfBounds'
+  | 'inViewport'
+  | 'outOfViewport';
 export type EventHandler = (target: ElementNode, event?: Event) => void;
