@@ -72,10 +72,17 @@ function convertEffectsToShader(
   node: ElementNode,
   styleEffects: StyleEffects,
 ): ShaderController<'DynamicShader'> {
-  const cacheKey =
-    `${node.width},${node.height}` + JSON.stringify(styleEffects);
-  if (shaderCache.has(cacheKey)) {
-    return shaderCache.get(cacheKey) as ShaderController<'DynamicShader'>;
+  let cacheKey: string | undefined;
+
+  if (Config.enableShaderCaching) {
+    const roundedAlpha = Math.round((node.alpha || 0) * 10) / 10; // Round to the first decimal
+    cacheKey =
+      `${node.width},${node.height},${roundedAlpha}` +
+      JSON.stringify(styleEffects);
+
+    if (shaderCache.has(cacheKey)) {
+      return shaderCache.get(cacheKey) as ShaderController<'DynamicShader'>;
+    }
   }
 
   const effects: EffectDescUnion[] = [];
@@ -83,7 +90,11 @@ function convertEffectsToShader(
     effects.push({ type, props } as EffectDescUnion);
   }
   const shader = createShader('DynamicShader', { effects });
-  shaderCache.set(cacheKey, shader);
+
+  if (Config.enableShaderCaching && cacheKey) {
+    shaderCache.set(cacheKey, shader);
+  }
+
   return shader;
 }
 
