@@ -270,10 +270,10 @@ export interface ElementNode extends RendererNode {
   zIndex?: number;
   transition?: Record<string, AnimationSettings | true | false> | true | false;
 
-  onAnimation?: Record<AnimationEvents, AnimationEventHandler>;
+  onAnimation?: Partial<Record<AnimationEvents, AnimationEventHandler>>;
   onCreate?: (this: ElementNode, target: ElementNode) => void;
   onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
-  onEvent?: Record<NodeEvents, EventHandler>;
+  onEvent?: Partial<Record<NodeEvents, EventHandler>>;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
   onLayout?: (this: ElementNode, target: ElementNode) => void;
   onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
@@ -399,7 +399,7 @@ export class ElementNode extends Object {
           animationController.on(
             event,
             (controller: IAnimationController, props?: any) => {
-              handler.call(this, controller, name, value, props);
+              handler!.call(this, controller, name, value, props);
             },
           );
         }
