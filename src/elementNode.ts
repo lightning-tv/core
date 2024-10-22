@@ -9,7 +9,6 @@ import {
   AddColorString,
   TextProps,
   TextNode,
-  NewOmit,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -81,7 +80,7 @@ function convertEffectsToShader(
       JSON.stringify(styleEffects);
 
     if (shaderCache.has(cacheKey)) {
-      return shaderCache.get(cacheKey) as ShaderController<'DynamicShader'>;
+      return shaderCache.get(cacheKey);
     }
   }
 
@@ -542,9 +541,11 @@ export class ElementNode extends Object {
   }
 
   set style(values: (Styles | undefined)[] | Styles) {
-    if (this._style) {
-      console.warn('Style already set and should be kept read only');
-      // return;
+    if (isDev && this._style) {
+      // Avoid processing style changes again
+      console.warn(
+        'Style already set: https://lightning-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
+      );
     }
 
     if (isArray(values)) {
