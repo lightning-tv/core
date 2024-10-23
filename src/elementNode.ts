@@ -574,6 +574,9 @@ export class ElementNode extends Object {
     }
 
     if (isArray(values)) {
+      console.warn(
+        'Array style values are deprecated, use combineStyles: https://lightning-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
+      );
       const v = values.filter(Boolean);
       if (v.length === 0) {
         return;
