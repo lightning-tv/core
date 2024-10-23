@@ -180,8 +180,10 @@ const handleKeyEvents = (
 ) => {
   if (keypress) {
     const key: KeyNameOrKeyCode = keypress.key || keypress.keyCode;
-    const mappedKeyHoldEvent = keyHoldMapEntries[key];
-    const mappedKeyEvent = keyMapEntries[key];
+    const mappedKeyHoldEvent =
+      keyHoldMapEntries[keypress.key] || keyHoldMapEntries[keypress.keyCode];
+    const mappedKeyEvent =
+      keyMapEntries[keypress.key] || keyMapEntries[keypress.keyCode];
     if (!mappedKeyHoldEvent) {
       propagateKeyDown(keypress, mappedKeyEvent, false);
     } else {
@@ -197,7 +199,8 @@ const handleKeyEvents = (
 
   if (keyup) {
     const key: KeyNameOrKeyCode = keyup.key || keyup.keyCode;
-    const mappedKeyEvent = keyMapEntries[key];
+    const mappedKeyEvent =
+      keyMapEntries[keyup.key] || keyMapEntries[keyup.keyCode];
     if (keyHoldTimeouts[key]) {
       clearTimeout(keyHoldTimeouts[key]);
       delete keyHoldTimeouts[key];
