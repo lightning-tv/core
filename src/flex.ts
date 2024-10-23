@@ -117,6 +117,8 @@ export default function (node: ElementNode): boolean {
     if (node.flexBoundary !== 'fixed') {
       const calculatedSize = start - gap;
       if (calculatedSize !== node[dimension]) {
+        // store the original size for Row & Column
+        node[`preFlex${dimension}`] = node[dimension];
         node[dimension] = calculatedSize;
         return true;
       }
