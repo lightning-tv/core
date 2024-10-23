@@ -296,7 +296,7 @@ export interface ElementNode extends RendererNode {
   onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
   /**
    * Listen to Events coming from the renderer
-   * @param NodeEvents/**
+   * @param NodeEvents
    *
    * Available events:
    * - 'loaded'
