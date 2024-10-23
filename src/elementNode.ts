@@ -22,6 +22,7 @@ import {
   isNumber,
   isFunc,
   keyExists,
+  flattenStyles,
   isINode,
   isElementNode,
   isElementText,
@@ -564,7 +565,7 @@ export class ElementNode extends Object {
     }
   }
 
-  set style(values: Styles) {
+  set style(values: (Styles | undefined)[] | Styles) {
     if (isDev && this._style) {
       // Avoid processing style changes again
       console.warn(
@@ -572,7 +573,18 @@ export class ElementNode extends Object {
       );
     }
 
-    this._style = values;
+    if (isArray(values)) {
+      const v = values.filter(Boolean);
+      if (v.length === 0) {
+        return;
+      } else if (v.length === 1) {
+        this._style = isArray(v[0]) ? flattenStyles(v[0]) : v[0];
+      } else {
+        this._style = flattenStyles(v);
+      }
+    } else {
+      this._style = values;
+    }
     // Keys set in JSX are more important
     for (const key in this._style) {
       // be careful of 0 values
