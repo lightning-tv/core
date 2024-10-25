@@ -7,7 +7,8 @@ import {
   type RadialGradientEffectProps,
   type RadialProgressEffectProps,
   type ITextNodeProps,
-  ShaderController,
+  type HolePunchEffectProps,
+  type IAnimationController,
 } from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
@@ -34,8 +35,7 @@ export interface Effects {
   grayscale?: GrayscaleEffectProps;
   glitch?: GlitchEffectProps;
   radialProgress?: RadialProgressEffectProps;
-  holePunch?: any; // shoud be HolePunchEffectProps;
-  _shader?: ShaderController<'DynamicShader'>;
+  holePunch?: HolePunchEffectProps;
 }
 
 export interface BorderEffects {
@@ -94,7 +94,7 @@ type CleanElementNode = NewOmit<
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
   extends NewOmit<ElementNode, '_type' | 'parent' | 'children'>,
-    RendererText {
+    NewOmit<RendererText, 'x' | 'y' | 'width' | 'height'> {
   _type: 'textNode';
   parent?: ElementNode;
   children: TextNode[];
@@ -124,12 +124,11 @@ export interface NodeProps
       >
     > {
   states?: NodeStates;
-  style?: NestedNodeStyles;
+  style?: NodeStyles;
 }
 export interface NodeStyles extends NewOmit<NodeProps, 'style'> {
   [key: `$${string}`]: NodeProps;
 }
-type NestedNodeStyles = NodeStyles | Array<NestedNodeStyles | undefined>;
 
 export interface TextProps
   extends RendererText,
@@ -157,13 +156,12 @@ export interface TextProps
       >
     > {
   states?: NodeStates;
-  style?: NestedTextStyles;
+  style?: TextStyles;
 }
 
 export interface TextStyles extends NewOmit<TextProps, 'style'> {
   [key: `$${string}`]: TextProps;
 }
-type NestedTextStyles = TextStyles | Array<NestedTextStyles | undefined>;
 
 export type Styles = NodeStyles | TextStyles;
 
@@ -171,3 +169,20 @@ export type Styles = NodeStyles | TextStyles;
 export interface IntrinsicNodeProps extends NodeProps {}
 export interface IntrinsicNodeStyleProps extends NodeStyles {}
 export interface IntrinsicTextNodeStyleProps extends TextStyles {}
+
+export type AnimationEvents = 'animating' | 'tick' | 'stopped';
+export type AnimationEventHandler = (
+  controller: IAnimationController,
+  name: string,
+  endValue: number,
+  props?: any,
+) => void;
+export type NodeEvents =
+  | 'loaded'
+  | 'failed'
+  | 'freed'
+  | 'inBounds'
+  | 'outOfBounds'
+  | 'inViewport'
+  | 'outOfViewport';
+export type EventHandler = (target: ElementNode, event?: Event) => void;

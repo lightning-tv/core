@@ -66,10 +66,17 @@ export default class States extends Array<DollarString> {
       this.push(newStates as DollarString); // Assert as DollarString
     } else {
       for (const state in newStates) {
-        this.toggle(
-          state as DollarString,
-          newStates[state as keyof NodeStates],
-        );
+        const value = newStates[state];
+        if (value) {
+          if (!this.has(state)) {
+            this.push(state);
+          }
+        } else {
+          const stateIndexToRemove = this.indexOf(state);
+          if (stateIndexToRemove >= 0) {
+            this.splice(stateIndexToRemove, 1);
+          }
+        }
       }
     }
     return this;

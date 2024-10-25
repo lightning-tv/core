@@ -7,6 +7,7 @@ interface Config {
   focusDebug: boolean;
   animationSettings?: AnimationSettings;
   animationsEnabled: boolean;
+  enableShaderCaching: boolean;
   fontSettings: Partial<TextProps>;
   rendererOptions?: Partial<RendererMainSettings>;
   setActiveElement: (elm: ElementNode) => void;
@@ -29,5 +30,6 @@ export const Config: Config = {
     fontFamily: 'Ubuntu',
     fontSize: 100,
   },
+  enableShaderCaching: true,
   setActiveElement: () => {},
 };

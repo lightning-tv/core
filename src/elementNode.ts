@@ -6,10 +6,13 @@ import {
   type AnimationSettings,
   type ElementText,
   type Styles,
+  type AnimationEvents,
+  type AnimationEventHandler,
   AddColorString,
   TextProps,
   TextNode,
-  NewOmit,
+  NodeEvents,
+  EventHandler,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -67,15 +70,35 @@ function flushLayout() {
   }, 0);
 }
 
+const shaderCache = new Map();
 function convertEffectsToShader(
+  node: ElementNode,
   styleEffects: StyleEffects,
 ): ShaderController<'DynamicShader'> {
-  const effects: EffectDescUnion[] = [];
+  let cacheKey: string | undefined;
 
+  if (Config.enableShaderCaching) {
+    const roundedAlpha = Math.round((node.alpha || 0) * 10) / 10; // Round to the first decimal
+    cacheKey =
+      `${node.width},${node.height},${roundedAlpha}` +
+      JSON.stringify(styleEffects);
+
+    if (shaderCache.has(cacheKey)) {
+      return shaderCache.get(cacheKey);
+    }
+  }
+
+  const effects: EffectDescUnion[] = [];
   for (const [type, props] of Object.entries(styleEffects)) {
     effects.push({ type, props } as EffectDescUnion);
   }
-  return createShader('DynamicShader', { effects });
+  const shader = createShader('DynamicShader', { effects });
+
+  if (Config.enableShaderCaching && cacheKey) {
+    shaderCache.set(cacheKey, shader);
+  }
+
+  return shader;
 }
 
 function borderAccessor(
@@ -248,18 +271,58 @@ export interface ElementNode extends RendererNode {
   marginLeft?: number;
   marginRight?: number;
   marginTop?: number;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
   zIndex?: number;
   transition?: Record<string, AnimationSettings | true | false> | true | false;
-
-  // Events
-  onAnimation?: Record<AnimationEvents, AnimationEventHandler>;
-  onEvent?: Record<NodeEvents, EventHandler>;
+  /**
+   * Optional handlers for animation events.
+   *
+   * Available animation events:
+   * - 'animating': Fired when the animation is in progress.
+   * - 'tick': Fired at each tick or frame update of the animation.
+   * - 'stopped': Fired when the animation stops.
+   *
+   * Each event handler is optional and maps to a corresponding event.
+   *
+   * @typedef {'animating' | 'tick' | 'stopped'} AnimationEvents
+   *
+   * @typedef {function(controller: IAnimationController, name: string, endValue: number, props?: any): void} AnimationEventHandler
+   *
+   * @type {Partial<Record<AnimationEvents, AnimationEventHandler>>}
+   *
+   * @property {AnimationEventHandler} [animating] - Handler for the 'animating' event.
+   * @property {AnimationEventHandler} [tick] - Handler for the 'tick' event.
+   * @property {AnimationEventHandler} [stopped] - Handler for the 'stopped' event.
+   *
+   * @see https://lightning-tv.github.io/solid/#/essentials/transitions?id=animation-callbacks
+   */
+  onAnimation?: Partial<Record<AnimationEvents, AnimationEventHandler>>;
   onCreate?: (this: ElementNode, target: ElementNode) => void;
   onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
+  /**
+   * Listen to Events coming from the renderer
+   * @param NodeEvents
+   *
+   * Available events:
+   * - 'loaded'
+   * - 'failed'
+   * - 'freed'
+   * - 'inBounds'
+   * - 'outOfBounds'
+   * - 'inViewport'
+   * - 'outOfViewport'
+   *
+   * @typedef {'loaded' | 'failed' | 'freed' | 'inBounds' | 'outOfBounds' | 'inViewport' | 'outOfViewport'} NodeEvents
+   *
+   * @param {Partial<Record<NodeEvents, EventHandler>>} events - An object where the keys are event names from NodeEvents and the values are the respective event handlers.
+   * @returns {void}
+   *
+   * @see https://lightning-tv.github.io/solid/#/essentials/events
+   */
+  onEvent?: Partial<Record<NodeEvents, EventHandler>>;
   onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
   onLayout?: (this: ElementNode, target: ElementNode) => void;
   onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
@@ -281,8 +344,7 @@ export class ElementNode extends Object {
   set effects(v: StyleEffects) {
     this._effects = v;
     if (this.rendered) {
-      v._shader = v._shader || convertEffectsToShader(v);
-      this.shader = v._shader;
+      this.shader = convertEffectsToShader(this, v);
     }
   }
 
@@ -386,7 +448,7 @@ export class ElementNode extends Object {
           animationController.on(
             event,
             (controller: IAnimationController, props?: any) => {
-              handler.call(this, controller, name, value, props);
+              handler!.call(this, controller, name, value, props);
             },
           );
         }
@@ -512,7 +574,17 @@ export class ElementNode extends Object {
   }
 
   set style(values: (Styles | undefined)[] | Styles) {
+    if (isDev && this._style) {
+      // Avoid processing style changes again
+      console.warn(
+        'Style already set: https://lightning-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
+      );
+    }
+
     if (isArray(values)) {
+      console.warn(
+        'Array style values are deprecated, use combineStyles: https://lightning-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
+      );
       const v = values.filter(Boolean);
       if (v.length === 0) {
         return;
@@ -677,15 +749,18 @@ export class ElementNode extends Object {
         }, stylesToUndo || {});
       }
 
-      this._undoStyles = Object.keys(newStyles);
+      if (newStyles) {
+        this._undoStyles = Object.keys(newStyles);
+        // Apply transition first
+        if (newStyles.transition !== undefined) {
+          this.transition = newStyles.transition as Styles['transition'];
+        }
 
-      // Apply transition first
-      if (newStyles.transition !== undefined) {
-        this.transition = newStyles.transition as Styles['transition'];
+        // Apply the styles
+        Object.assign(this, newStyles);
+      } else {
+        this._undoStyles = [];
       }
-
-      // Apply the styles
-      Object.assign(this, newStyles);
     }
   }
 
@@ -733,20 +808,6 @@ export class ElementNode extends Object {
     props.y = props.y || 0;
     props.parent = parent.lng as INode;
 
-    if (node._effects) {
-      let shader;
-      // states can change effects so don't use cached shader
-      if (node.style?.effects && !this._states) {
-        const effects = node.style.effects;
-        effects._shader =
-          effects._shader || convertEffectsToShader(node._effects);
-        shader = effects._shader;
-      } else {
-        shader = convertEffectsToShader(node._effects);
-      }
-      props.shader = shader;
-    }
-
     if (isElementText(node)) {
       const textProps = props as TextProps;
       if (Config.fontSettings) {
@@ -783,6 +844,10 @@ export class ElementNode extends Object {
         }
       }
 
+      if (node._effects) {
+        props.shader = convertEffectsToShader(node, node._effects);
+      }
+
       log('Rendering: ', this, props);
       node.lng = renderer.createTextNode(props as unknown as ITextNodeProps);
       if (parent.requiresLayout()) {
@@ -811,6 +876,10 @@ export class ElementNode extends Object {
           // to set color '#ffffffff'
           props.color = 0x00000000;
         }
+      }
+
+      if (node._effects) {
+        props.shader = convertEffectsToShader(node, node._effects);
       }
 
       log('Rendering: ', this, props);
