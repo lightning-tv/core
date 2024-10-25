@@ -195,15 +195,6 @@ const LightningRendererNonAnimatingProps = [
 export type RendererNode = AddColorString<
   Partial<Omit<INodeProps, 'parent' | 'shader'>>
 >;
-type AnimationEvents = 'animating' | 'tick' | 'finished';
-type AnimationEventHandler = (
-  controller: IAnimationController,
-  name: string,
-  endValue: number,
-  props?: any,
-) => void;
-type NodeEvents = 'loaded' | 'failed' | 'freed';
-type EventHandler = (target: ElementNode, event?: Event) => void;
 export interface ElementNode extends RendererNode {
   [key: string]: unknown;
 
