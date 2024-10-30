@@ -8,6 +8,7 @@ import type {
   FocusNode,
   KeyHandler,
 } from './focusKeyTypes.js';
+import { isFunction } from './utils.js';
 
 declare module '@lightningtv/core' {
   interface ElementNode extends FocusNode {}
@@ -145,8 +146,11 @@ const propagateKeyDown = (
   for (const elm of focusPath) {
     finalFocusElm = finalFocusElm || elm;
     if (mappedEvent) {
-      const onKeyHandler = elm[`on${mappedEvent}`] as KeyHandler;
-      if (onKeyHandler?.call(elm, e, elm, finalFocusElm) === true) {
+      const onKeyHandler = elm[`on${mappedEvent}`];
+      if (
+        isFunction(onKeyHandler) &&
+        onKeyHandler.call(elm, e, elm, finalFocusElm) === true
+      ) {
         break;
       }
     } else {
@@ -154,6 +158,7 @@ const propagateKeyDown = (
     }
     const fallbackFunction = isHold ? elm.onKeyHold : elm.onKeyPress;
     if (
+      isFunction(fallbackFunction) &&
       fallbackFunction?.call(elm, e, mappedEvent, elm, finalFocusElm) === true
     ) {
       break;
