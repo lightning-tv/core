@@ -159,7 +159,7 @@ const propagateKeyDown = (
     const fallbackFunction = isHold ? elm.onKeyHold : elm.onKeyPress;
     if (
       isFunction(fallbackFunction) &&
-      fallbackFunction?.call(elm, e, mappedEvent, elm, finalFocusElm) === true
+      fallbackFunction.call(elm, e, mappedEvent, elm, finalFocusElm) === true
     ) {
       break;
     }
