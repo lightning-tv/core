@@ -23,6 +23,9 @@ export function log(
 export const isFunc = (obj: unknown): obj is CallableFunction =>
   obj instanceof Function;
 
+export const isFunction = (obj: unknown): obj is Function =>
+  typeof obj === 'function';
+
 export function isObject(
   item: unknown,
 ): item is Record<string | number | symbol, unknown> {
