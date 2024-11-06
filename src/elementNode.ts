@@ -900,9 +900,7 @@ export class ElementNode extends Object {
 
     if (node.onEvent) {
       for (const [name, handler] of Object.entries(node.onEvent)) {
-        (node.lng as INode).on(name, (inode, data) =>
-          handler.call(node, node, data),
-        );
+        node.lng.on(name, (_inode, data) => handler.call(node, node, data));
       }
     }
 
