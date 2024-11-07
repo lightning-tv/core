@@ -1,0 +1,27 @@
+{
+  "plugins:": {
+    "@release-it/conventional-changelog": {
+      "path": ".",
+      "infile": "CHANGELOG.md",
+      "preset": "conventionalcommits",
+      "gitRawCommitsOpts": {
+        "path": "."
+      }
+    }
+  },
+  "git": {
+    "commitMessage": ":rocket: bump version v${version}",
+    "changelog": "npx auto-changelog --stdout --commit-limit false -u --template https://raw.githubusercontent.com/release-it/release-it/master/templates/changelog-compact.hbs"
+  },
+  "github": {
+    "release": true
+  },
+  "npm": {
+    "publish": true
+  },
+  "hooks": {
+    "before:init": ["git pull", "pnpm run lint"],
+    "after:bump": ["npx auto-changelog -p"],
+    "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
+  }
+}
