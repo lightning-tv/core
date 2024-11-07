@@ -889,14 +889,6 @@ export class ElementNode extends Object {
       node._layoutOnLoad();
     }
 
-    if (node.onFail) {
-      node.lng.on('failed', node.onFail);
-    }
-
-    if (node.onLoad) {
-      node.lng.on('loaded', node.onLoad);
-    }
-
     isFunc(this.onCreate) && this.onCreate.call(this, node);
 
     if (node.onEvent) {
