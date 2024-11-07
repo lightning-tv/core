@@ -93,7 +93,7 @@ export default function (node: ElementNode): boolean {
   }
 
   if (justify === 'flexStart') {
-    let start = 0;
+    let start = node.padding || 0;
     for (let i = 0; i < children.length; i++) {
       const c = children[i]!;
       c[prop] = start + (c[marginOne] || 0);
@@ -103,7 +103,7 @@ export default function (node: ElementNode): boolean {
     }
     // Update container size
     if (node.flexBoundary !== 'fixed') {
-      const calculatedSize = start - gap;
+      const calculatedSize = start - gap + (node.padding || 0);
       if (calculatedSize !== containerSize) {
         // store the original size for Row & Column
         node[`preFlex${dimension}`] = containerSize;

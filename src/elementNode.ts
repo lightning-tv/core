@@ -263,6 +263,7 @@ export interface ElementNode extends RendererNode {
   marginLeft?: number;
   marginRight?: number;
   marginTop?: number;
+  padding?: number;
   x: number;
   y: number;
   width: number;
