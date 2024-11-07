@@ -853,10 +853,12 @@ export class ElementNode extends Object {
         // Set width and height to parent less offset
         if (isNaN(props.width as number)) {
           props.width = (parent.width || 0) - props.x;
+          node._calcWidth = true;
         }
 
         if (isNaN(props.height as number)) {
           props.height = (parent.height || 0) - props.y;
+          node._calcHeight = true;
         }
 
         if (props.rtt && !props.color) {
