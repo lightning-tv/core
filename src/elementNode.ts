@@ -209,7 +209,6 @@ export interface ElementNode extends RendererNode {
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
   _effects?: StyleEffects;
-  _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
   _id: string | undefined;
   _queueDelete?: boolean;
   _parent: ElementNode | undefined;
@@ -890,14 +889,6 @@ export class ElementNode extends Object {
 
     if (node.autosize && parent.requiresLayout()) {
       node._layoutOnLoad();
-    }
-
-    if (node.onFail) {
-      node.lng.on('failed', node.onFail);
-    }
-
-    if (node.onLoad) {
-      node.lng.on('loaded', node.onLoad);
     }
 
     isFunc(this.onCreate) && this.onCreate.call(this, node);

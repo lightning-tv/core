@@ -1,23 +1,24 @@
 import { isArray, isString } from './utils.js';
 
+type DollarString = `$${string}`;
 export type NodeStates =
-  | string[]
-  | string
-  | Record<string, boolean | undefined>;
+  | DollarString[]
+  | DollarString
+  | Record<DollarString, boolean | undefined>;
 
-export default class States extends Array<string> {
+export default class States extends Array<DollarString> {
   private onChange: () => void;
 
   constructor(callback: () => void, initialState: NodeStates = {}) {
     if (isArray(initialState)) {
       super(...initialState);
     } else if (isString(initialState)) {
-      super(initialState);
+      super(initialState as DollarString); // Assert as DollarString
     } else {
       super(
         ...Object.entries(initialState)
           .filter(([_key, value]) => value)
-          .map(([key]) => key),
+          .map(([key]) => key as DollarString), // Assert as DollarString
       );
     }
 
@@ -25,15 +26,16 @@ export default class States extends Array<string> {
     return this;
   }
 
-  has(state: string) {
+  has(state: DollarString) {
+    // temporary check for $ prefix
+    return this.indexOf(state) >= 0 || this.indexOf(`$${state}`) >= 0;
+  }
+
+  is(state: DollarString) {
     return this.indexOf(state) >= 0;
   }
 
-  is(state: string) {
-    return this.indexOf(state) >= 0;
-  }
-
-  add(state: string) {
+  add(state: DollarString) {
     if (this.has(state)) {
       return;
     }
@@ -41,7 +43,7 @@ export default class States extends Array<string> {
     this.onChange();
   }
 
-  toggle(state: string, force?: boolean) {
+  toggle(state: DollarString, force?: boolean) {
     if (force === true) {
       this.add(state);
     } else if (force === false) {
@@ -61,16 +63,16 @@ export default class States extends Array<string> {
       this.push(...newStates);
     } else if (isString(newStates)) {
       this.length = 0; // Clear the current states
-      this.push(newStates);
+      this.push(newStates as DollarString); // Assert as DollarString
     } else {
       for (const state in newStates) {
-        const value = newStates[state];
+        const value = newStates[state as DollarString];
         if (value) {
-          if (!this.has(state)) {
-            this.push(state);
+          if (!this.has(state as DollarString)) {
+            this.push(state as DollarString);
           }
         } else {
-          const stateIndexToRemove = this.indexOf(state);
+          const stateIndexToRemove = this.indexOf(state as DollarString);
           if (stateIndexToRemove >= 0) {
             this.splice(stateIndexToRemove, 1);
           }
@@ -80,7 +82,7 @@ export default class States extends Array<string> {
     return this;
   }
 
-  remove(state: string) {
+  remove(state: DollarString) {
     const stateIndexToRemove = this.indexOf(state);
     if (stateIndexToRemove >= 0) {
       this.splice(stateIndexToRemove, 1);
