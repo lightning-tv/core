@@ -85,15 +85,13 @@ export default function (node: ElementNode): boolean {
         }
       : (c: ElementNode) => c;
 
-  if (isRow && node._calcHeight) {
+  if (isRow && node._calcHeight && !node.flexCrossBoundary) {
     // Assuming all the children have the same height
     node.height = children[0]?.height || node.height;
-  } else if (node._calcWidth) {
-    node.width = children[0]?.width || node.width;
   }
 
   if (justify === 'flexStart') {
-    let start = 0;
+    let start = node.padding || 0;
     for (let i = 0; i < children.length; i++) {
       const c = children[i]!;
       c[prop] = start + (c[marginOne] || 0);
@@ -103,7 +101,7 @@ export default function (node: ElementNode): boolean {
     }
     // Update container size
     if (node.flexBoundary !== 'fixed') {
-      const calculatedSize = start - gap;
+      const calculatedSize = start - gap + (node.padding || 0);
       if (calculatedSize !== containerSize) {
         // store the original size for Row & Column
         node[`preFlex${dimension}`] = containerSize;

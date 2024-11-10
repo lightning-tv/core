@@ -247,6 +247,7 @@ export interface ElementNode extends RendererNode {
   borderTop?: BorderStyle;
   display?: 'flex' | 'block';
   flexBoundary?: 'contain' | 'fixed';
+  flexCrossBoundary?: 'fixed'; // default is contain
   flexDirection?: 'row' | 'column';
   gap?: number;
   justifyContent?:
@@ -262,6 +263,7 @@ export interface ElementNode extends RendererNode {
   marginLeft?: number;
   marginRight?: number;
   marginTop?: number;
+  padding?: number;
   x: number;
   y: number;
   width: number;
