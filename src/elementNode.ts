@@ -566,29 +566,20 @@ export class ElementNode extends Object {
     }
   }
 
-  set style(values: (Styles | undefined)[] | Styles) {
+  set style(values: Styles | undefined | (() => Styles | undefined)) {
     if (isDev && this._style) {
       // Avoid processing style changes again
       console.warn(
         'Style already set: https://lightning-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
       );
     }
-
-    if (isArray(values)) {
-      console.warn(
-        'Array style values are deprecated, use combineStyles: https://lightning-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
-      );
-      const v = values.filter(Boolean);
-      if (v.length === 0) {
-        return;
-      } else if (v.length === 1) {
-        this._style = isArray(v[0]) ? flattenStyles(v[0]) : v[0];
-      } else {
-        this._style = flattenStyles(v);
-      }
+    // allow passing in memo function
+    if (isFunc(values)) {
+      this._style = values();
     } else {
       this._style = values;
     }
+
     // Keys set in JSX are more important
     for (const key in this._style) {
       // be careful of 0 values
