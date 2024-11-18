@@ -124,7 +124,7 @@ export interface NodeProps
       >
     > {
   states?: NodeStates;
-  style?: NodeStyles;
+  style?: NodeStyles | (() => NodeStyles);
 }
 export interface NodeStyles extends NewOmit<NodeProps, 'style'> {
   [key: `$${string}`]: NodeProps;
@@ -156,7 +156,7 @@ export interface TextProps
       >
     > {
   states?: NodeStates;
-  style?: TextStyles;
+  style?: TextStyles | (() => TextStyles);
 }
 
 export interface TextStyles extends NewOmit<TextProps, 'style'> {
