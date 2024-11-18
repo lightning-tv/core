@@ -566,18 +566,22 @@ export class ElementNode extends Object {
     }
   }
 
-  set style(values: Styles | undefined | (() => Styles | undefined)) {
+  set style(style: Styles | undefined | (() => Styles | undefined)) {
     if (isDev && this._style) {
       // Avoid processing style changes again
       console.warn(
         'Style already set: https://lightning-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
       );
     }
+
+    if (!style) {
+      return;
+    }
     // allow passing in memo function
-    if (isFunc(values)) {
-      this._style = values();
+    if (isFunc(style)) {
+      this._style = style();
     } else {
-      this._style = values;
+      this._style = style;
     }
 
     // Keys set in JSX are more important
