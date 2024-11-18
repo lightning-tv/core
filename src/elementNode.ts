@@ -566,7 +566,7 @@ export class ElementNode extends Object {
     }
   }
 
-  set style(style: Styles | undefined | (() => Styles | undefined)) {
+  set style(style: Styles | undefined) {
     if (isDev && this._style) {
       // Avoid processing style changes again
       console.warn(
@@ -577,12 +577,8 @@ export class ElementNode extends Object {
     if (!style) {
       return;
     }
-    // allow passing in memo function
-    if (isFunc(style)) {
-      this._style = style();
-    } else {
-      this._style = style;
-    }
+
+    this._style = style;
 
     // Keys set in JSX are more important
     for (const key in this._style) {
