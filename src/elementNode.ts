@@ -176,7 +176,6 @@ const LightningRendererNonAnimatingProps = [
   'rtt',
   'scrollable',
   'scrollY',
-  'src',
   'srcHeight',
   'srcWidth',
   'srcX',
@@ -193,7 +192,7 @@ const LightningRendererNonAnimatingProps = [
 ];
 
 export type RendererNode = AddColorString<
-  Partial<Omit<INodeProps, 'parent' | 'shader'>>
+  Partial<Omit<INodeProps, 'parent' | 'shader' | 'src'>>
 >;
 export interface ElementNode extends RendererNode {
   [key: string]: unknown;
@@ -595,6 +594,21 @@ export class ElementNode extends Object {
 
   get hasChildren() {
     return this.children.length > 0;
+  }
+
+  set src(src) {
+    if (typeof src === 'string') {
+      this.lng.src = src;
+      if (!this.color) {
+        this.color = 0xffffffff;
+      }
+    } else {
+      this.color = 0x00000000;
+    }
+  }
+
+  get src(): string | null | undefined {
+    return this.lng.src;
   }
 
   getChildById(id: string) {
