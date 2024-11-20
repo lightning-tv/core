@@ -599,7 +599,7 @@ export class ElementNode extends Object {
   set src(src) {
     if (typeof src === 'string') {
       this.lng.src = src;
-      if (!this.color) {
+      if (!this.color && this.rendered) {
         this.color = 0xffffffff;
       }
     } else {
