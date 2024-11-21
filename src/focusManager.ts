@@ -6,7 +6,7 @@ import type {
   KeyHoldOptions,
   KeyMap,
   FocusNode,
-  KeyHandler,
+  KeyPress,
 } from './focusKeyTypes.js';
 import { isFunction } from './utils.js';
 
@@ -180,6 +180,7 @@ const keyHoldCallback = (
 
 const handleKeyEvents = (
   delay: number,
+  keyPressDefault: KeyPress = 'KeyDown',
   keypress?: KeyboardEvent,
   keyup?: KeyboardEvent,
 ) => {
@@ -189,9 +190,8 @@ const handleKeyEvents = (
       keyHoldMapEntries[keypress.key] || keyHoldMapEntries[keypress.keyCode];
     const mappedKeyEvent =
       keyMapEntries[keypress.key] || keyMapEntries[keypress.keyCode];
-    if (!mappedKeyHoldEvent) {
-      propagateKeyDown(keypress, mappedKeyEvent, false);
-    } else {
+
+    if (mappedKeyHoldEvent) {
       if (keyHoldTimeouts[key]) {
         clearTimeout(keyHoldTimeouts[key]);
       }
@@ -199,6 +199,11 @@ const handleKeyEvents = (
         () => keyHoldCallback(keypress, mappedKeyHoldEvent),
         delay,
       );
+    } else if (
+      keyPressDefault === 'KeyDown' &&
+      !mappedKeyEvent?.endsWith('KeyUp')
+    ) {
+      propagateKeyDown(keypress, mappedKeyEvent, false);
     }
   }
 
@@ -210,6 +215,11 @@ const handleKeyEvents = (
       clearTimeout(keyHoldTimeouts[key]);
       delete keyHoldTimeouts[key];
       propagateKeyDown(keyup, mappedKeyEvent, false);
+    } else if (
+      keyPressDefault === 'KeyUp' ||
+      mappedKeyEvent?.endsWith('KeyUp')
+    ) {
+      propagateKeyDown(keyup, mappedKeyEvent, false);
     }
   }
 };
@@ -217,12 +227,14 @@ const handleKeyEvents = (
 interface FocusManagerOptions {
   userKeyMap?: Partial<KeyMap>;
   keyHoldOptions?: KeyHoldOptions;
+  keyPressDefault?: KeyPress;
   ownerContext?: (cb: () => void) => void;
 }
 
 export const useFocusManager = ({
   userKeyMap,
   keyHoldOptions,
+  keyPressDefault,
   ownerContext = (cb) => {
     cb();
   },
@@ -236,7 +248,7 @@ export const useFocusManager = ({
   }
 
   const delay = keyHoldOptions?.holdThreshold || DEFAULT_KEY_HOLD_THRESHOLD;
-  const runKeyEvent = handleKeyEvents.bind(null, delay);
+  const runKeyEvent = handleKeyEvents.bind(null, delay, keyPressDefault);
 
   // Owner context is for frameworks that need effects
   const keyPressHandler = (event: KeyboardEvent) =>
