@@ -9,6 +9,8 @@ import {
   type ITextNodeProps,
   type HolePunchEffectProps,
   type IAnimationController,
+  NodeLoadedPayload,
+  NodeFailedPayload,
 } from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
@@ -177,12 +179,24 @@ export type AnimationEventHandler = (
   endValue: number,
   props?: any,
 ) => void;
-export type NodeEvents =
-  | 'loaded'
-  | 'failed'
-  | 'freed'
-  | 'inBounds'
-  | 'outOfBounds'
-  | 'inViewport'
-  | 'outOfViewport';
-export type EventHandler = (target: ElementNode, event?: Event) => void;
+
+type EventPayloadMap = {
+  loaded: NodeLoadedPayload;
+  failed: NodeFailedPayload;
+  freed: Event;
+  inBounds: Event;
+  outOfBounds: Event;
+  inViewport: Event;
+  outOfViewport: Event;
+};
+
+type NodeEvents = keyof EventPayloadMap;
+
+type EventHandler<E extends NodeEvents> = (
+  target: ElementNode,
+  event?: EventPayloadMap[E],
+) => void;
+
+export type OnEvent = Partial<{
+  [K in NodeEvents]: EventHandler<K>;
+}>;

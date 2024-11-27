@@ -11,8 +11,7 @@ import {
   AddColorString,
   TextProps,
   TextNode,
-  NodeEvents,
-  EventHandler,
+  type OnEvent,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -22,7 +21,6 @@ import {
   isNumber,
   isFunc,
   keyExists,
-  flattenStyles,
   isINode,
   isElementNode,
   isElementText,
@@ -42,8 +40,6 @@ import type {
   ShaderController,
   RadialGradientEffectProps,
   RadialProgressEffectProps,
-  NodeFailedPayload,
-  NodeLoadedPayload,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -314,10 +310,8 @@ export interface ElementNode extends RendererNode {
    *
    * @see https://lightning-tv.github.io/solid/#/essentials/events
    */
-  onEvent?: Partial<Record<NodeEvents, EventHandler>>;
-  onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
+  onEvent?: OnEvent;
   onLayout?: (this: ElementNode, target: ElementNode) => void;
-  onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
 }
 
 export class ElementNode extends Object {
