@@ -12,6 +12,7 @@ import {
   TextProps,
   TextNode,
   type OnEvent,
+  NodeProps,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -274,10 +275,6 @@ export interface ElementNode extends RendererNode {
    * - 'stopped': Fired when the animation stops.
    *
    * Each event handler is optional and maps to a corresponding event.
-   *
-   * @typedef {'animating' | 'tick' | 'stopped'} AnimationEvents
-   *
-   * @typedef {function(controller: IAnimationController, name: string, endValue: number, props?: any): void} AnimationEventHandler
    *
    * @type {Partial<Record<AnimationEvents, AnimationEventHandler>>}
    *
@@ -656,6 +653,14 @@ export class ElementNode extends Object {
     return this.alpha === 0;
   }
 
+  /**
+   * Sets the autofocus state of the element.
+   * When set to a truthy value, the element will automatically gain focus.
+   * You can also set it to a signal to recalculate
+   *
+   * @param val - A value to determine if the element should autofocus.
+   *              A truthy value enables autofocus, otherwise disables it.
+   */
   set autofocus(val: any) {
     this._autofocus = val ? true : false;
     this._autofocus && this.setFocus();
@@ -707,7 +712,7 @@ export class ElementNode extends Object {
 
     const states = this.states;
 
-    if (this._undoStyles || (this.style && keyExists(this.style, states))) {
+    if (this._undoStyles || keyExists(this, states)) {
       let stylesToUndo: { [key: string]: any } | undefined;
       if (this._undoStyles && this._undoStyles.length) {
         stylesToUndo = {};
@@ -730,13 +735,13 @@ export class ElementNode extends Object {
 
       let newStyles: Styles;
       if (numStates === 1) {
-        newStyles = this.style![states[0] as keyof Styles] as Styles;
+        newStyles = this[states[0] as keyof Styles] as Styles;
         newStyles = stylesToUndo
           ? { ...stylesToUndo, ...newStyles }
           : newStyles;
       } else {
         newStyles = states.reduce((acc, state) => {
-          const styles = this.style![state];
+          const styles = this[state];
           return styles ? { ...acc, ...styles } : acc;
         }, stylesToUndo || {});
       }

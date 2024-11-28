@@ -80,7 +80,6 @@ type CleanElementNode = NewOmit<
   | 'animate'
   | 'chain'
   | 'start'
-  | 'setFocus'
   | 'isTextNode'
   | 'getText'
   | 'destroy'
