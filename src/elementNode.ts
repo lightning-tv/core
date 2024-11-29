@@ -11,8 +11,8 @@ import {
   AddColorString,
   TextProps,
   TextNode,
-  NodeEvents,
-  EventHandler,
+  type OnEvent,
+  NodeProps,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -22,7 +22,6 @@ import {
   isNumber,
   isFunc,
   keyExists,
-  flattenStyles,
   isINode,
   isElementNode,
   isElementText,
@@ -42,8 +41,6 @@ import type {
   ShaderController,
   RadialGradientEffectProps,
   RadialProgressEffectProps,
-  NodeFailedPayload,
-  NodeLoadedPayload,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -176,7 +173,6 @@ const LightningRendererNonAnimatingProps = [
   'rtt',
   'scrollable',
   'scrollY',
-  'src',
   'srcHeight',
   'srcWidth',
   'srcX',
@@ -193,7 +189,7 @@ const LightningRendererNonAnimatingProps = [
 ];
 
 export type RendererNode = AddColorString<
-  Partial<Omit<INodeProps, 'parent' | 'shader'>>
+  Partial<Omit<INodeProps, 'parent' | 'shader' | 'src'>>
 >;
 export interface ElementNode extends RendererNode {
   [key: string]: unknown;
@@ -209,7 +205,6 @@ export interface ElementNode extends RendererNode {
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
   _effects?: StyleEffects;
-  _events?: Array<[string, (target: ElementNode, event?: Event) => void]>;
   _id: string | undefined;
   _queueDelete?: boolean;
   _parent: ElementNode | undefined;
@@ -248,6 +243,7 @@ export interface ElementNode extends RendererNode {
   borderTop?: BorderStyle;
   display?: 'flex' | 'block';
   flexBoundary?: 'contain' | 'fixed';
+  flexCrossBoundary?: 'fixed'; // default is contain
   flexDirection?: 'row' | 'column';
   gap?: number;
   justifyContent?:
@@ -263,6 +259,7 @@ export interface ElementNode extends RendererNode {
   marginLeft?: number;
   marginRight?: number;
   marginTop?: number;
+  padding?: number;
   x: number;
   y: number;
   width: number;
@@ -278,10 +275,6 @@ export interface ElementNode extends RendererNode {
    * - 'stopped': Fired when the animation stops.
    *
    * Each event handler is optional and maps to a corresponding event.
-   *
-   * @typedef {'animating' | 'tick' | 'stopped'} AnimationEvents
-   *
-   * @typedef {function(controller: IAnimationController, name: string, endValue: number, props?: any): void} AnimationEventHandler
    *
    * @type {Partial<Record<AnimationEvents, AnimationEventHandler>>}
    *
@@ -314,10 +307,8 @@ export interface ElementNode extends RendererNode {
    *
    * @see https://lightning-tv.github.io/solid/#/essentials/events
    */
-  onEvent?: Partial<Record<NodeEvents, EventHandler>>;
-  onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
+  onEvent?: OnEvent;
   onLayout?: (this: ElementNode, target: ElementNode) => void;
-  onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
 }
 
 export class ElementNode extends Object {
@@ -565,7 +556,7 @@ export class ElementNode extends Object {
     }
   }
 
-  set style(values: (Styles | undefined)[] | Styles) {
+  set style(style: Styles | undefined) {
     if (isDev && this._style) {
       // Avoid processing style changes again
       console.warn(
@@ -573,21 +564,12 @@ export class ElementNode extends Object {
       );
     }
 
-    if (isArray(values)) {
-      console.warn(
-        'Array style values are deprecated, use combineStyles: https://lightning-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
-      );
-      const v = values.filter(Boolean);
-      if (v.length === 0) {
-        return;
-      } else if (v.length === 1) {
-        this._style = isArray(v[0]) ? flattenStyles(v[0]) : v[0];
-      } else {
-        this._style = flattenStyles(v);
-      }
-    } else {
-      this._style = values;
+    if (!style) {
+      return;
     }
+
+    this._style = style;
+
     // Keys set in JSX are more important
     for (const key in this._style) {
       // be careful of 0 values
@@ -603,6 +585,21 @@ export class ElementNode extends Object {
 
   get hasChildren() {
     return this.children.length > 0;
+  }
+
+  set src(src) {
+    if (typeof src === 'string') {
+      this.lng.src = src;
+      if (!this.color && this.rendered) {
+        this.color = 0xffffffff;
+      }
+    } else {
+      this.color = 0x00000000;
+    }
+  }
+
+  get src(): string | null | undefined {
+    return this.lng.src;
   }
 
   getChildById(id: string) {
@@ -656,6 +653,14 @@ export class ElementNode extends Object {
     return this.alpha === 0;
   }
 
+  /**
+   * Sets the autofocus state of the element.
+   * When set to a truthy value, the element will automatically gain focus.
+   * You can also set it to a signal to recalculate
+   *
+   * @param val - A value to determine if the element should autofocus.
+   *              A truthy value enables autofocus, otherwise disables it.
+   */
   set autofocus(val: any) {
     this._autofocus = val ? true : false;
     this._autofocus && this.setFocus();
@@ -707,7 +712,7 @@ export class ElementNode extends Object {
 
     const states = this.states;
 
-    if (this._undoStyles || (this.style && keyExists(this.style, states))) {
+    if (this._undoStyles || keyExists(this, states)) {
       let stylesToUndo: { [key: string]: any } | undefined;
       if (this._undoStyles && this._undoStyles.length) {
         stylesToUndo = {};
@@ -730,13 +735,13 @@ export class ElementNode extends Object {
 
       let newStyles: Styles;
       if (numStates === 1) {
-        newStyles = this.style![states[0] as keyof Styles] as Styles;
+        newStyles = this[states[0] as keyof Styles] as Styles;
         newStyles = stylesToUndo
           ? { ...stylesToUndo, ...newStyles }
           : newStyles;
       } else {
         newStyles = states.reduce((acc, state) => {
-          const styles = this.style![state];
+          const styles = this[state];
           return styles ? { ...acc, ...styles } : acc;
         }, stylesToUndo || {});
       }
@@ -853,10 +858,12 @@ export class ElementNode extends Object {
         // Set width and height to parent less offset
         if (isNaN(props.width as number)) {
           props.width = (parent.width || 0) - props.x;
+          node._calcWidth = true;
         }
 
         if (isNaN(props.height as number)) {
           props.height = (parent.height || 0) - props.y;
+          node._calcHeight = true;
         }
 
         if (props.rtt && !props.color) {
@@ -886,14 +893,6 @@ export class ElementNode extends Object {
 
     if (node.autosize && parent.requiresLayout()) {
       node._layoutOnLoad();
-    }
-
-    if (node.onFail) {
-      node.lng.on('failed', node.onFail);
-    }
-
-    if (node.onLoad) {
-      node.lng.on('loaded', node.onLoad);
     }
 
     isFunc(this.onCreate) && this.onCreate.call(this, node);

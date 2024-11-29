@@ -9,6 +9,8 @@ import {
   type ITextNodeProps,
   type HolePunchEffectProps,
   type IAnimationController,
+  NodeLoadedPayload,
+  NodeFailedPayload,
 } from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
@@ -78,7 +80,6 @@ type CleanElementNode = NewOmit<
   | 'animate'
   | 'chain'
   | 'start'
-  | 'setFocus'
   | 'isTextNode'
   | 'getText'
   | 'destroy'
@@ -93,7 +94,7 @@ type CleanElementNode = NewOmit<
 >;
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
-  extends NewOmit<ElementNode, '_type' | 'parent' | 'children'>,
+  extends NewOmit<ElementNode, '_type' | 'parent' | 'children' | 'src'>,
     NewOmit<RendererText, 'x' | 'y' | 'width' | 'height'> {
   _type: 'textNode';
   parent?: ElementNode;
@@ -126,8 +127,8 @@ export interface NodeProps
   states?: NodeStates;
   style?: NodeStyles;
 }
-export interface NodeStyles extends NodeProps {
-  [key: string]: NodeProps[keyof NodeProps] | NodeProps | undefined;
+export interface NodeStyles extends NewOmit<NodeProps, 'style'> {
+  [key: `$${string}`]: NodeProps;
 }
 
 export interface TextProps
@@ -159,8 +160,8 @@ export interface TextProps
   style?: TextStyles;
 }
 
-export interface TextStyles extends TextProps {
-  [key: string]: TextProps[keyof TextProps] | TextProps | undefined;
+export interface TextStyles extends NewOmit<TextProps, 'style'> {
+  [key: `$${string}`]: TextProps;
 }
 
 export type Styles = NodeStyles | TextStyles;
@@ -177,12 +178,24 @@ export type AnimationEventHandler = (
   endValue: number,
   props?: any,
 ) => void;
-export type NodeEvents =
-  | 'loaded'
-  | 'failed'
-  | 'freed'
-  | 'inBounds'
-  | 'outOfBounds'
-  | 'inViewport'
-  | 'outOfViewport';
-export type EventHandler = (target: ElementNode, event?: Event) => void;
+
+type EventPayloadMap = {
+  loaded: NodeLoadedPayload;
+  failed: NodeFailedPayload;
+  freed: Event;
+  inBounds: Event;
+  outOfBounds: Event;
+  inViewport: Event;
+  outOfViewport: Event;
+};
+
+type NodeEvents = keyof EventPayloadMap;
+
+type EventHandler<E extends NodeEvents> = (
+  target: ElementNode,
+  event?: EventPayloadMap[E],
+) => void;
+
+export type OnEvent = Partial<{
+  [K in NodeEvents]: EventHandler<K>;
+}>;
