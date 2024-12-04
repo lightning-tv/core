@@ -36,6 +36,8 @@ export interface FocusNode {
 
 export type KeyNameOrKeyCode = string | number;
 
+export type KeyPress = 'KeyUp' | 'KeyDown';
+
 export interface DefaultKeyMap {
   Left: KeyNameOrKeyCode | KeyNameOrKeyCode[];
   Right: KeyNameOrKeyCode | KeyNameOrKeyCode[];
