@@ -47,8 +47,16 @@ import { NodeType } from './nodeTypes.js';
 import { setActiveElement } from './focusManager.js';
 
 const layoutQueue = new Set<ElementNode>();
-let dynamicSizedNodeCount = 0;
 let flushQueued = false;
+
+function runLayout() {
+  const queue = [...layoutQueue];
+  layoutQueue.clear();
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const node = queue[i] as ElementNode;
+    node.updateLayout();
+  }
+}
 
 function flushLayout() {
   if (flushQueued) return;
@@ -56,14 +64,8 @@ function flushLayout() {
   flushQueued = true;
   // Use setTimeout to allow renderers microtasks to finish
   setTimeout(() => {
-    const queue = [...layoutQueue];
-    layoutQueue.clear();
-    for (let i = queue.length - 1; i >= 0; i--) {
-      const node = queue[i] as ElementNode;
-      node.updateLayout();
-    }
     flushQueued = false;
-    dynamicSizedNodeCount = 0;
+    runLayout();
   }, 0);
 }
 
@@ -515,7 +517,6 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    dynamicSizedNodeCount++;
     (this.lng as INode).on('loaded', () => {
       // Re-add the node to the layout queue because somehow the queue fluses and there is a straggler
       layoutQueue.add(this.parent!);
@@ -925,8 +926,9 @@ export class ElementNode extends Object {
         }
       }
     }
-    if (topNode && !dynamicSizedNodeCount) {
-      flushLayout();
+    if (topNode) {
+      //Do one pass of layout, then another with Text completed
+      runLayout();
     }
     node._autofocus && node.setFocus();
   }
