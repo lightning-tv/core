@@ -26,6 +26,7 @@ export interface BorderStyleObject {
   color: number | string;
 }
 
+export type DollarString = `$${string}`;
 export type BorderStyle = number | BorderStyleObject;
 export type BorderRadius = number | number[];
 

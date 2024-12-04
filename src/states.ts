@@ -1,6 +1,5 @@
 import { isArray, isString } from './utils.js';
-
-type DollarString = `$${string}`;
+import type { DollarString } from './intrinsicTypes.js';
 export type NodeStates =
   | DollarString[]
   | DollarString

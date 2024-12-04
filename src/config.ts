@@ -1,5 +1,9 @@
 import type { RendererMainSettings } from '@lightningjs/renderer';
-import type { TextProps, AnimationSettings } from './intrinsicTypes.js';
+import type {
+  TextProps,
+  AnimationSettings,
+  DollarString,
+} from './intrinsicTypes.js';
 import { type ElementNode } from './elementNode.js';
 
 interface Config {
@@ -11,6 +15,7 @@ interface Config {
   fontSettings: Partial<TextProps>;
   rendererOptions?: Partial<RendererMainSettings>;
   setActiveElement: (elm: ElementNode) => void;
+  focusStateKey: DollarString;
 }
 
 function isDevEnv(): boolean {
@@ -32,4 +37,5 @@ export const Config: Config = {
   },
   enableShaderCaching: true,
   setActiveElement: () => {},
+  focusStateKey: '$focus',
 };

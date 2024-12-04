@@ -6,7 +6,6 @@ import type {
   KeyHoldOptions,
   KeyMap,
   FocusNode,
-  KeyHandler,
 } from './focusKeyTypes.js';
 import { isFunction } from './utils.js';
 
@@ -107,8 +106,11 @@ const updateFocusPath = (
   let current = currentFocusedElm;
   const fp: ElementNode[] = [];
   while (current) {
-    if (!current.states.has('$focus') || current === currentFocusedElm) {
-      current.states.add('$focus');
+    if (
+      !current.states.has(Config.focusStateKey) ||
+      current === currentFocusedElm
+    ) {
+      current.states.add(Config.focusStateKey);
       current.onFocus?.call(current, currentFocusedElm, prevFocusedElm);
       current.onFocusChanged?.call(
         current,
@@ -123,7 +125,7 @@ const updateFocusPath = (
 
   focusPath.forEach((elm) => {
     if (!fp.includes(elm)) {
-      elm.states.remove('$focus');
+      elm.states.remove(Config.focusStateKey);
       elm.onBlur?.call(elm, currentFocusedElm, prevFocusedElm);
       elm.onFocusChanged?.call(elm, false, currentFocusedElm, prevFocusedElm);
     }
