@@ -686,14 +686,11 @@ export class ElementNode extends Object {
   updateLayout() {
     if (this.hasChildren) {
       log('Layout: ', this);
-      let changedLayout = false;
 
       if (this.display === 'flex') {
-        if (calculateFlex(this) || changedLayout) {
+        if (calculateFlex(this)) {
           this.parent?.updateLayout();
         }
-      } else if (changedLayout) {
-        this.parent?.updateLayout();
       }
 
       isFunc(this.onLayout) && this.onLayout.call(this, this);
