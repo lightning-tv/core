@@ -35,7 +35,7 @@ export const Config: Config = {
     fontFamily: 'Ubuntu',
     fontSize: 100,
   },
-  enableShaderCaching: true,
+  enableShaderCaching: false,
   setActiveElement: () => {},
   focusStateKey: '$focus',
 };
