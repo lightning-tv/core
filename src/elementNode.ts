@@ -12,7 +12,7 @@ import {
   TextProps,
   TextNode,
   type OnEvent,
-  NodeProps,
+  NewOmit,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -191,7 +191,7 @@ const LightningRendererNonAnimatingProps = [
 ];
 
 export type RendererNode = AddColorString<
-  Partial<Omit<INodeProps, 'parent' | 'shader' | 'src'>>
+  Partial<NewOmit<INode, 'parent' | 'shader' | 'src' | 'children' | 'id'>>
 >;
 export interface ElementNode extends RendererNode {
   [key: string]: unknown;
@@ -243,6 +243,9 @@ export interface ElementNode extends RendererNode {
   borderRadius?: BorderRadius;
   borderRight?: BorderStyle;
   borderTop?: BorderStyle;
+  center?: boolean;
+  centerX?: boolean;
+  centerY?: boolean;
   display?: 'flex' | 'block';
   flexBoundary?: 'contain' | 'fixed';
   flexCrossBoundary?: 'fixed'; // default is contain
@@ -790,13 +793,29 @@ export class ElementNode extends Object {
     }
 
     const props = node.lng;
+
     if (this.right || this.right === 0) {
       props.x = (parent.width || 0) - this.right;
       props.mountX = 1;
     }
+
     if (this.bottom || this.bottom === 0) {
       props.y = (parent.height || 0) - this.bottom;
       props.mountY = 1;
+    }
+
+    if (this.center) {
+      this.centerX = this.centerY = true;
+    }
+
+    if (this.centerX) {
+      props.x = (parent.width || 0) / 2;
+      props.mountX = 0.5;
+    }
+
+    if (this.centerY) {
+      props.y = (parent.height || 0) / 2;
+      props.mountY = 0.5;
     }
 
     props.x = props.x || 0;

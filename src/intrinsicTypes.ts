@@ -95,7 +95,10 @@ type CleanElementNode = NewOmit<
 >;
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
-  extends NewOmit<ElementNode, '_type' | 'parent' | 'children' | 'src'>,
+  extends NewOmit<
+      ElementNode,
+      '_type' | 'parent' | 'children' | 'src' | 'scale'
+    >,
     NewOmit<RendererText, 'x' | 'y' | 'width' | 'height'> {
   _type: 'textNode';
   parent?: ElementNode;
@@ -153,6 +156,7 @@ export interface TextProps
         | 'forwardStates'
         | 'linearGradient'
         | 'src'
+        | 'scale'
         | 'texture'
         | 'textureOptions'
       >

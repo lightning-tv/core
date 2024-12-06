@@ -1,6 +1,5 @@
 import { type ElementNode } from './elementNode.js';
-import { isTextNode } from './utils.js';
-import { ElementText } from './intrinsicTypes.js';
+import { isTextNode, isElementText } from './utils.js';
 
 export default function (node: ElementNode): boolean {
   const children: ElementNode[] = [];
@@ -8,6 +7,11 @@ export default function (node: ElementNode): boolean {
   let growSize = 0;
   for (let i = 0; i < node.children.length; i++) {
     const c = node.children[i]!;
+
+    if (isElementText(c) && c.text && !(c.width || c.height)) {
+      return false;
+    }
+
     // Filter empty text nodes which are place holders for <Show> and elements missing dimensions
     if (isTextNode(c) || c.flexItem === false) {
       continue;
@@ -34,7 +38,9 @@ export default function (node: ElementNode): boolean {
   const dimension = isRow ? 'width' : 'height';
   const crossDimension = isRow ? 'height' : 'width';
   const marginOne = isRow ? 'marginLeft' : 'marginTop';
+  const crossMarginOne = isRow ? 'marginTop' : 'marginLeft';
   const marginTwo = isRow ? 'marginRight' : 'marginBottom';
+  const crossMarginTwo = isRow ? 'marginBottom' : 'marginRight';
   const prop = isRow ? 'x' : 'y';
   const crossProp = isRow ? 'y' : 'x';
   const containerSize = node[dimension] || 0;
@@ -76,11 +82,16 @@ export default function (node: ElementNode): boolean {
     containerCrossSize && align
       ? (c: ElementNode) => {
           if (align === 'flexStart') {
-            c[crossProp] = 0;
+            c[crossProp] = c[crossMarginOne] || 0;
           } else if (align === 'center') {
-            c[crossProp] = (containerCrossSize - (c[crossDimension] || 0)) / 2;
+            c[crossProp] =
+              (containerCrossSize - (c[crossDimension] || 0)) / 2 +
+              (c[crossMarginOne] || 0);
           } else if (align === 'flexEnd') {
-            c[crossProp] = containerCrossSize - (c[crossDimension] || 0);
+            c[crossProp] =
+              containerCrossSize -
+              (c[crossDimension] || 0) -
+              (c[crossMarginTwo] || 0);
           }
         }
       : (c: ElementNode) => c;
