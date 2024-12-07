@@ -696,7 +696,9 @@ export class ElementNode extends Object {
         }
       }
 
-      isFunc(this.onLayout) && this.onLayout.call(this, this);
+      if (isFunc(this.onLayout) && this.onLayout.call(this, this)) {
+        this.parent?.updateLayout();
+      }
     }
   }
 
@@ -793,6 +795,9 @@ export class ElementNode extends Object {
     }
 
     const props = node.lng;
+    props.x = props.x || 0;
+    props.y = props.y || 0;
+    props.parent = parent.lng as INode;
 
     if (this.right || this.right === 0) {
       props.x = (parent.width || 0) - this.right;
@@ -809,18 +814,14 @@ export class ElementNode extends Object {
     }
 
     if (this.centerX) {
-      props.x = (parent.width || 0) / 2;
+      props.x += (parent.width || 0) / 2;
       props.mountX = 0.5;
     }
 
     if (this.centerY) {
-      props.y = (parent.height || 0) / 2;
+      props.y += (parent.height || 0) / 2;
       props.mountY = 0.5;
     }
-
-    props.x = props.x || 0;
-    props.y = props.y || 0;
-    props.parent = parent.lng as INode;
 
     if (isElementText(node)) {
       const textProps = props as TextProps;

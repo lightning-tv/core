@@ -48,6 +48,7 @@ export default function (node: ElementNode): boolean {
   const gap = node.gap || 0;
   const justify = node.justifyContent || 'flexStart';
   const align = node.alignItems;
+  let containerUpdated = false;
 
   if (growSize) {
     const flexBasis = children.reduce(
@@ -98,7 +99,11 @@ export default function (node: ElementNode): boolean {
 
   if (isRow && node._calcHeight && !node.flexCrossBoundary) {
     // Assuming all the children have the same height
-    node.height = children[0]?.height || node.height;
+    const newHeight = children[0]?.height || node.height;
+    if (newHeight !== node.height) {
+      containerUpdated = true;
+      node.height = newHeight;
+    }
   }
 
   if (justify === 'flexStart') {
@@ -161,5 +166,5 @@ export default function (node: ElementNode): boolean {
   }
 
   // Container was not updated
-  return false;
+  return containerUpdated;
 }
