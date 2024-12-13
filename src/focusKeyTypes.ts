@@ -70,6 +70,11 @@ export type KeyHandler = (
   handlerElm: ElementNode,
 ) => KeyHandlerReturn;
 
+export type KeyPressOptions = {
+  default?: KeyPress;
+  onEnter?: KeyPress;
+};
+
 export type KeyHoldOptions = {
   userKeyHoldMap: Partial<KeyHoldMap>;
   holdThreshold?: number;
