@@ -11,8 +11,8 @@ import {
   AddColorString,
   TextProps,
   TextNode,
-  NodeEvents,
-  EventHandler,
+  type OnEvent,
+  NewOmit,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -22,7 +22,6 @@ import {
   isNumber,
   isFunc,
   keyExists,
-  flattenStyles,
   isINode,
   isElementNode,
   isElementText,
@@ -42,16 +41,22 @@ import type {
   ShaderController,
   RadialGradientEffectProps,
   RadialProgressEffectProps,
-  NodeFailedPayload,
-  NodeLoadedPayload,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
 import { setActiveElement } from './focusManager.js';
 
 const layoutQueue = new Set<ElementNode>();
-let dynamicSizedNodeCount = 0;
 let flushQueued = false;
+
+function runLayout() {
+  const queue = [...layoutQueue];
+  layoutQueue.clear();
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const node = queue[i] as ElementNode;
+    node.updateLayout();
+  }
+}
 
 function flushLayout() {
   if (flushQueued) return;
@@ -59,14 +64,8 @@ function flushLayout() {
   flushQueued = true;
   // Use setTimeout to allow renderers microtasks to finish
   setTimeout(() => {
-    const queue = [...layoutQueue];
-    layoutQueue.clear();
-    for (let i = queue.length - 1; i >= 0; i--) {
-      const node = queue[i] as ElementNode;
-      node.updateLayout();
-    }
     flushQueued = false;
-    dynamicSizedNodeCount = 0;
+    runLayout();
   }, 0);
 }
 
@@ -192,7 +191,7 @@ const LightningRendererNonAnimatingProps = [
 ];
 
 export type RendererNode = AddColorString<
-  Partial<Omit<INodeProps, 'parent' | 'shader' | 'src'>>
+  Partial<NewOmit<INode, 'parent' | 'shader' | 'src' | 'children' | 'id'>>
 >;
 export interface ElementNode extends RendererNode {
   [key: string]: unknown;
@@ -244,6 +243,9 @@ export interface ElementNode extends RendererNode {
   borderRadius?: BorderRadius;
   borderRight?: BorderStyle;
   borderTop?: BorderStyle;
+  center?: boolean;
+  centerX?: boolean;
+  centerY?: boolean;
   display?: 'flex' | 'block';
   flexBoundary?: 'contain' | 'fixed';
   flexCrossBoundary?: 'fixed'; // default is contain
@@ -279,10 +281,6 @@ export interface ElementNode extends RendererNode {
    *
    * Each event handler is optional and maps to a corresponding event.
    *
-   * @typedef {'animating' | 'tick' | 'stopped'} AnimationEvents
-   *
-   * @typedef {function(controller: IAnimationController, name: string, endValue: number, props?: any): void} AnimationEventHandler
-   *
    * @type {Partial<Record<AnimationEvents, AnimationEventHandler>>}
    *
    * @property {AnimationEventHandler} [animating] - Handler for the 'animating' event.
@@ -314,10 +312,8 @@ export interface ElementNode extends RendererNode {
    *
    * @see https://lightning-tv.github.io/solid/#/essentials/events
    */
-  onEvent?: Partial<Record<NodeEvents, EventHandler>>;
-  onFail?: (target: INode, nodeFailedPayload: NodeFailedPayload) => void;
+  onEvent?: OnEvent;
   onLayout?: (this: ElementNode, target: ElementNode) => void;
-  onLoad?: (target: INode, nodeLoadedPayload: NodeLoadedPayload) => void;
 }
 
 export class ElementNode extends Object {
@@ -524,7 +520,6 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    dynamicSizedNodeCount++;
     (this.lng as INode).on('loaded', () => {
       // Re-add the node to the layout queue because somehow the queue fluses and there is a straggler
       layoutQueue.add(this.parent!);
@@ -662,6 +657,14 @@ export class ElementNode extends Object {
     return this.alpha === 0;
   }
 
+  /**
+   * Sets the autofocus state of the element.
+   * When set to a truthy value, the element will automatically gain focus.
+   * You can also set it to a signal to recalculate
+   *
+   * @param val - A value to determine if the element should autofocus.
+   *              A truthy value enables autofocus, otherwise disables it.
+   */
   set autofocus(val: any) {
     this._autofocus = val ? true : false;
     this._autofocus && this.setFocus();
@@ -686,17 +689,16 @@ export class ElementNode extends Object {
   updateLayout() {
     if (this.hasChildren) {
       log('Layout: ', this);
-      let changedLayout = false;
 
       if (this.display === 'flex') {
-        if (calculateFlex(this) || changedLayout) {
+        if (calculateFlex(this)) {
           this.parent?.updateLayout();
         }
-      } else if (changedLayout) {
-        this.parent?.updateLayout();
       }
 
-      isFunc(this.onLayout) && this.onLayout.call(this, this);
+      if (isFunc(this.onLayout) && this.onLayout.call(this, this)) {
+        this.parent?.updateLayout();
+      }
     }
   }
 
@@ -713,7 +715,7 @@ export class ElementNode extends Object {
 
     const states = this.states;
 
-    if (this._undoStyles || (this.style && keyExists(this.style, states))) {
+    if (this._undoStyles || keyExists(this, states)) {
       let stylesToUndo: { [key: string]: any } | undefined;
       if (this._undoStyles && this._undoStyles.length) {
         stylesToUndo = {};
@@ -736,13 +738,13 @@ export class ElementNode extends Object {
 
       let newStyles: Styles;
       if (numStates === 1) {
-        newStyles = this.style![states[0] as keyof Styles] as Styles;
+        newStyles = this[states[0] as keyof Styles] as Styles;
         newStyles = stylesToUndo
           ? { ...stylesToUndo, ...newStyles }
           : newStyles;
       } else {
         newStyles = states.reduce((acc, state) => {
-          const styles = this.style![state];
+          const styles = this[state];
           return styles ? { ...acc, ...styles } : acc;
         }, stylesToUndo || {});
       }
@@ -793,18 +795,33 @@ export class ElementNode extends Object {
     }
 
     const props = node.lng;
+    props.x = props.x || 0;
+    props.y = props.y || 0;
+    props.parent = parent.lng as INode;
+
     if (this.right || this.right === 0) {
       props.x = (parent.width || 0) - this.right;
       props.mountX = 1;
     }
+
     if (this.bottom || this.bottom === 0) {
       props.y = (parent.height || 0) - this.bottom;
       props.mountY = 1;
     }
 
-    props.x = props.x || 0;
-    props.y = props.y || 0;
-    props.parent = parent.lng as INode;
+    if (this.center) {
+      this.centerX = this.centerY = true;
+    }
+
+    if (this.centerX) {
+      props.x += (parent.width || 0) / 2;
+      props.mountX = 0.5;
+    }
+
+    if (this.centerY) {
+      props.y += (parent.height || 0) / 2;
+      props.mountY = 0.5;
+    }
 
     if (isElementText(node)) {
       const textProps = props as TextProps;
@@ -926,8 +943,9 @@ export class ElementNode extends Object {
         }
       }
     }
-    if (topNode && !dynamicSizedNodeCount) {
-      flushLayout();
+    if (topNode) {
+      //Do one pass of layout, then another with Text completed
+      runLayout();
     }
     node._autofocus && node.setFocus();
   }
