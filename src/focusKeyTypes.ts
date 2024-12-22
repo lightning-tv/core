@@ -36,8 +36,6 @@ export interface FocusNode {
 
 export type KeyNameOrKeyCode = string | number;
 
-export type KeyPress = 'KeyUp' | 'KeyDown';
-
 export interface DefaultKeyMap {
   Left: KeyNameOrKeyCode | KeyNameOrKeyCode[];
   Right: KeyNameOrKeyCode | KeyNameOrKeyCode[];
@@ -69,11 +67,6 @@ export type KeyHandler = (
   target: ElementNode,
   handlerElm: ElementNode,
 ) => KeyHandlerReturn;
-
-export type KeyPressOptions = {
-  default?: KeyPress;
-  onEnter?: KeyPress;
-};
 
 export type KeyHoldOptions = {
   userKeyHoldMap: Partial<KeyHoldMap>;
