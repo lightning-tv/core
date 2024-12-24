@@ -44,7 +44,7 @@ export default function (node: ElementNode): boolean {
   const prop = isRow ? 'x' : 'y';
   const crossProp = isRow ? 'y' : 'x';
   const containerSize = node[dimension] || 0;
-  const containerCrossSize = node[crossDimension] || 0;
+  let containerCrossSize = node[crossDimension] || 0;
   const gap = node.gap || 0;
   const justify = node.justifyContent || 'flexStart';
   const align = node.alignItems;
@@ -102,7 +102,7 @@ export default function (node: ElementNode): boolean {
     const newHeight = children[0]?.height || node.height;
     if (newHeight !== node.height) {
       containerUpdated = true;
-      node.height = newHeight;
+      node.height = containerCrossSize = newHeight;
     }
   }
 
