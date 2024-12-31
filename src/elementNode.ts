@@ -666,8 +666,8 @@ export class ElementNode extends Object {
    *              A truthy value enables autofocus, otherwise disables it.
    */
   set autofocus(val: any) {
-    this._autofocus = val ? true : false;
-    this._autofocus && this.setFocus();
+    this._autofocus = val;
+    val && this.setFocus();
   }
 
   get autofocus() {
