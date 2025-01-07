@@ -159,7 +159,7 @@ const propagateKeyPress = (
       const keyDownEvent = elm[`on${mappedEvent}Down`] as unknown;
 
       const skipDown = !isUp && propagateKeyUp && !keyDownEvent;
-      const skipUp = isUp && !propagateKeyUp && !keyUpEvent;
+      const skipUp = isUp && !isHold && !propagateKeyUp && !keyUpEvent;
 
       if (skipDown || skipUp) {
         continue;
@@ -200,7 +200,6 @@ const keyHoldCallback = (
   e: KeyboardEvent,
   mappedKeyHoldEvent: string | undefined,
 ) => {
-  delete keyHoldTimeouts[e.key || e.keyCode];
   propagateKeyPress(e, mappedKeyHoldEvent, true);
 };
 
@@ -217,25 +216,25 @@ const handleKeyEvents = (
     const mappedKeyEvent =
       keyMapEntries[keydown.key] || keyMapEntries[keydown.keyCode];
     if (mappedKeyHoldEvent) {
-      if (keyHoldTimeouts[key]) {
-        clearTimeout(keyHoldTimeouts[key]);
+      if (!keyHoldTimeouts[key]) {
+        keyHoldTimeouts[key] = window.setTimeout(
+          () => keyHoldCallback(keydown, mappedKeyHoldEvent),
+          delay,
+        );
       }
-      keyHoldTimeouts[key] = window.setTimeout(
-        () => keyHoldCallback(keydown, mappedKeyHoldEvent),
-        delay,
-      );
-    } else {
-      propagateKeyPress(keydown, mappedKeyEvent, false, propagatedUpKeys);
     }
+
+    propagateKeyPress(keydown, mappedKeyEvent, false, propagatedUpKeys);
   } else if (keyup) {
     const key: KeyNameOrKeyCode = keyup.key || keyup.keyCode;
     const mappedKeyEvent =
       keyMapEntries[keyup.key] || keyMapEntries[keyup.keyCode];
-    if (keyHoldTimeouts[key] || mappedKeyEvent) {
+    if (keyHoldTimeouts[key]) {
       clearTimeout(keyHoldTimeouts[key]);
       delete keyHoldTimeouts[key];
-      propagateKeyPress(keyup, mappedKeyEvent, false, propagatedUpKeys);
     }
+
+    propagateKeyPress(keyup, mappedKeyEvent, false, propagatedUpKeys);
   }
 };
 
