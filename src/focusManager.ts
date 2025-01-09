@@ -143,37 +143,53 @@ const propagateKeyPress = (
   e: KeyboardEvent,
   mappedEvent: string | undefined,
   isHold: boolean,
+  propagatedUpKeys: string[] = [],
 ) => {
   let finalFocusElm: ElementNode | undefined = undefined;
   const isUp = e.type === 'keyup';
-  for (const elm of focusPath) {
-    finalFocusElm = finalFocusElm || elm;
-    if (mappedEvent) {
-      const onKeyHandler = isUp
-        ? elm[`on${mappedEvent}Up`]
-        : elm[`on${mappedEvent}`] || elm[`on${mappedEvent}Down`];
+  const propagateKeyUp = Boolean(
+    mappedEvent && propagatedUpKeys.includes(mappedEvent),
+  );
+
+  if (mappedEvent) {
+    for (const elm of focusPath) {
+      finalFocusElm = finalFocusElm || elm;
+      const keyEvent = elm[`on${mappedEvent}`] as unknown;
+      const keyUpEvent = elm[`on${mappedEvent}Up`] as unknown;
+      const keyDownEvent = elm[`on${mappedEvent}Down`] as unknown;
+
+      const skipDown = !isUp && propagateKeyUp && !keyDownEvent;
+      const skipUp = isUp && !isHold && !propagateKeyUp && !keyUpEvent;
+
+      if (skipDown || skipUp) {
+        continue;
+      }
+
+      const onKeyHandler = (isUp ? keyUpEvent : keyDownEvent) || keyEvent;
+
       if (
         isFunction(onKeyHandler) &&
         onKeyHandler.call(elm, e, elm, finalFocusElm) === true
       ) {
         break;
       }
-    } else {
-      console.log(`Unhandled key event: ${e.key || e.keyCode}`);
-    }
 
-    if (isUp && !isHold) {
-      continue;
-    }
+      if (isUp && !isHold) {
+        continue;
+      }
 
-    const fallbackFunction = isHold ? elm.onKeyHold : elm.onKeyPress;
-    if (
-      isFunction(fallbackFunction) &&
-      fallbackFunction.call(elm, e, mappedEvent, elm, finalFocusElm) === true
-    ) {
-      break;
+      const fallbackFunction = isHold ? elm.onKeyHold : elm.onKeyPress;
+      if (
+        isFunction(fallbackFunction) &&
+        fallbackFunction.call(elm, e, mappedEvent, elm, finalFocusElm) === true
+      ) {
+        break;
+      }
     }
+  } else {
+    console.log(`Unhandled key event: ${e.key || e.keyCode}`);
   }
+
   return false;
 };
 
@@ -184,7 +200,6 @@ const keyHoldCallback = (
   e: KeyboardEvent,
   mappedKeyHoldEvent: string | undefined,
 ) => {
-  delete keyHoldTimeouts[e.key || e.keyCode];
   propagateKeyPress(e, mappedKeyHoldEvent, true);
 };
 
@@ -201,28 +216,25 @@ const handleKeyEvents = (
     const mappedKeyEvent =
       keyMapEntries[keydown.key] || keyMapEntries[keydown.keyCode];
     if (mappedKeyHoldEvent) {
-      if (keyHoldTimeouts[key]) {
-        clearTimeout(keyHoldTimeouts[key]);
+      if (!keyHoldTimeouts[key]) {
+        keyHoldTimeouts[key] = window.setTimeout(
+          () => keyHoldCallback(keydown, mappedKeyHoldEvent),
+          delay,
+        );
       }
-      keyHoldTimeouts[key] = window.setTimeout(
-        () => keyHoldCallback(keydown, mappedKeyHoldEvent),
-        delay,
-      );
-    } else {
-      propagateKeyPress(keydown, mappedKeyEvent, false);
     }
+
+    propagateKeyPress(keydown, mappedKeyEvent, false, propagatedUpKeys);
   } else if (keyup) {
     const key: KeyNameOrKeyCode = keyup.key || keyup.keyCode;
     const mappedKeyEvent =
       keyMapEntries[keyup.key] || keyMapEntries[keyup.keyCode];
-    if (
-      keyHoldTimeouts[key] ||
-      (mappedKeyEvent && propagatedUpKeys.includes(mappedKeyEvent))
-    ) {
+    if (keyHoldTimeouts[key]) {
       clearTimeout(keyHoldTimeouts[key]);
       delete keyHoldTimeouts[key];
-      propagateKeyPress(keyup, mappedKeyEvent, false);
     }
+
+    propagateKeyPress(keyup, mappedKeyEvent, false, propagatedUpKeys);
   }
 };
 
