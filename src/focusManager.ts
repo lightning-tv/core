@@ -187,7 +187,7 @@ const propagateKeyPress = (
       }
     }
   } else {
-    console.log(`Unhandled key event: ${e.key || e.keyCode}`);
+    console.log(`Unhandled ${e.type} for key event: ${e.key || e.keyCode}`);
   }
 
   return false;
