@@ -142,40 +142,23 @@ const updateFocusPath = (
 const propagateKeyPress = (
   e: KeyboardEvent,
   mappedEvent: string | undefined,
-  isHold: boolean,
-  propagatedUpKeys: string[] = [],
+  isHold: boolean = false,
+  isUp: boolean = false,
 ) => {
   let finalFocusElm: ElementNode | undefined = undefined;
-  const isUp = e.type === 'keyup';
-  const propagateKeyUp = Boolean(
-    mappedEvent && propagatedUpKeys.includes(mappedEvent),
-  );
 
   if (mappedEvent) {
     for (const elm of focusPath) {
       finalFocusElm = finalFocusElm || elm;
-      const keyEvent = elm[`on${mappedEvent}`] as unknown;
-      const keyUpEvent = elm[`on${mappedEvent}Up`] as unknown;
-      const keyDownEvent = elm[`on${mappedEvent}Down`] as unknown;
-
-      const skipDown = !isUp && propagateKeyUp && !keyDownEvent;
-      const skipUp = isUp && !isHold && !propagateKeyUp && !keyUpEvent;
-
-      if (skipDown || skipUp) {
-        continue;
-      }
-
-      const onKeyHandler = (isUp ? keyUpEvent : keyDownEvent) || keyEvent;
+      const onKeyHandler = (
+        isUp ? elm[`on${mappedEvent}Release`] : elm[`on${mappedEvent}`]
+      ) as unknown;
 
       if (
         isFunction(onKeyHandler) &&
         onKeyHandler.call(elm, e, elm, finalFocusElm) === true
       ) {
         break;
-      }
-
-      if (isUp && !isHold) {
-        continue;
       }
 
       const fallbackFunction = isHold ? elm.onKeyHold : elm.onKeyPress;
@@ -193,8 +176,8 @@ const propagateKeyPress = (
   return false;
 };
 
-const DEFAULT_KEY_HOLD_THRESHOLD = 200; // ms
-const keyHoldTimeouts: { [key: KeyNameOrKeyCode]: number } = {};
+const DEFAULT_KEY_HOLD_THRESHOLD = 500; // ms
+const keyHoldTimeouts: { [key: KeyNameOrKeyCode]: number | true } = {};
 
 const keyHoldCallback = (
   e: KeyboardEvent,
@@ -205,7 +188,6 @@ const keyHoldCallback = (
 
 const handleKeyEvents = (
   delay: number,
-  propagatedUpKeys: string[],
   keydown?: KeyboardEvent,
   keyup?: KeyboardEvent,
 ) => {
@@ -217,37 +199,37 @@ const handleKeyEvents = (
       keyMapEntries[keydown.key] || keyMapEntries[keydown.keyCode];
     if (mappedKeyHoldEvent) {
       if (!keyHoldTimeouts[key]) {
-        keyHoldTimeouts[key] = window.setTimeout(
-          () => keyHoldCallback(keydown, mappedKeyHoldEvent),
-          delay,
-        );
+        keyHoldTimeouts[key] = window.setTimeout(() => {
+          keyHoldCallback(keydown, mappedKeyHoldEvent);
+          keyHoldTimeouts[key] = true;
+        }, delay);
       }
+      return;
     }
 
-    propagateKeyPress(keydown, mappedKeyEvent, false, propagatedUpKeys);
+    propagateKeyPress(keydown, mappedKeyEvent, false);
   } else if (keyup) {
     const key: KeyNameOrKeyCode = keyup.key || keyup.keyCode;
     const mappedKeyEvent =
       keyMapEntries[keyup.key] || keyMapEntries[keyup.keyCode];
-    if (keyHoldTimeouts[key]) {
+    if (keyHoldTimeouts[key] && keyHoldTimeouts[key] !== true) {
       clearTimeout(keyHoldTimeouts[key]);
-      delete keyHoldTimeouts[key];
+      // trigger key down event when hold didn't finish
+      propagateKeyPress(keyup, mappedKeyEvent, false);
     }
-
-    propagateKeyPress(keyup, mappedKeyEvent, false, propagatedUpKeys);
+    delete keyHoldTimeouts[key];
+    propagateKeyPress(keyup, mappedKeyEvent, false, true);
   }
 };
 
 interface FocusManagerOptions {
   userKeyMap?: Partial<KeyMap>;
   keyHoldOptions?: KeyHoldOptions;
-  propagatedUpKeys?: string[];
   ownerContext?: (cb: () => void) => void;
 }
 
 export const useFocusManager = ({
   userKeyMap,
-  propagatedUpKeys = [],
   keyHoldOptions,
   ownerContext = (cb) => {
     cb();
@@ -262,7 +244,7 @@ export const useFocusManager = ({
   }
 
   const delay = keyHoldOptions?.holdThreshold || DEFAULT_KEY_HOLD_THRESHOLD;
-  const runKeyEvent = handleKeyEvents.bind(null, delay, propagatedUpKeys);
+  const runKeyEvent = handleKeyEvents.bind(null, delay);
 
   // Owner context is for frameworks that need effects
   const keyPressHandler = (event: KeyboardEvent) =>
@@ -283,7 +265,7 @@ export const useFocusManager = ({
       document.removeEventListener('keydown', keyPressHandler);
       document.removeEventListener('keyup', keyUpHandler);
       for (const [_, timeout] of Object.entries(keyHoldTimeouts)) {
-        if (timeout) clearTimeout(timeout);
+        if (timeout && timeout !== true) clearTimeout(timeout);
       }
     },
     focusPath: () => focusPath,
