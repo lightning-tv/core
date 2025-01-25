@@ -15,7 +15,9 @@ import {
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
 
-export type AnimationSettings = Partial<RendererAnimationSettings> | undefined;
+export type AnimationSettings =
+  | (Partial<RendererAnimationSettings> & { group?: string })
+  | undefined;
 
 export type AddColorString<T> = {
   [K in keyof T]: K extends `color${string}` ? string | number : T[K];

@@ -9,4 +9,6 @@ export { type AnimationSettings } from './intrinsicTypes.js';
 // hopefully fix up webpack error
 import { assertTruthy, deg2Rad } from '@lightningjs/renderer/utils';
 export { assertTruthy, deg2Rad };
+import groupManager, { type Group } from './groups.js';
+export { groupManager, type Group };
 // export type * from '@lightningjs/renderer/utils';

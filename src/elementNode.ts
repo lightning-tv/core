@@ -1,4 +1,5 @@
 import { renderer, createShader } from './lightningInit.js';
+import anime from 'animejs';
 import {
   type BorderRadius,
   type BorderStyle,
@@ -25,7 +26,6 @@ import {
   isINode,
   isElementNode,
   isElementText,
-  isTextNode,
   logRenderTree,
 } from './utils.js';
 import { Config, isDev } from './config.js';
@@ -45,6 +45,7 @@ import type {
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
 import { setActiveElement } from './focusManager.js';
+import groupManager from './groups.js';
 
 const layoutQueue = new Set<ElementNode>();
 let flushQueued = false;
@@ -226,6 +227,7 @@ export interface ElementNode extends RendererNode {
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
   forwardStates?: boolean;
+  group?: string;
   lng: INode | Partial<ElementNode>;
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   rendered: boolean;
@@ -270,7 +272,7 @@ export interface ElementNode extends RendererNode {
   width: number;
   height: number;
   zIndex?: number;
-  transition?: Record<string, AnimationSettings | true | false> | true | false;
+  transition?: Record<string, AnimationSettings | boolean> | boolean;
   /**
    * Optional handlers for animation events.
    *
@@ -421,6 +423,37 @@ export class ElementNode extends Object {
         this.transition === true || this.transition[name] === true
           ? undefined
           : (this.transition[name] as undefined | AnimationSettings);
+
+      if (this.transition != true && this.transition.group) {
+        const groupName = this.transition.group as unknown as string;
+        if (!groupManager.groups.has(groupName)) {
+          queueMicrotask(() => {
+            const group = Array.from(groupManager.groups.get(groupName)!);
+            const first = group[0];
+            const nodes = group.map((n) => n.lng);
+            //const toAnimate = group.map((n) => n._groupAnimate);
+
+            anime({
+              targets: nodes,
+              autoplay: true,
+              // @ts-ignore
+              ...first._groupAnimate,
+              easing: 'easeInOutSine',
+              duration: 250,
+            });
+            groupManager.clearGroup(groupName);
+          });
+        }
+
+        if (this._groupAnimate) {
+          // @ts-ignore
+          this._groupAnimate[name] = value;
+        } else {
+          this._groupAnimate = { [name]: value };
+        }
+        groupManager.addToGroup(groupName, this);
+        return;
+      }
 
       const animationController = this.animate(
         { [name]: value },
@@ -904,6 +937,11 @@ export class ElementNode extends Object {
     }
 
     node.rendered = true;
+
+    if (node.group) {
+      groupManager.addToGroup(node.group, node);
+    }
+
     if (isDev) {
       // Store props so we can recreate raw renderer code
       node._rendererProps = props;
