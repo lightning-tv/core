@@ -180,13 +180,6 @@ const propagateKeyPress = (
 const DEFAULT_KEY_HOLD_THRESHOLD = 500; // ms
 const keyHoldTimeouts: { [key: KeyNameOrKeyCode]: number | true } = {};
 
-const keyHoldCallback = (
-  e: KeyboardEvent,
-  mappedKeyHoldEvent: string | undefined,
-) => {
-  propagateKeyPress(e, mappedKeyHoldEvent, true);
-};
-
 const handleKeyEvents = (
   delay: number,
   keydown?: KeyboardEvent,
@@ -201,8 +194,8 @@ const handleKeyEvents = (
     if (mappedKeyHoldEvent) {
       if (!keyHoldTimeouts[key]) {
         keyHoldTimeouts[key] = window.setTimeout(() => {
-          keyHoldCallback(keydown, mappedKeyHoldEvent);
           keyHoldTimeouts[key] = true;
+          propagateKeyPress(keydown, mappedKeyHoldEvent, true);
         }, delay);
       }
       return;
@@ -213,12 +206,14 @@ const handleKeyEvents = (
     const key: KeyNameOrKeyCode = keyup.key || keyup.keyCode;
     const mappedKeyEvent =
       keyMapEntries[keyup.key] || keyMapEntries[keyup.keyCode];
-    if (keyHoldTimeouts[key] && keyHoldTimeouts[key] !== true) {
+    if (keyHoldTimeouts[key] === true) {
+      delete keyHoldTimeouts[key];
+    } else if (keyHoldTimeouts[key]) {
       clearTimeout(keyHoldTimeouts[key]);
       // trigger key down event when hold didn't finish
       propagateKeyPress(keyup, mappedKeyEvent, false);
     }
-    delete keyHoldTimeouts[key];
+
     propagateKeyPress(keyup, mappedKeyEvent, false, true);
   }
 };
