@@ -69,35 +69,27 @@ function flushLayout() {
   }, 0);
 }
 
-const shaderCache = new Map();
 function convertEffectsToShader(
   node: ElementNode,
   styleEffects: StyleEffects,
 ): ShaderController<'DynamicShader'> {
-  let cacheKey: string | undefined;
-
-  if (Config.enableShaderCaching) {
-    const roundedAlpha = Math.round((node.alpha || 0) * 10) / 10; // Round to the first decimal
-    cacheKey =
-      `${node.width},${node.height},${roundedAlpha}` +
-      JSON.stringify(styleEffects);
-
-    if (shaderCache.has(cacheKey)) {
-      return shaderCache.get(cacheKey);
-    }
-  }
-
   const effects: EffectDescUnion[] = [];
-  for (const [type, props] of Object.entries(styleEffects)) {
-    effects.push({ type, props } as EffectDescUnion);
+  for (const type in styleEffects) {
+    // @ts-ignore getting the right type info is hard
+    effects.push(renderer.createEffect(type, styleEffects[type], type));
   }
-  const shader = createShader('DynamicShader', { effects });
+  return createShader('DynamicShader', { effects });
+}
 
-  if (Config.enableShaderCaching && cacheKey) {
-    shaderCache.set(cacheKey, shader);
+function updateShaderEffects(
+  node: ElementNode,
+  styleEffects: StyleEffects,
+): void {
+  const shader = node.lng.shader;
+  for (const type in styleEffects) {
+    // @ts-ignore getting the right type info is hard
+    Object.assign(shader.props[type], styleEffects[type]);
   }
-
-  return shader;
 }
 
 function borderAccessor(
@@ -332,7 +324,11 @@ export class ElementNode extends Object {
   set effects(v: StyleEffects) {
     this._effects = v;
     if (this.rendered) {
-      this.shader = convertEffectsToShader(this, v);
+      if (this.lng.shader) {
+        updateShaderEffects(this, v);
+      } else {
+        this.shader = convertEffectsToShader(this, v);
+      }
     }
   }
 
