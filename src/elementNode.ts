@@ -1,4 +1,4 @@
-import { renderer, createShader } from './lightningInit.js';
+import { renderer } from './lightningInit.js';
 import {
   type BorderRadius,
   type BorderStyle,
@@ -78,7 +78,7 @@ function convertEffectsToShader(
     // @ts-ignore getting the right type info is hard
     effects.push(renderer.createEffect(type, styleEffects[type], type));
   }
-  return createShader('DynamicShader', { effects });
+  return renderer.createShader('DynamicShader', { effects });
 }
 
 function updateShaderEffects(
@@ -324,11 +324,11 @@ export class ElementNode extends Object {
   set effects(v: StyleEffects) {
     this._effects = v;
     if (this.rendered) {
-      if (this.lng.shader) {
-        updateShaderEffects(this, v);
-      } else {
-        this.shader = convertEffectsToShader(this, v);
-      }
+      this.lng.shader = convertEffectsToShader(this, v);
+      // if (this.lng.shader) {
+      //   updateShaderEffects(this, v);
+      // } else {
+      // }
     }
   }
 
@@ -396,12 +396,12 @@ export class ElementNode extends Object {
 
   set shader(
     shaderProps:
-      | Parameters<typeof createShader>
+      | Parameters<typeof renderer.createShader>
       | ReturnType<RendererMain['createShader']>,
   ) {
     let shProps = shaderProps;
     if (isArray(shaderProps)) {
-      shProps = createShader(...shaderProps);
+      shProps = renderer.createShader(...shaderProps);
     }
     this.lng.shader = shProps;
   }

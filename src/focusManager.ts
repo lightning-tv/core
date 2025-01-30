@@ -141,36 +141,37 @@ const updateFocusPath = (
 
 const propagateKeyPress = (
   e: KeyboardEvent,
-  mappedEvent: string | undefined,
+  mappedEvent?: string,
   isHold: boolean = false,
   isUp: boolean = false,
-) => {
-  let finalFocusElm: ElementNode | undefined = undefined;
+): boolean => {
+  let finalFocusElm: ElementNode | undefined;
 
-  if (mappedEvent) {
-    for (const elm of focusPath) {
-      finalFocusElm = finalFocusElm || elm;
-      const onKeyHandler = (
-        isUp ? elm[`on${mappedEvent}Release`] : elm[`on${mappedEvent}`]
-      ) as unknown;
+  for (const elm of focusPath) {
+    if (!finalFocusElm) finalFocusElm = elm;
+
+    if (mappedEvent) {
+      const eventHandler = isUp
+        ? elm[`on${mappedEvent}Release`]
+        : elm[`on${mappedEvent}`];
 
       if (
-        isFunction(onKeyHandler) &&
-        onKeyHandler.call(elm, e, elm, finalFocusElm) === true
+        isFunction(eventHandler) &&
+        eventHandler.call(elm, e, elm, finalFocusElm) === true
       ) {
-        break;
-      }
-
-      const fallbackFunction = isHold ? elm.onKeyHold : elm.onKeyPress;
-      if (
-        isFunction(fallbackFunction) &&
-        fallbackFunction.call(elm, e, mappedEvent, elm, finalFocusElm) === true
-      ) {
-        break;
+        return true;
       }
     }
-  } else {
-    console.log(`Unhandled ${e.type} for key event: ${e.key || e.keyCode}`);
+
+    if (!isUp) {
+      const fallbackHandler = isHold ? elm.onKeyHold : elm.onKeyPress;
+      if (
+        isFunction(fallbackHandler) &&
+        fallbackHandler.call(elm, e, mappedEvent, elm, finalFocusElm) === true
+      ) {
+        return true;
+      }
+    }
   }
 
   return false;

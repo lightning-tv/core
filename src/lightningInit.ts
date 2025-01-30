@@ -11,7 +11,6 @@ import {
 type SdfFontType = 'ssdf' | 'msdf';
 
 export let renderer: RendererMain;
-export let createShader: RendererMain['createShader'];
 
 export const getRenderer = () => renderer;
 
@@ -20,7 +19,6 @@ export function startLightningRenderer(
   rootId: string | HTMLElement = 'app',
 ) {
   renderer = new RendererMain(options, rootId);
-  createShader = renderer.createShader.bind(renderer);
   return renderer;
 }
 
