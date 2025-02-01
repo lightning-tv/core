@@ -1,4 +1,4 @@
-import { Config } from './config.js';
+import { Config, isDev } from './config.js';
 export type * from './focusKeyTypes.js';
 import { ElementNode } from './elementNode.js';
 import type {
@@ -146,6 +146,7 @@ const propagateKeyPress = (
   isUp: boolean = false,
 ): boolean => {
   let finalFocusElm: ElementNode | undefined;
+  let handlerAvailable: ElementNode | undefined;
 
   for (const elm of focusPath) {
     if (!finalFocusElm) finalFocusElm = elm;
@@ -155,22 +156,37 @@ const propagateKeyPress = (
         ? elm[`on${mappedEvent}Release`]
         : elm[`on${mappedEvent}`];
 
-      if (
-        isFunction(eventHandler) &&
-        eventHandler.call(elm, e, elm, finalFocusElm) === true
-      ) {
-        return true;
+      if (isFunction(eventHandler)) {
+        handlerAvailable = elm;
+        if (eventHandler.call(elm, e, elm, finalFocusElm) === true) {
+          return true;
+        }
       }
     }
 
     if (!isUp) {
       const fallbackHandler = isHold ? elm.onKeyHold : elm.onKeyPress;
-      if (
-        isFunction(fallbackHandler) &&
-        fallbackHandler.call(elm, e, mappedEvent, elm, finalFocusElm) === true
-      ) {
-        return true;
+      if (isFunction(fallbackHandler)) {
+        handlerAvailable = elm;
+        if (
+          fallbackHandler.call(elm, e, mappedEvent, elm, finalFocusElm) === true
+        ) {
+          return true;
+        }
       }
+    }
+  }
+
+  if (isDev && Config.keyDebug && !isUp) {
+    if (handlerAvailable) {
+      console.log(
+        `Keypress bubbled, key="${e.key}", mappedEvent=${mappedEvent}, isHold=${isHold}, isUp=${isUp}`,
+        handlerAvailable,
+      );
+    } else {
+      console.log(
+        `No event handler available for keypress: key="${e.key}", mappedEvent=${mappedEvent}, isHold=${isHold}, isUp=${isUp}`,
+      );
     }
   }
 
@@ -210,6 +226,7 @@ const handleKeyEvents = (
       delete keyHoldTimeouts[key];
     } else if (keyHoldTimeouts[key]) {
       clearTimeout(keyHoldTimeouts[key]);
+      delete keyHoldTimeouts[key];
       // trigger key down event when hold didn't finish
       propagateKeyPress(keyup, mappedKeyEvent, false);
     }
