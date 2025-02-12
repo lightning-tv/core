@@ -147,8 +147,22 @@ const propagateKeyPress = (
 ): boolean => {
   let finalFocusElm: ElementNode | undefined;
   let handlerAvailable: ElementNode | undefined;
+  const numItems = focusPath.length;
 
-  for (const elm of focusPath) {
+  for (let i = numItems - 1; i >= 0; i--) {
+    const elm = focusPath[i]!;
+    const captureKey = `capture${e.key}`;
+    const captureHandler = elm[captureKey] || elm.captureKey;
+    if (isFunction(captureHandler)) {
+      handlerAvailable = elm;
+      if (captureHandler.call(elm, e, elm, finalFocusElm) === true) {
+        return true;
+      }
+    }
+  }
+
+  for (let i = 0; i < numItems; i++) {
+    const elm = focusPath[i]!;
     if (!finalFocusElm) finalFocusElm = elm;
 
     if (mappedEvent) {

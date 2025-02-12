@@ -55,6 +55,12 @@ export interface DefaultKeyHoldMap {
 
 export type EventHandlers<Map> = {
   [K in keyof Map as `on${Capitalize<string & K>}`]?: KeyHandler;
+} & {
+  [K in keyof Map as `on${Capitalize<string & K>}Release`]?: KeyHandler;
+} & {
+  [K in keyof Map as `capture${Capitalize<string & K>}`]?: KeyHandler;
+} & {
+  captureKey?: KeyHandler;
 };
 
 export interface KeyHoldMap extends DefaultKeyHoldMap {}
