@@ -503,7 +503,9 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on('loaded', this.parent!.updateLayout);
+    (this.lng as INode).on('loaded', () => {
+      this.parent!.updateLayout();
+    });
   }
 
   getText(this: ElementText) {
