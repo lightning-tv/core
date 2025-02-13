@@ -126,7 +126,7 @@ const updateFocusPath = (
   focusPath.forEach((elm) => {
     if (!fp.includes(elm)) {
       elm.states.remove(Config.focusStateKey);
-      elm.onBlur?.call(elm, currentFocusedElm, prevFocusedElm);
+      elm.onBlur?.call(elm, currentFocusedElm, prevFocusedElm!);
       elm.onFocusChanged?.call(elm, false, currentFocusedElm, prevFocusedElm);
     }
   });
