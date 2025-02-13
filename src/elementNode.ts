@@ -25,7 +25,6 @@ import {
   isINode,
   isElementNode,
   isElementText,
-  isTextNode,
   logRenderTree,
 } from './utils.js';
 import { Config, isDev } from './config.js';
@@ -47,7 +46,6 @@ import { NodeType } from './nodeTypes.js';
 import { setActiveElement } from './focusManager.js';
 
 const layoutQueue = new Set<ElementNode>();
-let flushQueued = false;
 
 function runLayout() {
   const queue = [...layoutQueue];
@@ -56,17 +54,6 @@ function runLayout() {
     const node = queue[i] as ElementNode;
     node.updateLayout();
   }
-}
-
-function flushLayout() {
-  if (flushQueued) return;
-
-  flushQueued = true;
-  // Use setTimeout to allow renderers microtasks to finish
-  setTimeout(() => {
-    flushQueued = false;
-    runLayout();
-  }, 0);
 }
 
 function convertEffectsToShader(
@@ -516,11 +503,7 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on('loaded', () => {
-      // Re-add the node to the layout queue because somehow the queue fluses and there is a straggler
-      layoutQueue.add(this.parent!);
-      flushLayout();
-    });
+    (this.lng as INode).on('loaded', this.parent!.updateLayout);
   }
 
   getText(this: ElementText) {
