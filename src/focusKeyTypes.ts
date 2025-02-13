@@ -4,19 +4,19 @@ import { ElementNode } from '@lightningtv/core';
 export interface FocusNode {
   onFocus?: (
     this: ElementNode,
-    currentFocusedElm: ElementNode | undefined,
+    currentFocusedElm: ElementNode,
     prevFocusedElm: ElementNode | undefined,
   ) => void;
   onFocusChanged?: (
     this: ElementNode,
     hasFocus: boolean,
-    currentFocusedElm: ElementNode | undefined,
+    currentFocusedElm: ElementNode,
     prevFocusedElm: ElementNode | undefined,
   ) => void;
   onBlur?: (
     this: ElementNode,
-    currentFocusedElm: ElementNode | undefined,
-    prevFocusedElm: ElementNode | undefined,
+    currentFocusedElm: ElementNode,
+    prevFocusedElm: ElementNode,
   ) => void;
   onKeyPress?: (
     this: ElementNode,
