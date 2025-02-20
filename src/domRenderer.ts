@@ -253,7 +253,7 @@ const textSetPropTable: {
 }
 
 function todoSetProp(el: HTMLElement, value: any, prop: string) {
-  console.log('TODO prop', prop, value)
+  // console.log('TODO prop', prop, value)
 }
 
 function textSetProp<K extends keyof lng.ITextNodeProps>(
@@ -328,11 +328,22 @@ export class DOMRenderer extends lng.RendererMain {
     let node = super.createNode(props)
 
     let el = document.createElement('div')
-    elMap.set(node, el)
     el.style.position = 'absolute'
 
     nodeSetProps(el, props)
 
+    node = new Proxy(node, {
+      set(target, prop, value) {
+
+        if (prop in nodeSetPropTable) {
+          (nodeSetPropTable as any)[prop]!(el, value, prop, props)
+        }
+
+        return Reflect.set(target, prop, value)
+      }
+    })
+
+    elMap.set(node, el)
     return node
   }
 
@@ -340,11 +351,37 @@ export class DOMRenderer extends lng.RendererMain {
     let node = super.createTextNode(props)
 
     let el = document.createElement('div')
-    elMap.set(node, el)
     el.style.position = 'absolute'
 
     textSetProps(el, props)
 
+    node = new Proxy(node, {
+      set(target, prop, value) {
+
+        if (prop in textSetPropTable) {
+          (textSetPropTable as any)[prop]!(el, value, prop, props)
+        }
+
+        return Reflect.set(target, prop, value)
+      },
+    })
+
+    elMap.set(node, el)
     return node
+  }
+
+  override createShader<ShType extends keyof lng.ShaderMap>(
+    shaderType: ShType,
+    props?: any,
+  ): lng.ShaderController<ShType> {
+    let shader = super.createShader(shaderType, props)
+    return shader
+  }
+
+  override createDynamicShader<
+      T extends lng.DynamicEffects<[...{ name?: string; type: keyof lng.EffectMap }[]]>,
+    >(effects: [...T]): lng.DynamicShaderController<T> {
+    let shader = super.createDynamicShader(effects)
+    return shader
   }
 }
