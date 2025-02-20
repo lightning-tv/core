@@ -747,7 +747,7 @@ export class ElementNode extends Object {
 
   render(topNode?: boolean) {
     // Elements are inserted from the inside out, then rendered from the outside in.
-    // Render starts when an element is insertered with a parent that is already renderered.
+    // Render starts when an element is inserted with a parent that is already renderered.
     const node = this;
     const parent = this.parent;
 

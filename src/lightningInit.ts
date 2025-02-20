@@ -8,6 +8,10 @@ import {
   WebTrFontFace,
   RendererMain,
 } from '@lightningjs/renderer';
+import {
+  DOMRenderer,
+} from './domRenderer.js'
+
 type SdfFontType = 'ssdf' | 'msdf';
 
 export let renderer: RendererMain;
@@ -18,7 +22,7 @@ export function startLightningRenderer(
   options: RendererMainSettings,
   rootId: string | HTMLElement = 'app',
 ) {
-  renderer = new RendererMain(options, rootId);
+  renderer = new DOMRenderer(options, rootId);
   return renderer;
 }
 
