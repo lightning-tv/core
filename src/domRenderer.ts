@@ -315,10 +315,39 @@ class DOMNode implements lng.INode {
     public el: HTMLElement,
   ) {}
 
+  get id(): number {return this.node.id}
+  get props() {return this.node.props}
+  get children() {return this.node.children}
+  get parent(){return this.node.parent}
+  get rttParent() {return this.node.rttParent}
+  get updateType() {return this.node.updateType}
+  get childUpdateType() {return this.node.childUpdateType}
+  get globalTransform() {return this.node.globalTransform}
+  get scaleRotateTransform() {return this.node.scaleRotateTransform}
+  get localTransform() {return this.node.localTransform}
+  get renderCoords() {return this.node.renderCoords}
+  get renderBound() {return this.node.renderBound}
+  get strictBound() {return this.node.strictBound}
+  get preloadBound() {return this.node.preloadBound}
+  get clippingRect() {return this.node.clippingRect}
+  get isRenderable() {return this.node.isRenderable}
+  get renderState() {return this.node.renderState}
+  get worldAlpha() {return this.node.worldAlpha}
+  get premultipliedColorTl() {return this.node.premultipliedColorTl}
+  get premultipliedColorTr() {return this.node.premultipliedColorTr}
+  get premultipliedColorBl() {return this.node.premultipliedColorBl}
+  get premultipliedColorBr() {return this.node.premultipliedColorBr}
+  get calcZIndex() {return this.node.calcZIndex}
+  get hasRTTupdates() {return this.node.hasRTTupdates}
+  get parentHasRenderTexture() {return this.node.parentHasRenderTexture}
+
   get shader(){return this.node.shader}
   set shader(v: lng.BaseShaderController){this.node.shader = v}
-  animate(props: Partial<lng.INodeAnimateProps<lng.BaseShaderController>>, settings: Partial<lng.AnimationSettings>): lng.IAnimationController {
-    let anim = this.node.animate(props, settings)
+
+  animate(
+    props: Partial<lng.INodeAnimateProps>,
+    settings: Partial<lng.AnimationSettings>,
+): lng.IAnimationController {
     
     let keyframes: Keyframe[] = []
     for (let prop in props) {
@@ -341,18 +370,22 @@ class DOMNode implements lng.INode {
       case 'height':
         keyframes.push({height: props.height+'px'})
         break
+      // TODO handle all animateable props
       }
     }
 
+    // TODO: handle all animation settings
+
+    // ? Should WAAPI be used?
     this.el.animate(keyframes, {
       duration: settings.duration,
-      easing: settings.easing,
-      fill: 'forwards'
+      easing:   settings.easing,
+      fill:     'forwards',
     })
 
-    return anim
+    return this.node.animate(props, settings)
   }
-  get parent(){return this.node.parent}
+
   get x(): number {return this.node.x}
   set x(value: number) {
     this.node.x = value
@@ -535,29 +568,6 @@ class DOMNode implements lng.INode {
     this.node.strictBounds = value
     nodeSetPropTable.strictBounds(this.el, value, 'strictBounds', this.props)
   }
-  get children() {return this.node.children}
-  get props() {return this.node.props}
-  get updateType() {return this.node.updateType}
-  get childUpdateType() {return this.node.childUpdateType}
-  get globalTransform() {return this.node.globalTransform}
-  get scaleRotateTransform() {return this.node.scaleRotateTransform}
-  get localTransform() {return this.node.localTransform}
-  get renderCoords() {return this.node.renderCoords}
-  get renderBound() {return this.node.renderBound}
-  get strictBound() {return this.node.strictBound}
-  get preloadBound() {return this.node.preloadBound}
-  get clippingRect() {return this.node.clippingRect}
-  get isRenderable() {return this.node.isRenderable}
-  get renderState() {return this.node.renderState}
-  get worldAlpha() {return this.node.worldAlpha}
-  get premultipliedColorTl() {return this.node.premultipliedColorTl}
-  get premultipliedColorTr() {return this.node.premultipliedColorTr}
-  get premultipliedColorBl() {return this.node.premultipliedColorBl}
-  get premultipliedColorBr() {return this.node.premultipliedColorBr}
-  get calcZIndex() {return this.node.calcZIndex}
-  get hasRTTupdates() {return this.node.hasRTTupdates}
-  get parentHasRenderTexture() {return this.node.parentHasRenderTexture}
-  get rttParent() {return this.node.rttParent}
   loadTexture(): void {return this.node.loadTexture()}
   unloadTexture(): void {return this.node.unloadTexture()}
   autosizeNode(dimensions: lng.Dimensions): void {return this.node.autosizeNode(dimensions)}
@@ -579,7 +589,6 @@ class DOMNode implements lng.INode {
   calculateRenderCoords(): void {return this.node.calculateRenderCoords()}
   calculateZIndex(): void {return this.node.calculateZIndex()}
   destroy(): void {return this.node.destroy()}
-  get id(): number {return this.node.id}
   get absX(): number {return this.node.absX}
   get absY(): number {return this.node.absY}
   get framebufferDimensions(): lng.Dimensions {return this.node.framebufferDimensions}
