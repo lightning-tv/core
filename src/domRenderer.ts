@@ -279,6 +279,7 @@ class DOMNode implements lng.INode {
   destroy(): void {
     elMap.delete(this.node)
     this.el.parentNode!.removeChild(this.el)
+    this.node.destroy()
   }
 
   get id(): number {return this.node.id}
