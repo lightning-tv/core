@@ -7,6 +7,8 @@ Experimental DOM renderer
 import * as lng from '@lightningjs/renderer'
 import {Config} from './config.js'
 
+const entries = Object.entries as <T>(o: T) => [T[keyof T], keyof T][]
+
 let elMap = new WeakMap<lng.INode, HTMLElement>()
 
 let domRoot = document.body.appendChild(document.createElement('div'))
@@ -150,7 +152,25 @@ const nodeSetPropTable: {
       }
     }
   },
-  shader:         todoSetProp,
+  shader(el, value) {
+    for (let prop of Object.getOwnPropertyNames(value.props)) {
+      switch (prop) {
+      case 'border':{
+        let {width, color} = value.props[prop] as {width: number, color: number}
+        // css border impacts the element's box size when box-shadow doesn't
+        el.style.setProperty('box-shadow', `inset 0px 0px 0px ${width}px ${colorToRgba(color)}`)
+        break
+      }
+      case 'radius': {
+        let {radius} = value.props[prop]
+        el.style.setProperty('border-radius', radius+'px')
+        break
+      }
+      default:
+        console.warn('unhandled shader', el, prop, value.props[prop])
+      }
+    }
+  },
   autosize:       todoSetProp,
   colorTop:       todoSetProp,
   colorBottom:    todoSetProp,
@@ -307,9 +327,6 @@ class DOMNode implements lng.INode {
   get calcZIndex() {return this.node.calcZIndex}
   get hasRTTupdates() {return this.node.hasRTTupdates}
   get parentHasRenderTexture() {return this.node.parentHasRenderTexture}
-
-  get shader(){return this.node.shader}
-  set shader(v: lng.BaseShaderController){this.node.shader = v}
 
   animate(
     props: Partial<lng.INodeAnimateProps>,
@@ -518,8 +535,15 @@ class DOMNode implements lng.INode {
     this.node.rtt = value
     nodeSetPropTable.rtt(this.el, value, 'rtt', this.props)
   }
+  get shader(){return this.node.shader}
+  set shader(v: lng.BaseShaderController){
+    this.node.shader = v
+    nodeSetPropTable.shader(this.el, v, 'shader', this.props)
+  }
+  
   get data() {return this.node.data}
   set data(value: any) {this.node.data = value}
+
   set imageType(value: 'regular' | 'compressed' | 'svg' | null) {this.node.imageType = value}
   get imageType(): 'regular' | 'compressed' | 'svg' | null {return this.node.imageType}
   get srcWidth(): number | undefined {return this.node.srcWidth}
