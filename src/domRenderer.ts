@@ -308,6 +308,283 @@ function updateRootPosition(this: DOMRenderer) {
   domRoot.style.zIndex          = '65534'
 }
 
+class DOMNode implements lng.INode {
+
+  constructor (
+    public node: lng.INode,
+    public el: HTMLElement,
+  ) {}
+
+  get shader(){return this.node.shader}
+  set shader(v: lng.BaseShaderController){this.node.shader = v}
+  animate(props: Partial<lng.INodeAnimateProps<lng.BaseShaderController>>, settings: Partial<lng.AnimationSettings>): lng.IAnimationController {
+    let anim = this.node.animate(props, settings)
+    
+    // Create keyframes for the DOM animation
+    let keyframes: Keyframe[] = []
+    for (let prop in props) {
+      if (prop === 'scale') {
+      keyframes.push({
+        transform: `scale(${props.scale})`
+      })
+      }
+      // Add other prop animations as needed
+    }
+
+    // Animate the DOM element
+    this.el.animate(keyframes, {
+      duration: settings.duration,
+      easing: settings.easing,
+      fill: 'forwards'
+    })
+
+    return anim
+  }
+  get parent(){return this.node.parent}
+  get x(): number {return this.node.x}
+  set x(value: number) {
+    this.node.x = value
+    nodeSetPropTable.x(this.el, value, 'x', this.props)
+  }
+  get y(): number {return this.node.y}
+  set y(value: number) {
+    this.node.y = value
+    nodeSetPropTable.y(this.el, value, 'y', this.props)
+  }
+  get width(): number {return this.node.width}
+  set width(value: number) {
+    this.node.width = value
+    nodeSetPropTable.width(this.el, value, 'width', this.props)
+  }
+  get height(): number {return this.node.height}
+  set height(value: number) {
+    this.node.height = value
+    nodeSetPropTable.height(this.el, value, 'height', this.props)
+  }
+  get alpha(): number {return this.node.alpha}
+  set alpha(value: number) {
+    this.node.alpha = value
+    nodeSetPropTable.alpha(this.el, value, 'alpha', this.props)
+  }
+  get autosize(): boolean {return this.node.autosize}
+  set autosize(value: boolean) {
+    this.node.autosize = value
+    nodeSetPropTable.autosize(this.el, value, 'autosize', this.props)
+  }
+  get clipping(): boolean {return this.node.clipping}
+  set clipping(value: boolean) {
+    this.node.clipping = value
+    nodeSetPropTable.clipping(this.el, value, 'clipping', this.props)
+  }
+  get color(): number {return this.node.color}
+  set color(value: number) {
+    this.node.color = value
+    nodeSetPropTable.color(this.el, value, 'color', this.props)
+  }
+  get colorTop(): number {return this.node.colorTop}
+  set colorTop(value: number) {
+    this.node.colorTop = value
+    nodeSetPropTable.colorTop(this.el, value, 'colorTop', this.props)
+  }
+  get colorBottom(): number {return this.node.colorBottom}
+  set colorBottom(value: number) {
+    this.node.colorBottom = value
+    nodeSetPropTable.colorBottom(this.el, value, 'colorBottom', this.props)
+  }
+  get colorLeft(): number {return this.node.colorLeft}
+  set colorLeft(value: number) {
+    this.node.colorLeft = value
+    nodeSetPropTable.colorLeft(this.el, value, 'colorLeft', this.props)
+  }
+  get colorRight(): number {return this.node.colorRight}
+  set colorRight(value: number) {
+    this.node.colorRight = value
+    nodeSetPropTable.colorRight(this.el, value, 'colorRight', this.props)
+  }
+  get colorTl(): number {return this.node.colorTl}
+  set colorTl(value: number) {
+    this.node.colorTl = value
+    nodeSetPropTable.colorTl(this.el, value, 'colorTl', this.props)
+  }
+  get colorTr(): number {return this.node.colorTr}
+  set colorTr(value: number) {
+    this.node.colorTr = value
+    nodeSetPropTable.colorTr(this.el, value, 'colorTr', this.props)
+  }
+  get colorBr(): number {return this.node.colorBr}
+  set colorBr(value: number) {
+    this.node.colorBr = value
+    nodeSetPropTable.colorBr(this.el, value, 'colorBr', this.props)
+  }
+  get colorBl(): number {return this.node.colorBl}
+  set colorBl(value: number) {
+    this.node.colorBl = value
+    nodeSetPropTable.colorBl(this.el, value, 'colorBl', this.props)
+  }
+  get zIndex(): number {return this.node.zIndex}
+  set zIndex(value: number) {
+    this.node.zIndex = value
+    nodeSetPropTable.zIndex(this.el, value, 'zIndex', this.props)
+  }
+  get texture(): lng.Texture | null {return this.node.texture}
+  set texture(value: lng.Texture | null) {
+    this.node.texture = value
+    nodeSetPropTable.texture(this.el, value, 'texture', this.props)
+  }
+  get preventCleanup(): boolean {return this.node.preventCleanup}
+  set preventCleanup(value: boolean) {
+    this.node.preventCleanup = value
+    nodeSetPropTable.preventCleanup(this.el, value, 'preventCleanup', this.props)
+  }
+  set textureOptions(value: any) {
+    this.node.textureOptions = value
+    nodeSetPropTable.textureOptions(this.el, value, 'textureOptions', this.props)
+  }
+  get textureOptions() {return this.node.textureOptions}
+  get src(): string | null {return this.node.src}
+  set src(value: string | null) {
+    this.node.src = value
+    nodeSetPropTable.src(this.el, value, 'src', this.props)
+  }
+  get zIndexLocked(): number {return this.node.zIndexLocked}
+  set zIndexLocked(value: number) {
+    this.node.zIndexLocked = value
+    nodeSetPropTable.zIndexLocked(this.el, value, 'zIndexLocked', this.props)
+  }
+  get scale(): number {return this.node.scale}
+  set scale(value: number) {
+    this.node.scale = value
+    nodeSetPropTable.scale(this.el, value, 'scale', this.props)
+  }
+  get scaleX(): number {return this.node.scaleX}
+  set scaleX(value: number) {
+    this.node.scaleX = value
+    nodeSetPropTable.scaleX(this.el, value, 'scaleX', this.props)
+  }
+  get scaleY(): number {return this.node.scaleY}
+  set scaleY(value: number) {
+    this.node.scaleY = value
+    nodeSetPropTable.scaleY(this.el, value, 'scaleY', this.props)
+  }
+  get mount(): number {return this.node.mount}
+  set mount(value: number) {
+    this.node.mount = value
+    nodeSetPropTable.mount(this.el, value, 'mount', this.props)
+  }
+  get mountX(): number {return this.node.mountX}
+  set mountX(value: number) {
+    this.node.mountX = value
+    nodeSetPropTable.mountX(this.el, value, 'mountX', this.props)
+  }
+  get mountY(): number {return this.node.mountY}
+  set mountY(value: number) {
+    this.node.mountY = value
+    nodeSetPropTable.mountY(this.el, value, 'mountY', this.props)
+  }
+  get pivot(): number {return this.node.pivot}
+  set pivot(value: number) {
+    this.node.pivot = value
+    nodeSetPropTable.pivot(this.el, value, 'pivot', this.props)
+  }
+  get pivotX(): number {return this.node.pivotX}
+  set pivotX(value: number) {
+    this.node.pivotX = value
+    nodeSetPropTable.pivotX(this.el, value, 'pivotX', this.props)
+  }
+  get pivotY(): number {return this.node.pivotY}
+  set pivotY(value: number) {
+    this.node.pivotY = value
+    nodeSetPropTable.pivotY(this.el, value, 'pivotY', this.props)
+  }
+  get rotation(): number {return this.node.rotation}
+  set rotation(value: number) {
+    this.node.rotation = value
+    nodeSetPropTable.rotation(this.el, value, 'rotation', this.props)
+  }
+  get rtt(): boolean {return this.node.rtt}
+  set rtt(value: boolean) {
+    this.node.rtt = value
+    nodeSetPropTable.rtt(this.el, value, 'rtt', this.props)
+  }
+  get data() {return this.node.data}
+  set data(value: any) {this.node.data = value}
+  set imageType(value: 'regular' | 'compressed' | 'svg' | null) {this.node.imageType = value}
+  get imageType(): 'regular' | 'compressed' | 'svg' | null {return this.node.imageType}
+  get srcWidth(): number | undefined {return this.node.srcWidth}
+  set srcWidth(value: number | undefined) {this.node.srcWidth = value}
+  get srcHeight(): number | undefined {return this.node.srcHeight}
+  set srcHeight(value: number | undefined) {this.node.srcHeight = value}
+  get srcX(): number | undefined {return this.node.srcX}
+  set srcX(value: number | undefined) {this.node.srcX = value}
+  get srcY(): number | undefined {return this.node.srcY}
+  set srcY(value: number | undefined) {this.node.srcY = value}
+  get strictBounds(): boolean {return this.node.strictBounds}
+  set strictBounds(value: boolean) {
+    this.node.strictBounds = value
+    nodeSetPropTable.strictBounds(this.el, value, 'strictBounds', this.props)
+  }
+  get children() {return this.node.children}
+  get props() {return this.node.props}
+  get updateType() {return this.node.updateType}
+  get childUpdateType() {return this.node.childUpdateType}
+  get globalTransform() {return this.node.globalTransform}
+  get scaleRotateTransform() {return this.node.scaleRotateTransform}
+  get localTransform() {return this.node.localTransform}
+  get renderCoords() {return this.node.renderCoords}
+  get renderBound() {return this.node.renderBound}
+  get strictBound() {return this.node.strictBound}
+  get preloadBound() {return this.node.preloadBound}
+  get clippingRect() {return this.node.clippingRect}
+  get isRenderable() {return this.node.isRenderable}
+  get renderState() {return this.node.renderState}
+  get worldAlpha() {return this.node.worldAlpha}
+  get premultipliedColorTl() {return this.node.premultipliedColorTl}
+  get premultipliedColorTr() {return this.node.premultipliedColorTr}
+  get premultipliedColorBl() {return this.node.premultipliedColorBl}
+  get premultipliedColorBr() {return this.node.premultipliedColorBr}
+  get calcZIndex() {return this.node.calcZIndex}
+  get hasRTTupdates() {return this.node.hasRTTupdates}
+  get parentHasRenderTexture() {return this.node.parentHasRenderTexture}
+  get rttParent() {return this.node.rttParent}
+  loadTexture(): void {return this.node.loadTexture()}
+  unloadTexture(): void {return this.node.unloadTexture()}
+  autosizeNode(dimensions: lng.Dimensions): void {return this.node.autosizeNode(dimensions)}
+  sortChildren(): void {return this.node.sortChildren()}
+  updateScaleRotateTransform(): void {return this.node.updateScaleRotateTransform()}
+  updateLocalTransform(): void {return this.node.updateLocalTransform()}
+  checkRenderBounds(): lng.CoreNodeRenderState {return this.node.checkRenderBounds()}
+  updateBoundingRect(): void {return this.node.updateBoundingRect()}
+  createRenderBounds(): void {return this.node.createRenderBounds()}
+  updateRenderState(renderState: lng.CoreNodeRenderState): void {return this.node.updateRenderState(renderState)}
+  updateIsRenderable(): void {return this.node.updateIsRenderable()}
+  checkBasicRenderability(): boolean {return this.node.checkBasicRenderability()}
+  setRenderable(isRenderable: boolean): void {return this.node.setRenderable(isRenderable)}
+  updateTextureOwnership(isRenderable: boolean): void {return this.node.updateTextureOwnership(isRenderable)}
+  isOutOfBounds(): boolean {return this.node.isOutOfBounds()}
+  hasDimensions(): boolean {return this.node.hasDimensions()}
+  hasColorProperties(): boolean {return this.node.hasColorProperties()}
+  hasShader(): boolean {return this.node.hasShader()}
+  calculateRenderCoords(): void {return this.node.calculateRenderCoords()}
+  calculateZIndex(): void {return this.node.calculateZIndex()}
+  destroy(): void {return this.node.destroy()}
+  get id(): number {return this.node.id}
+  get absX(): number {return this.node.absX}
+  get absY(): number {return this.node.absY}
+  get framebufferDimensions(): lng.Dimensions {return this.node.framebufferDimensions}
+  get parentRenderTexture() {return this.node.parentRenderTexture}
+  flush(): void {return this.node.flush()}
+  on(event: string, listener: (target: any, data: any) => void): void {return this.node.on(event, listener)}
+  off(event: string, listener?: (target: any, data: any) => void): void {return this.node.off(event, listener)}
+  once(event: string, listener: (target: any, data: any) => void): void {return this.node.once(event, listener)}
+  emit(event: string, data?: any): void {return this.node.emit(event, data)}
+  removeAllListeners(): void {return this.node.removeAllListeners()}
+  get stage() {return this.node.stage}
+  setUpdateType(type: any) {this.node.setUpdateType(type)}
+  update(delta: number, parentClippingRect: any) {this.node.update(delta, parentClippingRect)}
+  calculateClippingRect(parentClippingRect: any) {this.node.calculateClippingRect(parentClippingRect)}
+  renderQuads(renderer: any) {this.node.renderQuads(renderer)}
+}
+
 export class DOMRenderer extends lng.RendererMain {
   
   constructor(settings: lng.RendererMainSettings, target: string | HTMLElement) {
@@ -325,23 +602,14 @@ export class DOMRenderer extends lng.RendererMain {
   >(
     props: Partial<lng.INodeProps<ShCtr>>,
   ): lng.INode<ShCtr> {
-    let node = super.createNode(props)
 
     let el = document.createElement('div')
+
+    let node = new DOMNode(super.createNode(props), el)
+
     el.style.position = 'absolute'
 
     nodeSetProps(el, props)
-
-    node = new Proxy(node, {
-      set(target, prop, value) {
-
-        if (prop in nodeSetPropTable) {
-          (nodeSetPropTable as any)[prop]!(el, value, prop, props)
-        }
-
-        return Reflect.set(target, prop, value)
-      }
-    })
 
     elMap.set(node, el)
     return node
