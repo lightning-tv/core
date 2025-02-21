@@ -5,14 +5,14 @@ Experimental DOM renderer
 */
 
 import * as lng from '@lightningjs/renderer'
-import { assertTruthy } from '@lightningjs/renderer/utils'
 
 let elMap = new WeakMap<lng.INode, HTMLElement>()
 
 let domRoot = document.body.appendChild(document.createElement('div'))
 domRoot.id = 'dom_root'
 
-let rangeInput = document.createElement('input')
+// little slider to show/hide the dom renderer output :)
+let rangeInput = document.body.appendChild(document.createElement('input'))
 rangeInput.type  = 'range'
 rangeInput.min   = '0'
 rangeInput.max   = '1'
@@ -26,8 +26,6 @@ rangeInput.style.zIndex   = '65535'
 rangeInput.addEventListener('input', () => {
   domRoot.style.opacity = rangeInput.value
 })
-
-document.body.appendChild(rangeInput)
 
 /*
  fetchJson function from @lightningjs/renderer/src/core/text-rendering/font-face-types/utils.ts
@@ -205,7 +203,7 @@ const textSetPropTable: {
   },
   lineHeight(el, value) {
     if (value != null) {
-      el.style.setProperty('line-height', String(value))
+      el.style.setProperty('line-height', String(value)+'px')
     } else {
       el.style.removeProperty('line-height')
     }
