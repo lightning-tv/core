@@ -271,21 +271,10 @@ function nodeSetProps(el: HTMLElement, props: Partial<lng.INodeProps>) {
 
 class DOMNode implements lng.INode {
 
-  el: HTMLElement
-
   constructor (
     public node: lng.INode,
-    props: lng.INodeProps,
-  ) {
-    this.el = document.createElement('div')
-    this.el.style.position = 'absolute'
-    this.el.dataset
-    this.el.setAttribute('data-id', String(this.id))
-
-    elMap.set(this, this.el)
-    
-    nodeSetProps(this.el, props)
-  }
+    public el: HTMLElement,
+  ) {}
 
   get id(): number {return this.node.id}
   get props() {return this.node.props}
@@ -578,6 +567,117 @@ class DOMNode implements lng.INode {
   renderQuads(renderer: any) {this.node.renderQuads(renderer)}
 }
 
+class DOMText extends DOMNode {
+
+  constructor (
+    public override node: lng.ITextNode,
+    el: HTMLElement,
+  ) {
+    super(node, el)
+  }
+
+  get text(): any {return this.node.text}
+  set text(value: any) {
+    this.node.text = value
+    textSetPropTable.text(this.el, value, 'text', this.props)
+  }
+  override get color(): any {return this.node.color}
+  override set color(value: any) {
+    this.node.color = value
+    textSetPropTable.color(this.el, value, 'color', this.props)
+  }
+  get fontFamily(): any {return this.node.fontFamily}
+  set fontFamily(value: any) {
+    this.node.fontFamily = value
+    textSetPropTable.fontFamily(this.el, value, 'fontFamily', this.props)
+  }
+  get fontSize(): any {return this.node.fontSize}
+  set fontSize(value: any) {
+    this.node.fontSize = value
+    textSetPropTable.fontSize(this.el, value, 'fontSize', this.props)
+  }
+  get fontStyle(): any {return this.node.fontStyle}
+  set fontStyle(value: any) {
+    this.node.fontStyle = value
+    textSetPropTable.fontStyle(this.el, value, 'fontStyle', this.props)
+  }
+  get fontWeight(): any {return this.node.fontWeight}
+  set fontWeight(value: any) {
+    this.node.fontWeight = value
+    textSetPropTable.fontWeight(this.el, value, 'fontWeight', this.props)
+  }
+  get fontStretch(): any {return this.node.fontStretch}
+  set fontStretch(value: any) {
+    this.node.fontStretch = value
+    textSetPropTable.fontStretch(this.el, value, 'fontStretch', this.props)
+  }
+  get lineHeight(): any {return this.node.lineHeight}
+  set lineHeight(value: any) {
+    this.node.lineHeight = value
+    textSetPropTable.lineHeight(this.el, value, 'lineHeight', this.props)
+  }
+  get letterSpacing(): any {return this.node.letterSpacing}
+  set letterSpacing(value: any) {
+    this.node.letterSpacing = value
+    textSetPropTable.letterSpacing(this.el, value, 'letterSpacing', this.props)
+  }
+  get textAlign(): any {return this.node.textAlign}
+  set textAlign(value: any) {
+    this.node.textAlign = value
+    textSetPropTable.textAlign(this.el, value, 'textAlign', this.props)
+  }
+  get overflowSuffix(): any {return this.node.overflowSuffix}
+  set overflowSuffix(value: any) {
+    this.node.overflowSuffix = value
+    textSetPropTable.overflowSuffix(this.el, value, 'overflowSuffix', this.props)
+  }
+  get maxLines(): any {return this.node.maxLines}
+  set maxLines(value: any) {
+    this.node.maxLines = value
+    textSetPropTable.maxLines(this.el, value, 'maxLines', this.props)
+  }
+  get contain(): any {return this.node.contain}
+  set contain(value: any) {
+    this.node.contain = value
+    textSetPropTable.contain(this.el, value, 'contain', this.props)
+  }
+  get verticalAlign(): any {return this.node.verticalAlign}
+  set verticalAlign(value: any) {
+    this.node.verticalAlign = value
+    textSetPropTable.verticalAlign(this.el, value, 'verticalAlign', this.props)
+  }
+  get textBaseline(): any {return this.node.textBaseline}
+  set textBaseline(value: any) {
+    this.node.textBaseline = value
+    textSetPropTable.textBaseline(this.el, value, 'textBaseline', this.props)
+  }
+  get textRendererOverride(): any {return this.node.textRendererOverride}
+  set textRendererOverride(value: any) {
+    this.node.textRendererOverride = value
+    textSetPropTable.textRendererOverride(this.el, value, 'textRendererOverride', this.props)
+  }
+  get scrollable(): any {return this.node.scrollable}
+  set scrollable(value: any) {
+    this.node.scrollable = value
+    textSetPropTable.scrollable(this.el, value, 'scrollable', this.props)
+  }
+  get scrollY(): any {return this.node.scrollY}
+  set scrollY(value: any) {
+    this.node.scrollY = value
+    textSetPropTable.scrollY(this.el, value, 'scrollY', this.props)
+  }
+  get offsetY(): any {return this.node.offsetY}
+  set offsetY(value: any) {
+    this.node.offsetY = value
+    textSetPropTable.offsetY(this.el, value, 'offsetY', this.props)
+  }
+  get debug(): any {return this.node.debug}
+  set debug(value: any) {
+    this.node.debug = value
+    textSetPropTable.debug(this.el, value, 'debug', this.props)
+  }
+}
+
 function updateRootPosition(this: DOMRenderer) {
   let {canvas, settings} = this
 
@@ -626,29 +726,32 @@ export class DOMRenderer extends lng.RendererMain {
   >(
     props: Partial<lng.INodeProps<ShCtr>>,
   ): lng.INode<ShCtr> {
-    return new DOMNode(super.createNode(props), props)
-  }
-
-  override createTextNode(props: Partial<lng.ITextNodeProps>): lng.ITextNode {
-    let node = super.createTextNode(props)
 
     let el = document.createElement('div')
     el.style.position = 'absolute'
+    
+    let node = new DOMNode(super.createNode(props), el)
 
-    textSetProps(el, props)
-
-    node = new Proxy(node, {
-      set(target, prop, value) {
-
-        if (prop in textSetPropTable) {
-          (textSetPropTable as any)[prop]!(el, value, prop, props)
-        }
-
-        return Reflect.set(target, prop, value)
-      },
-    })
-
+    el.setAttribute('data-id', String(node.id))
     elMap.set(node, el)
+    
+    nodeSetProps(el, props)
+    
+    return node
+  }
+
+  override createTextNode(props: Partial<lng.ITextNodeProps>): lng.ITextNode {
+
+    let el = document.createElement('div')
+    el.style.position = 'absolute'
+    
+    let node = new DOMText(super.createTextNode(props), el)
+
+    el.setAttribute('data-id', String(node.id))
+    elMap.set(node, el)
+    
+    textSetProps(el, props)
+    
     return node
   }
 
