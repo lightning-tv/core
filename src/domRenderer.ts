@@ -320,18 +320,30 @@ class DOMNode implements lng.INode {
   animate(props: Partial<lng.INodeAnimateProps<lng.BaseShaderController>>, settings: Partial<lng.AnimationSettings>): lng.IAnimationController {
     let anim = this.node.animate(props, settings)
     
-    // Create keyframes for the DOM animation
     let keyframes: Keyframe[] = []
     for (let prop in props) {
-      if (prop === 'scale') {
-      keyframes.push({
-        transform: `scale(${props.scale})`
-      })
+      switch (prop) {
+      case 'scale':
+        keyframes.push({transform: `scale(${props.scale})`})
+        break
+      case 'alpha':
+        keyframes.push({opacity: props.alpha})
+        break
+      case 'x':
+        keyframes.push({left: props.x+'px'})
+        break
+      case 'y':
+        keyframes.push({top: props.y+'px'})
+        break
+      case 'width':
+        keyframes.push({width: props.width+'px'})
+        break
+      case 'height':
+        keyframes.push({height: props.height+'px'})
+        break
       }
-      // Add other prop animations as needed
     }
 
-    // Animate the DOM element
     this.el.animate(keyframes, {
       duration: settings.duration,
       easing: settings.easing,
