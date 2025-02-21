@@ -5,6 +5,7 @@ Experimental DOM renderer
 */
 
 import * as lng from '@lightningjs/renderer'
+import { assertTruthy } from '@lightningjs/renderer/utils'
 
 let elMap = new WeakMap<lng.INode, HTMLElement>()
 
@@ -70,13 +71,10 @@ const nodeSetPropTable: {
       if (value.id === 1) {
         domRoot.appendChild(el)
       } else {
-        let parent = elMap.get(value)
-        if (parent) {
-          parent.appendChild(el)
-        } else {
-          console.warn('no parent element')
-        }
+        elMap.get(value)!.appendChild(el)
       }
+    } else {
+      console.warn('no parent?')
     }
   },
   src(el, value) {
@@ -87,12 +85,14 @@ const nodeSetPropTable: {
         el.style.setProperty('background-size', 'contain')
         el.style.setProperty('background-repeat', 'no-repeat')
       })
+    } else {
+      el.style.removeProperty('background-image')
+      el.style.removeProperty('background-size')
+      el.style.removeProperty('background-repeat')
     }
   },
   alpha(el, value) {
-    if (value !== 1) {
-      el.style.setProperty('opacity', String(value))
-    }
+    el.style.setProperty('opacity', String(value))
   },
   x(el, value, _, props) {
 
@@ -113,47 +113,31 @@ const nodeSetPropTable: {
     el.style.setProperty('top', value+'px')
   },
   width(el, value) {
-    if (value !== 0) {
-      el.style.setProperty('width', value+'px')
-    }
+    el.style.setProperty('width', value+'px')
   },
   height(el, value) {
-    if (value !== 0) {
-      el.style.setProperty('height', value+'px')
-    }
+    el.style.setProperty('height', value+'px')
   },
   zIndex(el, value) {
     el.style.setProperty('z-index', String(value))
   },
   clipping(el, value) {
-    if (value) {
-      el.style.setProperty('overflow', 'hidden')
-    }
+    el.style.setProperty('overflow', value ? 'hidden' : 'visible')
   },
   rotation(el, value) {
-    if (value !== 0) {
-      el.style.setProperty('transform', `rotate(${value}rad)`)
-    }
+    el.style.setProperty('transform', `rotate(${value}rad)`)
   },
   scale(el, value) {
-    if (value !== 1) {
-      el.style.setProperty('transform', `scale(${value})`)
-    }
+    el.style.setProperty('transform', `scale(${value})`)
   },
   scaleX(el, value) {
-    if (value !== 1) {
-      el.style.setProperty('transform', `scaleX(${value})`)
-    }
+    el.style.setProperty('transform', `scaleX(${value})`)
   },
   scaleY(el, value) {
-    if (value !== 1) {
-      el.style.setProperty('transform', `scaleY(${value})`)
-    }
+    el.style.setProperty('transform', `scaleY(${value})`)
   },
   color(el, value) {
-    if (value !== 0) {
-      el.style.setProperty('background-color', colorToRgba(value))
-    }
+    el.style.setProperty('background-color', colorToRgba(value))
   },
   data(el, value) {
     for (let key in value) {
@@ -202,9 +186,7 @@ const textSetPropTable: {
     el.innerHTML = value
   },
   color(el, value) {
-    if (value !== 0) {
-      el.style.setProperty('color', colorToRgba(value))
-    }
+    el.style.setProperty('color', colorToRgba(value))
   },
   fontFamily(el, value) {
     el.style.setProperty('font-family', value)
@@ -224,6 +206,8 @@ const textSetPropTable: {
   lineHeight(el, value) {
     if (value != null) {
       el.style.setProperty('line-height', String(value))
+    } else {
+      el.style.removeProperty('line-height')
     }
   },
   letterSpacing(el, value) {
