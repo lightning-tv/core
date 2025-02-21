@@ -276,6 +276,11 @@ class DOMNode implements lng.INode {
     public el: HTMLElement,
   ) {}
 
+  destroy(): void {
+    elMap.delete(this.node)
+    this.el.parentNode!.removeChild(this.el)
+  }
+
   get id(): number {return this.node.id}
   get props() {return this.node.props}
   get children() {return this.node.children}
@@ -549,7 +554,6 @@ class DOMNode implements lng.INode {
   hasShader(): boolean {return this.node.hasShader()}
   calculateRenderCoords(): void {return this.node.calculateRenderCoords()}
   calculateZIndex(): void {return this.node.calculateZIndex()}
-  destroy(): void {return this.node.destroy()}
   get absX(): number {return this.node.absX}
   get absY(): number {return this.node.absY}
   get framebufferDimensions(): lng.Dimensions {return this.node.framebufferDimensions}
