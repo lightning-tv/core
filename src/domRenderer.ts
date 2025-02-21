@@ -5,11 +5,14 @@ Experimental DOM renderer
 */
 
 import * as lng from '@lightningjs/renderer'
+import {Config} from './config.js'
 
 let elMap = new WeakMap<lng.INode, HTMLElement>()
 
 let domRoot = document.body.appendChild(document.createElement('div'))
 domRoot.id = 'dom_root'
+
+domRoot.style.backgroundColor = 'white'
 
 // little slider to show/hide the dom renderer output :)
 let rangeInput = document.body.appendChild(document.createElement('input'))
@@ -266,36 +269,23 @@ function nodeSetProps(el: HTMLElement, props: Partial<lng.INodeProps>) {
   }
 }
 
-function updateRootPosition(this: DOMRenderer) {
-  let {canvas, settings} = this
-
-  let rect = canvas.getBoundingClientRect()
-  let top = document.documentElement.scrollTop + rect.top
-  let left = document.documentElement.scrollLeft + rect.left
-
-  let height = Math.ceil(settings.appHeight ?? 1080 / (settings.deviceLogicalPixelRatio ?? 1))
-  let width = Math.ceil(settings.appWidth ?? 1920 / (settings.deviceLogicalPixelRatio ?? 1))
-
-  let scaleX = settings.deviceLogicalPixelRatio ?? 1
-  let scaleY = settings.deviceLogicalPixelRatio ?? 1
-  
-  domRoot.style.left            = `${left}px`
-  domRoot.style.top             = `${top}px`
-  domRoot.style.width           = `${width}px`
-  domRoot.style.height          = `${height}px`
-  domRoot.style.position        = 'absolute'
-  domRoot.style.transformOrigin = '0 0 0'
-  domRoot.style.transform       = `scale(${scaleX}, ${scaleY})`
-  domRoot.style.overflow        = 'hidden'
-  domRoot.style.zIndex          = '65534'
-}
-
 class DOMNode implements lng.INode {
+
+  el: HTMLElement
 
   constructor (
     public node: lng.INode,
-    public el: HTMLElement,
-  ) {}
+    props: lng.INodeProps,
+  ) {
+    this.el = document.createElement('div')
+    this.el.style.position = 'absolute'
+    this.el.dataset
+    this.el.setAttribute('data-id', String(this.id))
+
+    elMap.set(this, this.el)
+    
+    nodeSetProps(this.el, props)
+  }
 
   get id(): number {return this.node.id}
   get props() {return this.node.props}
@@ -588,10 +578,41 @@ class DOMNode implements lng.INode {
   renderQuads(renderer: any) {this.node.renderQuads(renderer)}
 }
 
+function updateRootPosition(this: DOMRenderer) {
+  let {canvas, settings} = this
+
+  let rect = canvas.getBoundingClientRect()
+  let top = document.documentElement.scrollTop + rect.top
+  let left = document.documentElement.scrollLeft + rect.left
+
+  let height = Math.ceil(settings.appHeight ?? 1080 / (settings.deviceLogicalPixelRatio ?? 1))
+  let width = Math.ceil(settings.appWidth ?? 1920 / (settings.deviceLogicalPixelRatio ?? 1))
+
+  let scaleX = settings.deviceLogicalPixelRatio ?? 1
+  let scaleY = settings.deviceLogicalPixelRatio ?? 1
+  
+  domRoot.style.left            = `${left}px`
+  domRoot.style.top             = `${top}px`
+  domRoot.style.width           = `${width}px`
+  domRoot.style.height          = `${height}px`
+  domRoot.style.position        = 'absolute'
+  domRoot.style.transformOrigin = '0 0 0'
+  domRoot.style.transform       = `scale(${scaleX}, ${scaleY})`
+  domRoot.style.overflow        = 'hidden'
+  domRoot.style.zIndex          = '65534'
+}
+
 export class DOMRenderer extends lng.RendererMain {
   
   constructor(settings: lng.RendererMainSettings, target: string | HTMLElement) {
     super(settings, target)
+
+    if (Config.fontSettings.fontFamily != null) {
+      domRoot.style.setProperty('font-family', Config.fontSettings.fontFamily)
+    }
+    if (Config.fontSettings.fontSize != null) {
+      domRoot.style.setProperty('font-size', Config.fontSettings.fontSize+'px')
+    }
 
     updateRootPosition.call(this)
 
@@ -605,17 +626,7 @@ export class DOMRenderer extends lng.RendererMain {
   >(
     props: Partial<lng.INodeProps<ShCtr>>,
   ): lng.INode<ShCtr> {
-
-    let el = document.createElement('div')
-
-    let node = new DOMNode(super.createNode(props), el)
-
-    el.style.position = 'absolute'
-
-    nodeSetProps(el, props)
-
-    elMap.set(node, el)
-    return node
+    return new DOMNode(super.createNode(props), props)
   }
 
   override createTextNode(props: Partial<lng.ITextNodeProps>): lng.ITextNode {
