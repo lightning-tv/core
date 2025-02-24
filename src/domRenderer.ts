@@ -220,7 +220,11 @@ const textSetPropTable: {
     el.style.setProperty('overflow-suffix', value)
   },
   maxLines(el, value) {
-    el.style.setProperty('max-lines', String(value))
+    el.style.setProperty('display', '-webkit-box')
+    el.style.setProperty('overflow', 'hidden')
+    el.style.setProperty('-webkit-line-clamp', String(value))
+    el.style.setProperty('line-clamp', String(value))
+    el.style.setProperty('-webkit-box-orient', 'vertical')
   },
   contain(el, value) {
     el.style.setProperty('contain', value)
