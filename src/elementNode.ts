@@ -26,6 +26,7 @@ import {
   isElementNode,
   isElementText,
   logRenderTree,
+  isFunction,
 } from './utils.js';
 import { Config, isDev } from './config.js';
 import type {
@@ -474,6 +475,20 @@ export class ElementNode extends Object {
     }
     this._animationRunning = false;
     this._animationQueueSettings = undefined;
+  }
+
+  emit(event: string, ...args: any[]): boolean {
+    let current = this.parent;
+    while (current) {
+      const handler = current[`on${event}`];
+      if (isFunction(handler)) {
+        if (handler.call(current, this, ...args) === true) {
+          return true;
+        }
+      }
+      current = current.parent!;
+    }
+    return false;
   }
 
   setFocus(): void {

@@ -124,6 +124,7 @@ export interface NodeProps
         | 'lng'
         | 'rendered'
         | 'renderer'
+        | 'emit'
         | 'preFlexwidth'
         | 'preFlexHeight'
       >
