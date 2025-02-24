@@ -150,6 +150,19 @@ const nodeSetPropTable: {
       }
     }
   },
+  texture(el, value) {
+    if (value != null) {
+      let src: string = (value as any).props.texture.props.src
+      let x: number = (value as any).props.x
+      let y: number = (value as any).props.y
+
+      el.style.setProperty('background-image', `url(${src})`)
+      el.style.setProperty('background-position', `-${x}px -${y}px`)
+    } else {
+      el.style.removeProperty('background-image')
+      el.style.removeProperty('background-position')
+    }
+  },
   autosize:       todoSetProp,
   colorTop:       todoSetProp,
   colorBottom:    todoSetProp,
@@ -160,7 +173,6 @@ const nodeSetPropTable: {
   colorBr:        todoSetProp,
   colorBl:        todoSetProp,
   preventCleanup: todoSetProp,
-  texture:        todoSetProp,
   textureOptions: todoSetProp,
   zIndexLocked:   todoSetProp,
   mount:          todoSetProp,
