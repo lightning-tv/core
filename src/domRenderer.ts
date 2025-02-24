@@ -232,6 +232,7 @@ const textSetPropTable: {
     el.style.setProperty('overflow-suffix', value)
   },
   maxLines(el, value) {
+    // https://stackoverflow.com/a/13924997
     el.style.setProperty('display', '-webkit-box')
     el.style.setProperty('overflow', 'hidden')
     el.style.setProperty('-webkit-line-clamp', String(value))
@@ -737,6 +738,12 @@ export class DOMRenderer extends lng.RendererMain {
     if (Config.fontSettings.fontSize != null) {
       domRoot.style.setProperty('font-size', Config.fontSettings.fontSize+'px')
     }
+
+    domRoot.style.setProperty('line-height',
+      Config.fontSettings.lineHeight
+        ? Config.fontSettings.lineHeight+'px'
+        : '1' // 1 = same as font size
+    )
 
     updateRootPosition.call(this)
 
