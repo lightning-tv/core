@@ -50,7 +50,8 @@ export default function (node: ElementNode): boolean {
   const align = node.alignItems;
   let containerUpdated = false;
 
-  if (growSize) {
+  // if there is only 1 children by default it inherits the parent size so we can skip
+  if (growSize && numChildren > 1) {
     const flexBasis = children.reduce(
       (prev, c) =>
         prev +
@@ -61,16 +62,20 @@ export default function (node: ElementNode): boolean {
     );
     const growFactor =
       (containerSize - flexBasis - gap * (numChildren - 1)) / growSize;
-    for (let i = 0; i < children.length; i++) {
+    for (let i = 0; i < numChildren; i++) {
       const c = children[i]!;
-      if (c.flexGrow !== undefined && c.flexGrow > 0) {
+      if (c.flexGrow && c.flexGrow > 0) {
         c[dimension] = c.flexGrow * growFactor;
       }
     }
   }
 
   let itemSize = 0;
-  if (['center', 'spaceBetween', 'spaceEvenly'].includes(justify)) {
+  if (
+    justify === 'center' ||
+    justify === 'spaceBetween' ||
+    justify === 'spaceEvenly'
+  ) {
     itemSize = children.reduce(
       (prev, c) =>
         prev + (c[dimension] || 0) + (c[marginOne] || 0) + (c[marginTwo] || 0),
