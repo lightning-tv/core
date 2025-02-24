@@ -65,13 +65,13 @@ const nodeSetPropTable: {
     // Mask image
     if (props.color) {
       el.style.setProperty('mask-image', url)
-      el.style.setProperty('mask-size', 'contain')
+      el.style.setProperty('mask-size', '100% 100%')
       el.style.setProperty('background-blend-mode', 'multiply')
     }
 
     // Background image
     el.style.setProperty('background-image', url)
-    el.style.setProperty('background-size', 'contain')
+    el.style.setProperty('background-size', '100% 100%')
   },
   alpha(el, value) {
     el.style.setProperty('opacity', String(value))
