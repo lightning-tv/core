@@ -7,8 +7,6 @@ Experimental DOM renderer
 import * as lng from '@lightningjs/renderer'
 import {Config} from './config.js'
 
-const entries = Object.entries as <T>(o: T) => [T[keyof T], keyof T][]
-
 let elMap = new WeakMap<lng.INode, HTMLElement>()
 
 let domRoot = document.body.appendChild(document.createElement('div'))
@@ -32,37 +30,6 @@ rangeInput.addEventListener('input', () => {
   domRoot.style.opacity = rangeInput.value
 })
 
-/*
- fetchJson function from @lightningjs/renderer/src/core/text-rendering/font-face-types/utils.ts
-
- Copyright 2020 Metrological
-
- Licensed under the Apache License, Version 2.0 (the License);
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
-*/
-export function fetchJson(
-  url: string,
-  responseType: XMLHttpRequestResponseType = '',
-): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.responseType = responseType
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState == XMLHttpRequest.DONE) {
-        // On most devices like WebOS and Tizen, the file protocol returns 0 while http(s) protocol returns 200
-        if (xhr.status === 0 || xhr.status === 200) {
-          resolve(xhr.response)
-        } else {
-          reject(xhr.statusText)
-        }
-      }
-    }
-    xhr.open('GET', url, true)
-    xhr.send(null)
-  })
-}
-
 const colorToRgba = (c: number) =>
   `rgba(${(c>>24) & 0xff},${(c>>16) & 0xff},${(c>>8) & 0xff},${(c & 0xff) / 255})`
 
@@ -80,19 +47,31 @@ const nodeSetPropTable: {
       console.warn('no parent?')
     }
   },
-  src(el, value) {
+  async src(el, value, _, props) {
+
+    let url: string | null = null
+    
     if (value != null) {
-      // for some reason just setting `url(${value})` causes net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep
-      fetchJson(value, 'blob').then((res) => {
-        el.style.setProperty('background-image', `url(${URL.createObjectURL(res as Blob)})`)
-        el.style.setProperty('background-size', 'contain')
-        el.style.setProperty('background-repeat', 'no-repeat')
-      })
-    } else {
-      el.style.removeProperty('background-image')
-      el.style.removeProperty('background-size')
-      el.style.removeProperty('background-repeat')
+      try {
+        // for some reason just setting `url(${value})` causes net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep
+        let res = await fetch(value)
+        let blob = await res.blob()
+        url = `url(${URL.createObjectURL(blob)})`
+      } catch (err) {
+        console.error(err)
+      }
     }
+    
+    // Mask image
+    if (props.color) {
+      el.style.setProperty('mask-image', url)
+      el.style.setProperty('mask-size', 'contain')
+      el.style.setProperty('background-blend-mode', 'multiply')
+    }
+
+    // Background image
+    el.style.setProperty('background-image', url)
+    el.style.setProperty('background-size', 'contain')
   },
   alpha(el, value) {
     el.style.setProperty('opacity', String(value))
