@@ -119,47 +119,44 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
   // <Node>
   else {
 
-    if (node.color !== 0) {
+    let bgImg: string[] = []
+    let bgPos: null | {x: number, y: number} = null
 
-      let bgImg: string[] = []
-      let bgPos: null | {x: number, y: number} = null
-  
-      if (node.colorBottom !== node.colorTop) {
-        bgImg.push(`linear-gradient(${colorToRgba(node.colorTop)}, ${colorToRgba(node.colorBottom)})`)
-      } else if (node.colorLeft !== node.colorRight) {
-        bgImg.push(`linear-gradient(to right, ${colorToRgba(node.colorLeft)}, ${colorToRgba(node.colorRight)})`)
-      }
-  
-      if (node.texture != null) {
-        if (node.texture.type === lng.TextureType.subTexture) {
-          bgPos = (node.texture as any).props
-          bgImg.push(`url(${(node.texture as any).props.texture.props.src})`)
-        } else {
-          bgImg.push(`url(${(node.texture as any).props.src})`)
-        }
-      }
+    if (node.colorBottom !== node.colorTop) {
+      bgImg.push(`linear-gradient(${colorToRgba(node.colorTop)}, ${colorToRgba(node.colorBottom)})`)
+    } else if (node.colorLeft !== node.colorRight) {
+      bgImg.push(`linear-gradient(to right, ${colorToRgba(node.colorLeft)}, ${colorToRgba(node.colorRight)})`)
+    }
 
-      if (bgImg.length > 0) {
-        style += `background-image: ${bgImg.join(',')}; background-blend-mode: multiply;`
-        if (bgPos !== null) {
-          style += `background-position: -${bgPos.x}px -${bgPos.y}px;`
-        } else {
-          style += 'background-size: 100% 100%;'
-        }
-
-        if (node.color !== 0xffffffff) {
-          style += `background-color: ${colorToRgba(node.color)};`
-          style += `mask-image: ${bgImg.join(',')};`
-          if (bgPos !== null) {
-            style += `mask-position: -${bgPos.x}px -${bgPos.y}px;`
-          } else {
-            style += `mask-size: 100% 100%;`
-          }
-        }
-
+    if (node.texture != null) {
+      if (node.texture.type === lng.TextureType.subTexture) {
+        bgPos = (node.texture as any).props
+        bgImg.push(`url(${(node.texture as any).props.texture.props.src})`)
       } else {
-        style += `background-color: ${colorToRgba(node.color)};`
+        bgImg.push(`url(${(node.texture as any).props.src})`)
       }
+    }
+
+    if (bgImg.length > 0) {
+      style += `background-image: ${bgImg.join(',')}; background-blend-mode: multiply;`
+      if (bgPos !== null) {
+        style += `background-position: -${bgPos.x}px -${bgPos.y}px;`
+      } else {
+        style += 'background-size: 100% 100%;'
+      }
+
+      if (node.color !== 0xffffffff) {
+        style += `background-color: ${colorToRgba(node.color)};`
+        style += `mask-image: ${bgImg.join(',')};`
+        if (bgPos !== null) {
+          style += `mask-position: -${bgPos.x}px -${bgPos.y}px;`
+        } else {
+          style += `mask-size: 100% 100%;`
+        }
+      }
+
+    } else if (node.color !== 0) {
+      style += `background-color: ${colorToRgba(node.color)};`
     }
 
     for (let prop of Object.getOwnPropertyNames(node.shader.props)) {
@@ -206,8 +203,11 @@ class DOMNode implements lng.INode {
   constructor (
     public node: lng.INode,
   ) {
+    // @ts-ignore
+    this.el._node = this
     this.el.setAttribute('data-id', String(node.id))
     elMap.set(this, this.el)
+    
     updateNodeParent(this)
     updateNodeStyles(this)
     updateNodeData(this)
