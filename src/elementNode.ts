@@ -479,8 +479,10 @@ export class ElementNode extends Object {
 
   emit(event: string, ...args: any[]): boolean {
     let current = this.parent;
+    const capitalizedEvent = `on${event.charAt(0).toUpperCase()}${event.slice(1)}`;
+
     while (current) {
-      const handler = current[`on${event}`];
+      const handler = current[capitalizedEvent];
       if (isFunction(handler)) {
         if (handler.call(current, this, ...args) === true) {
           return true;
