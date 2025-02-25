@@ -273,25 +273,25 @@ class DOMNode implements lng.INode {
         break
       case 'color':
         if (this instanceof DOMText) {
-          keyframes.push({color: colorToRgba(props.color as number)})
+          keyframes.push({color: colorToRgba(props.color!)})
         } else {
-          keyframes.push({backgroundColor: colorToRgba(props.color as number)})
+          keyframes.push({backgroundColor: colorToRgba(props.color!)})
         }
         break
       default:
         // TODO handle all animateable props
-        console.warn('unhandled animate prop', prop, props[prop])
+        console.warn('unhandled animate prop', prop)
       }
     }
 
     // TODO: handle all animation settings
 
-    // ? Should WAAPI be used?
     this.el.animate(keyframes, {
-      duration: settings.duration,
-      easing:   settings.easing,
-      delay:    settings.delay,
-      fill:     'forwards',
+      duration:   settings.duration,
+      easing:     settings.easing,
+      delay:      settings.delay,
+      iterations: settings.loop ? Infinity : settings.repeat,
+      fill:       'forwards',
     })
 
     return this.node.animate(props, settings)
