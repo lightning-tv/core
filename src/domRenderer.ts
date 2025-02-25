@@ -271,7 +271,16 @@ class DOMNode implements lng.INode {
       case 'height':
         keyframes.push({height: props.height+'px'})
         break
-      // TODO handle all animateable props
+      case 'color':
+        if (this instanceof DOMText) {
+          keyframes.push({color: colorToRgba(props.color as number)})
+        } else {
+          keyframes.push({backgroundColor: colorToRgba(props.color as number)})
+        }
+        break
+      default:
+        // TODO handle all animateable props
+        console.warn('unhandled animate prop', prop, props[prop])
       }
     }
 
@@ -281,6 +290,7 @@ class DOMNode implements lng.INode {
     this.el.animate(keyframes, {
       duration: settings.duration,
       easing:   settings.easing,
+      delay:    settings.delay,
       fill:     'forwards',
     })
 
