@@ -126,6 +126,10 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
       bgImg.push(`linear-gradient(${colorToRgba(node.colorTop)}, ${colorToRgba(node.colorBottom)})`)
     } else if (node.colorLeft !== node.colorRight) {
       bgImg.push(`linear-gradient(to right, ${colorToRgba(node.colorLeft)}, ${colorToRgba(node.colorRight)})`)
+    } else if (node.colorBl !== node.colorTr) {
+      bgImg.push(`linear-gradient(to bottom left, ${colorToRgba(node.colorTr)}, ${colorToRgba(node.colorBl)})`)
+    } else if (node.colorBr !== node.colorTl) {
+      bgImg.push(`linear-gradient(to bottom right, ${colorToRgba(node.colorTl)}, ${colorToRgba(node.colorBr)})`)
     }
 
     if (node.texture != null) {
