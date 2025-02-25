@@ -7,7 +7,7 @@ Experimental DOM renderer
 import * as lng from '@lightningjs/renderer'
 import {Config} from './config.js'
 
-let elMap = new WeakMap<lng.INode, HTMLElement>()
+let elMap = new WeakMap<DOMNode, HTMLElement>()
 
 let domRoot = document.body.appendChild(document.createElement('div'))
 domRoot.id = 'dom_root'
@@ -33,267 +33,188 @@ rangeInput.addEventListener('input', () => {
 const colorToRgba = (c: number) =>
   `rgba(${(c>>24) & 0xff},${(c>>16) & 0xff},${(c>>8) & 0xff},${(c & 0xff) / 255})`
 
-const nodeSetPropTable: {
-  [K in keyof lng.INodeProps]: (el: HTMLElement, value: lng.INodeProps[K], prop: K, props: Partial<lng.INodeProps>) => void
-} = {
-  parent(el, value) {
-    if (value != null) {
-      if (value.id === 1) {
-        domRoot.appendChild(el)
-      } else {
-        elMap.get(value)!.appendChild(el)
-      }
+function updateNodeParent(node: DOMNode | DOMText) {
+  if (node.parent != null) {
+    if (node.parent.id === 1) {
+      domRoot.appendChild(node.el)
     } else {
-      console.warn('no parent?')
+      elMap.get(node.parent as DOMNode)!.appendChild(node.el)
     }
-  },
-  async src(el, value, _, props) {
+  } else {
+    console.warn('no parent?')
+  }
+}
 
-    let url: string | null = null
-    
-    if (value != null) {
-      try {
-        // for some reason just setting `url(${value})` causes net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep
-        let res = await fetch(value)
-        let blob = await res.blob()
-        url = `url(${URL.createObjectURL(blob)})`
-      } catch (err) {
-        console.error(err)
+function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
+  let style = "position: absolute;"
+
+  if (node.alpha !== 1) style += `opacity: ${node.alpha};`
+
+  let {x, y} = node
+
+  if (node.mountX != null) {
+    x -= (node.width ?? 0) * node.mountX
+  }
+
+  if (node.mountY != null) {
+    y -= (node.height ?? 0) * node.mountY
+  }
+
+  if (x !== 0) style += `left: ${x}px;`
+
+  if (y !== 0) style += `top: ${y}px;`
+
+  if (node.width !== 0) style += `width: ${node.width}px;`
+
+  if (node.height !== 0) style += `height: ${node.height}px;`
+
+  if (node.zIndex !== 0) {
+    style += `z-index: ${node.zIndex};`
+  }
+
+  if (node.clipping) {
+    style += `overflow: hidden;`
+  }
+
+  let transform = ''
+
+  if (node.rotation !== 0) transform += `rotate(${node.rotation}rad);`
+  if (node.scale !== 1) transform += `scale(${node.scale});`
+  else {
+    if (node.scaleX !== 1) transform += `scaleX(${node.scaleX});`
+    if (node.scaleY !== 1) transform += `scaleY(${node.scaleY});`
+  }
+
+  if (transform.length > 0) {
+    style += `transform: ${transform}`
+  }
+
+  // <Text>
+  if (node instanceof DOMText) {
+
+    if (node.color != null && node.color !== 0) {
+      style += `color: ${colorToRgba(node.color)};`
+    }
+
+    if (node.fontFamily) style += `font-family: ${node.fontFamily};`
+    if (node.fontSize) style += `font-size: ${node.fontSize}px;`
+    if (node.fontStyle !== 'normal') style += `font-style: ${node.fontStyle};`
+    if (node.fontWeight !== 'normal') style += `font-weight: ${node.fontWeight};`
+    if (node.fontStretch !== 'normal') style += `font-stretch: ${node.fontStretch};`
+    if (node.lineHeight != null) style += `line-height: ${node.lineHeight}px;`
+    if (node.letterSpacing) style += `letter-spacing: ${node.letterSpacing}px;`
+    if (node.textAlign !== 'left') style += `text-align: ${node.textAlign};`
+    // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
+    if (node.maxLines) {
+      // https://stackoverflow.com/a/13924997
+      style += `display: -webkit-box;
+        overflow: hidden;
+        -webkit-line-clamp: ${node.maxLines};
+        line-clamp: ${node.maxLines};
+        -webkit-box-orient: vertical;`
+    }
+    // if (node.contain) style += `contain: ${node.contain};`
+    if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
+  }
+  // <Node>
+  else {
+
+    if (node.color !== 0) {
+
+      let bgImg: string[] = []
+      let bgPos: null | {x: number, y: number} = null
+  
+      if (node.colorBottom !== node.colorTop) {
+        bgImg.push(`linear-gradient(${colorToRgba(node.colorTop)}, ${colorToRgba(node.colorBottom)})`)
+      } else if (node.colorLeft !== node.colorRight) {
+        bgImg.push(`linear-gradient(to right, ${colorToRgba(node.colorLeft)}, ${colorToRgba(node.colorRight)})`)
       }
-    }
-    
-    // Mask image
-    if (props.color) {
-      el.style.setProperty('mask-image', url)
-      el.style.setProperty('mask-size', '100% 100%')
-      el.style.setProperty('background-blend-mode', 'multiply')
-    }
+  
+      if (node.texture != null) {
+        if (node.texture.type === lng.TextureType.subTexture) {
+          bgPos = (node.texture as any).props
+          bgImg.push(`url(${(node.texture as any).props.texture.props.src})`)
+        } else {
+          bgImg.push(`url(${(node.texture as any).props.src})`)
+        }
+      }
 
-    // Background image
-    el.style.setProperty('background-image', url)
-    el.style.setProperty('background-size', '100% 100%')
-  },
-  alpha(el, value) {
-    el.style.setProperty('opacity', String(value))
-  },
-  x(el, value, _, props) {
+      if (bgImg.length > 0) {
+        style += `background-image: ${bgImg.join(',')}; background-blend-mode: multiply;`
+        if (bgPos !== null) {
+          style += `background-position: -${bgPos.x}px -${bgPos.y}px;`
+        } else {
+          style += 'background-size: 100% 100%;'
+        }
 
-    let mount = props.mountX
-    if (mount != null) {
-      value = value - (props.width ?? 0) * mount
-    }
+        if (node.color !== 0xffffffff) {
+          style += `background-color: ${colorToRgba(node.color)};`
+          style += `mask-image: ${bgImg.join(',')};`
+          if (bgPos !== null) {
+            style += `mask-position: -${bgPos.x}px -${bgPos.y}px;`
+          } else {
+            style += `mask-size: 100% 100%;`
+          }
+        }
 
-    el.style.setProperty('left', value+'px')
-  },
-  y(el, value, _, props) {
-
-    let mount = props.mountY
-    if (mount != null) {
-      value = value - (props.height ?? 0) * mount
-    }
-
-    el.style.setProperty('top', value+'px')
-  },
-  width(el, value) {
-    el.style.setProperty('width', value+'px')
-  },
-  height(el, value) {
-    el.style.setProperty('height', value+'px')
-  },
-  zIndex(el, value) {
-    el.style.setProperty('z-index', String(value))
-  },
-  clipping(el, value) {
-    el.style.setProperty('overflow', value ? 'hidden' : 'visible')
-  },
-  rotation(el, value) {
-    el.style.setProperty('transform', `rotate(${value}rad)`)
-  },
-  scale(el, value) {
-    el.style.setProperty('transform', `scale(${value})`)
-  },
-  scaleX(el, value) {
-    el.style.setProperty('transform', `scaleX(${value})`)
-  },
-  scaleY(el, value) {
-    el.style.setProperty('transform', `scaleY(${value})`)
-  },
-  color(el, value) {
-    el.style.setProperty('background-color', colorToRgba(value))
-  },
-  data(el, value) {
-    for (let key in value) {
-      let keyValue: unknown = value[key]
-      if (keyValue === undefined) {
-        el.removeAttribute('data-'+key)
       } else {
-        el.setAttribute('data-'+key, String(keyValue))
+        style += `background-color: ${colorToRgba(node.color)};`
       }
     }
-  },
-  shader(el, value) {
-    for (let prop of Object.getOwnPropertyNames(value.props)) {
+
+    for (let prop of Object.getOwnPropertyNames(node.shader.props)) {
       switch (prop) {
       case 'border':{
-        let {width, color} = value.props[prop] as {width: number, color: number}
+        let {width, color} = node.shader.props.border as {width: number, color: number}
         // css border impacts the element's box size when box-shadow doesn't
-        el.style.setProperty('box-shadow', `inset 0px 0px 0px ${width}px ${colorToRgba(color)}`)
+        style += `box-shadow: inset 0px 0px 0px ${width}px ${colorToRgba(color)};`
         break
       }
       case 'radius': {
-        let {radius} = value.props[prop]
-        el.style.setProperty('border-radius', radius+'px')
+        let {radius} = node.shader.props.radius as {radius: number}
+        style += `border-radius: ${radius}px;`
         break
       }
       default:
-        console.warn('unhandled shader', el, prop, value.props[prop])
+        console.warn('unhandled shader', node, prop, node.shader.props[prop])
       }
     }
-  },
-  texture(el, value) {
-    if (value != null) {
-      let src: string = (value as any).props.texture.props.src
-      let x: number = (value as any).props.x
-      let y: number = (value as any).props.y
-
-      el.style.setProperty('background-image', `url(${src})`)
-      el.style.setProperty('background-position', `-${x}px -${y}px`)
-    } else {
-      el.style.removeProperty('background-image')
-      el.style.removeProperty('background-position')
-    }
-  },
-  autosize:       todoSetProp,
-  colorTop:       todoSetProp,
-  colorBottom:    todoSetProp,
-  colorLeft:      todoSetProp,
-  colorRight:     todoSetProp,
-  colorTl:        todoSetProp,
-  colorTr:        todoSetProp,
-  colorBr:        todoSetProp,
-  colorBl:        todoSetProp,
-  preventCleanup: todoSetProp,
-  textureOptions: todoSetProp,
-  zIndexLocked:   todoSetProp,
-  mount:          todoSetProp,
-  mountX:         todoSetProp,
-  mountY:         todoSetProp,
-  pivot:          todoSetProp,
-  pivotX:         todoSetProp,
-  pivotY:         todoSetProp,
-  rtt:            todoSetProp,
-  imageType:      todoSetProp,
-  srcWidth:       todoSetProp,
-  srcHeight:      todoSetProp,
-  srcX:           todoSetProp,
-  srcY:           todoSetProp,
-  strictBounds:   todoSetProp,
-}
-
-const textSetPropTable: {
-  [K in keyof lng.ITextNodeProps]: (el: HTMLElement, value: lng.ITextNodeProps[K], prop: K, props: Partial<lng.ITextNodeProps>) => void
-} = {
-  ...nodeSetPropTable,
-  text(el, value) {
-    el.innerHTML = value
-  },
-  color(el, value) {
-    el.style.setProperty('color', colorToRgba(value))
-  },
-  fontFamily(el, value) {
-    el.style.setProperty('font-family', value)
-  },
-  fontSize(el, value) {
-    el.style.setProperty('font-size', value+'px')
-  },
-  fontStyle(el, value) {
-    el.style.setProperty('font-style', value)
-  },
-  fontWeight(el, value) {
-    el.style.setProperty('font-weight', String(value))
-  },
-  fontStretch(el, value) {
-    el.style.setProperty('font-stretch', value)
-  },
-  lineHeight(el, value) {
-    if (value != null) {
-      el.style.setProperty('line-height', String(value)+'px')
-    } else {
-      el.style.removeProperty('line-height')
-    }
-  },
-  letterSpacing(el, value) {
-    el.style.setProperty('letter-spacing', String(value))
-  },
-  textAlign(el, value) {
-    el.style.setProperty('text-align', value)
-  },
-  overflowSuffix(el, value) {
-    el.style.setProperty('overflow-suffix', value)
-  },
-  maxLines(el, value) {
-    // https://stackoverflow.com/a/13924997
-    el.style.setProperty('display', '-webkit-box')
-    el.style.setProperty('overflow', 'hidden')
-    el.style.setProperty('-webkit-line-clamp', String(value))
-    el.style.setProperty('line-clamp', String(value))
-    el.style.setProperty('-webkit-box-orient', 'vertical')
-  },
-  contain(el, value) {
-    el.style.setProperty('contain', value)
-  },
-  verticalAlign(el, value) {
-    el.style.setProperty('vertical-align', value)
-  },
-  textBaseline:         todoSetProp,
-  textRendererOverride: todoSetProp,
-  scrollable:           todoSetProp,
-  scrollY:              todoSetProp,
-  offsetY:              todoSetProp,
-  debug:                todoSetProp,
-}
-
-function todoSetProp(el: HTMLElement, value: any, prop: string) {
-  // console.log('TODO prop', prop, value)
-}
-
-function textSetProp<K extends keyof lng.ITextNodeProps>(
-  el: HTMLElement,
-  prop: K,
-  value: lng.ITextNodeProps[K],
-  props: Partial<lng.ITextNodeProps>,
-) {
-  textSetPropTable[prop]!(el, value, prop, props)
-}
-function nodeSetProp<K extends keyof lng.INodeProps>(
-  el: HTMLElement,
-  prop: K,
-  value: lng.INodeProps[K],
-  props: Partial<lng.INodeProps>,
-) {
-  nodeSetPropTable[prop]!(el, value, prop, props)
-}
-
-function textSetProps(el: HTMLElement, props: Partial<lng.ITextNodeProps>) {
-  for (let key in props) {
-    textSetProp(el, key as any, (props as any)[key], props)
   }
+
+  return style
 }
-function nodeSetProps(el: HTMLElement, props: Partial<lng.INodeProps>) {
-  for (let key in props) {
-    nodeSetProp(el, key as any, (props as any)[key], props)
+
+function updateNodeStyles(node: DOMNode | DOMText) {
+  node.el.setAttribute('style', getNodeStyles(node))
+}
+
+function updateNodeData(node: DOMNode | DOMText) {
+  for (let key in node.data) {
+    let keyValue: unknown = node.data[key]
+    if (keyValue === undefined) {
+      node.el.removeAttribute('data-'+key)
+    } else {
+      node.el.setAttribute('data-'+key, String(keyValue))
+    }
   }
 }
 
 class DOMNode implements lng.INode {
 
+  el = document.createElement('div')
+
   constructor (
     public node: lng.INode,
-    public el: HTMLElement,
-  ) {}
+  ) {
+    this.el.setAttribute('data-id', String(node.id))
+    elMap.set(this, this.el)
+    updateNodeParent(this)
+    updateNodeStyles(this)
+    updateNodeData(this)
+  }
 
   destroy(): void {
-    elMap.delete(this.node)
+    elMap.delete(this)
     this.el.parentNode!.removeChild(this.el)
     this.node.destroy()
   }
@@ -369,176 +290,179 @@ class DOMNode implements lng.INode {
   get x(): number {return this.node.x}
   set x(value: number) {
     this.node.x = value
-    nodeSetPropTable.x(this.el, value, 'x', this.props)
+    updateNodeStyles(this)
   }
   get y(): number {return this.node.y}
   set y(value: number) {
     this.node.y = value
-    nodeSetPropTable.y(this.el, value, 'y', this.props)
+    updateNodeStyles(this)
   }
   get width(): number {return this.node.width}
   set width(value: number) {
     this.node.width = value
-    nodeSetPropTable.width(this.el, value, 'width', this.props)
+    updateNodeStyles(this)
   }
   get height(): number {return this.node.height}
   set height(value: number) {
     this.node.height = value
-    nodeSetPropTable.height(this.el, value, 'height', this.props)
+    updateNodeStyles(this)
   }
   get alpha(): number {return this.node.alpha}
   set alpha(value: number) {
     this.node.alpha = value
-    nodeSetPropTable.alpha(this.el, value, 'alpha', this.props)
+    updateNodeStyles(this)
   }
   get autosize(): boolean {return this.node.autosize}
   set autosize(value: boolean) {
     this.node.autosize = value
-    nodeSetPropTable.autosize(this.el, value, 'autosize', this.props)
+    updateNodeStyles(this)
   }
   get clipping(): boolean {return this.node.clipping}
   set clipping(value: boolean) {
     this.node.clipping = value
-    nodeSetPropTable.clipping(this.el, value, 'clipping', this.props)
+    updateNodeStyles(this)
   }
   get color(): number {return this.node.color}
   set color(value: number) {
     this.node.color = value
-    nodeSetPropTable.color(this.el, value, 'color', this.props)
+    updateNodeStyles(this)
   }
   get colorTop(): number {return this.node.colorTop}
   set colorTop(value: number) {
     this.node.colorTop = value
-    nodeSetPropTable.colorTop(this.el, value, 'colorTop', this.props)
+    updateNodeStyles(this)
   }
   get colorBottom(): number {return this.node.colorBottom}
   set colorBottom(value: number) {
     this.node.colorBottom = value
-    nodeSetPropTable.colorBottom(this.el, value, 'colorBottom', this.props)
+    updateNodeStyles(this)
   }
   get colorLeft(): number {return this.node.colorLeft}
   set colorLeft(value: number) {
     this.node.colorLeft = value
-    nodeSetPropTable.colorLeft(this.el, value, 'colorLeft', this.props)
+    updateNodeStyles(this)
   }
   get colorRight(): number {return this.node.colorRight}
   set colorRight(value: number) {
     this.node.colorRight = value
-    nodeSetPropTable.colorRight(this.el, value, 'colorRight', this.props)
+    updateNodeStyles(this)
   }
   get colorTl(): number {return this.node.colorTl}
   set colorTl(value: number) {
     this.node.colorTl = value
-    nodeSetPropTable.colorTl(this.el, value, 'colorTl', this.props)
+    updateNodeStyles(this)
   }
   get colorTr(): number {return this.node.colorTr}
   set colorTr(value: number) {
     this.node.colorTr = value
-    nodeSetPropTable.colorTr(this.el, value, 'colorTr', this.props)
+    updateNodeStyles(this)
   }
   get colorBr(): number {return this.node.colorBr}
   set colorBr(value: number) {
     this.node.colorBr = value
-    nodeSetPropTable.colorBr(this.el, value, 'colorBr', this.props)
+    updateNodeStyles(this)
   }
   get colorBl(): number {return this.node.colorBl}
   set colorBl(value: number) {
     this.node.colorBl = value
-    nodeSetPropTable.colorBl(this.el, value, 'colorBl', this.props)
+    updateNodeStyles(this)
   }
   get zIndex(): number {return this.node.zIndex}
   set zIndex(value: number) {
     this.node.zIndex = value
-    nodeSetPropTable.zIndex(this.el, value, 'zIndex', this.props)
+    updateNodeStyles(this)
   }
   get texture(): lng.Texture | null {return this.node.texture}
   set texture(value: lng.Texture | null) {
     this.node.texture = value
-    nodeSetPropTable.texture(this.el, value, 'texture', this.props)
+    updateNodeStyles(this)
   }
   get preventCleanup(): boolean {return this.node.preventCleanup}
   set preventCleanup(value: boolean) {
     this.node.preventCleanup = value
-    nodeSetPropTable.preventCleanup(this.el, value, 'preventCleanup', this.props)
+    updateNodeStyles(this)
   }
   set textureOptions(value: any) {
     this.node.textureOptions = value
-    nodeSetPropTable.textureOptions(this.el, value, 'textureOptions', this.props)
+    updateNodeStyles(this)
   }
   get textureOptions() {return this.node.textureOptions}
   get src(): string | null {return this.node.src}
   set src(value: string | null) {
     this.node.src = value
-    nodeSetPropTable.src(this.el, value, 'src', this.props)
+    updateNodeStyles(this)
   }
   get zIndexLocked(): number {return this.node.zIndexLocked}
   set zIndexLocked(value: number) {
     this.node.zIndexLocked = value
-    nodeSetPropTable.zIndexLocked(this.el, value, 'zIndexLocked', this.props)
+    updateNodeStyles(this)
   }
   get scale(): number {return this.node.scale}
   set scale(value: number) {
     this.node.scale = value
-    nodeSetPropTable.scale(this.el, value, 'scale', this.props)
+    updateNodeStyles(this)
   }
   get scaleX(): number {return this.node.scaleX}
   set scaleX(value: number) {
     this.node.scaleX = value
-    nodeSetPropTable.scaleX(this.el, value, 'scaleX', this.props)
+    updateNodeStyles(this)
   }
   get scaleY(): number {return this.node.scaleY}
   set scaleY(value: number) {
     this.node.scaleY = value
-    nodeSetPropTable.scaleY(this.el, value, 'scaleY', this.props)
+    updateNodeStyles(this)
   }
   get mount(): number {return this.node.mount}
   set mount(value: number) {
     this.node.mount = value
-    nodeSetPropTable.mount(this.el, value, 'mount', this.props)
+    updateNodeStyles(this)
   }
   get mountX(): number {return this.node.mountX}
   set mountX(value: number) {
     this.node.mountX = value
-    nodeSetPropTable.mountX(this.el, value, 'mountX', this.props)
+    updateNodeStyles(this)
   }
   get mountY(): number {return this.node.mountY}
   set mountY(value: number) {
     this.node.mountY = value
-    nodeSetPropTable.mountY(this.el, value, 'mountY', this.props)
+    updateNodeStyles(this)
   }
   get pivot(): number {return this.node.pivot}
   set pivot(value: number) {
     this.node.pivot = value
-    nodeSetPropTable.pivot(this.el, value, 'pivot', this.props)
+    updateNodeStyles(this)
   }
   get pivotX(): number {return this.node.pivotX}
   set pivotX(value: number) {
     this.node.pivotX = value
-    nodeSetPropTable.pivotX(this.el, value, 'pivotX', this.props)
+    updateNodeStyles(this)
   }
   get pivotY(): number {return this.node.pivotY}
   set pivotY(value: number) {
     this.node.pivotY = value
-    nodeSetPropTable.pivotY(this.el, value, 'pivotY', this.props)
+    updateNodeStyles(this)
   }
   get rotation(): number {return this.node.rotation}
   set rotation(value: number) {
     this.node.rotation = value
-    nodeSetPropTable.rotation(this.el, value, 'rotation', this.props)
+    updateNodeStyles(this)
   }
   get rtt(): boolean {return this.node.rtt}
   set rtt(value: boolean) {
     this.node.rtt = value
-    nodeSetPropTable.rtt(this.el, value, 'rtt', this.props)
+    updateNodeStyles(this)
   }
   get shader(){return this.node.shader}
   set shader(v: lng.BaseShaderController){
     this.node.shader = v
-    nodeSetPropTable.shader(this.el, v, 'shader', this.props)
+    updateNodeStyles(this)
   }
   
   get data() {return this.node.data}
-  set data(value: any) {this.node.data = value}
+  set data(value: any) {
+    this.node.data = value
+    updateNodeData(this)
+  }
 
   set imageType(value: 'regular' | 'compressed' | 'svg' | null) {this.node.imageType = value}
   get imageType(): 'regular' | 'compressed' | 'svg' | null {return this.node.imageType}
@@ -553,7 +477,7 @@ class DOMNode implements lng.INode {
   get strictBounds(): boolean {return this.node.strictBounds}
   set strictBounds(value: boolean) {
     this.node.strictBounds = value
-    nodeSetPropTable.strictBounds(this.el, value, 'strictBounds', this.props)
+    updateNodeStyles(this)
   }
   loadTexture(): void {return this.node.loadTexture()}
   unloadTexture(): void {return this.node.unloadTexture()}
@@ -596,110 +520,105 @@ class DOMText extends DOMNode {
 
   constructor (
     public override node: lng.ITextNode,
-    el: HTMLElement,
   ) {
-    super(node, el)
+    super(node)
+    this.el.innerText = node.text
   }
 
-  get text(): any {return this.node.text}
-  set text(value: any) {
+  get text(): string {return this.node.text}
+  set text(value: string) {
     this.node.text = value
-    textSetPropTable.text(this.el, value, 'text', this.props)
+    this.el.innerText = value
   }
-  override get color(): any {return this.node.color}
-  override set color(value: any) {
-    this.node.color = value
-    textSetPropTable.color(this.el, value, 'color', this.props)
-  }
-  get fontFamily(): any {return this.node.fontFamily}
-  set fontFamily(value: any) {
+  get fontFamily(): string {return this.node.fontFamily}
+  set fontFamily(value: string) {
     this.node.fontFamily = value
-    textSetPropTable.fontFamily(this.el, value, 'fontFamily', this.props)
+    updateNodeStyles(this)
   }
-  get fontSize(): any {return this.node.fontSize}
-  set fontSize(value: any) {
+  get fontSize(): number {return this.node.fontSize}
+  set fontSize(value: number) {
     this.node.fontSize = value
-    textSetPropTable.fontSize(this.el, value, 'fontSize', this.props)
+    updateNodeStyles(this)
   }
-  get fontStyle(): any {return this.node.fontStyle}
-  set fontStyle(value: any) {
+  get fontStyle(): lng.ITextNode['fontStyle'] {return this.node.fontStyle}
+  set fontStyle(value: lng.ITextNode['fontStyle']) {
     this.node.fontStyle = value
-    textSetPropTable.fontStyle(this.el, value, 'fontStyle', this.props)
+    updateNodeStyles(this)
   }
-  get fontWeight(): any {return this.node.fontWeight}
-  set fontWeight(value: any) {
+  get fontWeight(): lng.ITextNode['fontWeight'] {return this.node.fontWeight}
+  set fontWeight(value: lng.ITextNode['fontWeight']) {
     this.node.fontWeight = value
-    textSetPropTable.fontWeight(this.el, value, 'fontWeight', this.props)
+    updateNodeStyles(this)
   }
-  get fontStretch(): any {return this.node.fontStretch}
-  set fontStretch(value: any) {
+  get fontStretch(): lng.ITextNode['fontStretch'] {return this.node.fontStretch}
+  set fontStretch(value: lng.ITextNode['fontStretch']) {
     this.node.fontStretch = value
-    textSetPropTable.fontStretch(this.el, value, 'fontStretch', this.props)
+    updateNodeStyles(this)
   }
-  get lineHeight(): any {return this.node.lineHeight}
-  set lineHeight(value: any) {
+  get lineHeight(): number | undefined {return this.node.lineHeight}
+  set lineHeight(value: number | undefined) {
     this.node.lineHeight = value
-    textSetPropTable.lineHeight(this.el, value, 'lineHeight', this.props)
+    updateNodeStyles(this)
   }
-  get letterSpacing(): any {return this.node.letterSpacing}
-  set letterSpacing(value: any) {
+  get letterSpacing(): number {return this.node.letterSpacing}
+  set letterSpacing(value: number) {
     this.node.letterSpacing = value
-    textSetPropTable.letterSpacing(this.el, value, 'letterSpacing', this.props)
+    updateNodeStyles(this)
   }
-  get textAlign(): any {return this.node.textAlign}
-  set textAlign(value: any) {
+  get textAlign(): lng.ITextNode['textAlign'] {return this.node.textAlign}
+  set textAlign(value: lng.ITextNode['textAlign']) {
     this.node.textAlign = value
-    textSetPropTable.textAlign(this.el, value, 'textAlign', this.props)
+    updateNodeStyles(this)
   }
-  get overflowSuffix(): any {return this.node.overflowSuffix}
-  set overflowSuffix(value: any) {
+  get overflowSuffix(): string {return this.node.overflowSuffix}
+  set overflowSuffix(value: string) {
     this.node.overflowSuffix = value
-    textSetPropTable.overflowSuffix(this.el, value, 'overflowSuffix', this.props)
+    updateNodeStyles(this)
   }
-  get maxLines(): any {return this.node.maxLines}
-  set maxLines(value: any) {
+  get maxLines(): number {return this.node.maxLines}
+  set maxLines(value: number) {
     this.node.maxLines = value
-    textSetPropTable.maxLines(this.el, value, 'maxLines', this.props)
+    updateNodeStyles(this)
   }
-  get contain(): any {return this.node.contain}
-  set contain(value: any) {
+  get contain(): lng.ITextNode['contain'] {return this.node.contain}
+  set contain(value: lng.ITextNode['contain']) {
     this.node.contain = value
-    textSetPropTable.contain(this.el, value, 'contain', this.props)
+    updateNodeStyles(this)
   }
-  get verticalAlign(): any {return this.node.verticalAlign}
-  set verticalAlign(value: any) {
+  get verticalAlign(): lng.ITextNode['verticalAlign'] {return this.node.verticalAlign}
+  set verticalAlign(value: lng.ITextNode['verticalAlign']) {
     this.node.verticalAlign = value
-    textSetPropTable.verticalAlign(this.el, value, 'verticalAlign', this.props)
+    updateNodeStyles(this)
   }
-  get textBaseline(): any {return this.node.textBaseline}
-  set textBaseline(value: any) {
+  get textBaseline(): lng.ITextNode['textBaseline'] {return this.node.textBaseline}
+  set textBaseline(value: lng.ITextNode['textBaseline']) {
     this.node.textBaseline = value
-    textSetPropTable.textBaseline(this.el, value, 'textBaseline', this.props)
+    updateNodeStyles(this)
   }
-  get textRendererOverride(): any {return this.node.textRendererOverride}
-  set textRendererOverride(value: any) {
+  get textRendererOverride(): lng.ITextNode['textRendererOverride'] {return this.node.textRendererOverride}
+  set textRendererOverride(value: lng.ITextNode['textRendererOverride']) {
     this.node.textRendererOverride = value
-    textSetPropTable.textRendererOverride(this.el, value, 'textRendererOverride', this.props)
+    updateNodeStyles(this)
   }
-  get scrollable(): any {return this.node.scrollable}
-  set scrollable(value: any) {
+  get scrollable(): boolean {return this.node.scrollable}
+  set scrollable(value: boolean) {
     this.node.scrollable = value
-    textSetPropTable.scrollable(this.el, value, 'scrollable', this.props)
+    updateNodeStyles(this)
   }
-  get scrollY(): any {return this.node.scrollY}
-  set scrollY(value: any) {
+  get scrollY(): number {return this.node.scrollY}
+  set scrollY(value: number) {
     this.node.scrollY = value
-    textSetPropTable.scrollY(this.el, value, 'scrollY', this.props)
+    updateNodeStyles(this)
   }
-  get offsetY(): any {return this.node.offsetY}
-  set offsetY(value: any) {
+  get offsetY(): number {return this.node.offsetY}
+  set offsetY(value: number) {
     this.node.offsetY = value
-    textSetPropTable.offsetY(this.el, value, 'offsetY', this.props)
+    updateNodeStyles(this)
   }
-  get debug(): any {return this.node.debug}
-  set debug(value: any) {
+  get debug(): lng.ITextNode['debug'] {return this.node.debug}
+  set debug(value: lng.ITextNode['debug']) {
     this.node.debug = value
-    textSetPropTable.debug(this.el, value, 'debug', this.props)
+    updateNodeStyles(this)
   }
 }
 
@@ -757,33 +676,11 @@ export class DOMRenderer extends lng.RendererMain {
   >(
     props: Partial<lng.INodeProps<ShCtr>>,
   ): lng.INode<ShCtr> {
-
-    let el = document.createElement('div')
-    el.style.position = 'absolute'
-    
-    let node = new DOMNode(super.createNode(props), el)
-
-    el.setAttribute('data-id', String(node.id))
-    elMap.set(node, el)
-    
-    nodeSetProps(el, props)
-    
-    return node
+    return new DOMNode(super.createNode(props))
   }
 
   override createTextNode(props: Partial<lng.ITextNodeProps>): lng.ITextNode {
-
-    let el = document.createElement('div')
-    el.style.position = 'absolute'
-    
-    let node = new DOMText(super.createTextNode(props), el)
-
-    el.setAttribute('data-id', String(node.id))
-    elMap.set(node, el)
-    
-    textSetProps(el, props)
-    
-    return node
+    return new DOMText(super.createTextNode(props))
   }
 
   override createShader<ShType extends keyof lng.ShaderMap>(
