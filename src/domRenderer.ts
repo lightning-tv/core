@@ -126,12 +126,9 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
 
     if (node.colorBottom !== node.colorTop) {
       bgImg.push(`linear-gradient(${colorToRgba(node.colorTop)}, ${colorToRgba(node.colorBottom)})`)
-    } else if (node.colorLeft !== node.colorRight) {
+    }
+    if (node.colorLeft !== node.colorRight) {
       bgImg.push(`linear-gradient(to right, ${colorToRgba(node.colorLeft)}, ${colorToRgba(node.colorRight)})`)
-    } else if (node.colorBl !== node.colorTr) {
-      bgImg.push(`linear-gradient(to bottom left, ${colorToRgba(node.colorTr)}, ${colorToRgba(node.colorBl)})`)
-    } else if (node.colorBr !== node.colorTl) {
-      bgImg.push(`linear-gradient(to bottom right, ${colorToRgba(node.colorTl)}, ${colorToRgba(node.colorBr)})`)
     }
 
     if (node.texture != null) {
@@ -151,7 +148,7 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
         style += 'background-size: 100% 100%;'
       }
 
-      if (node.color !== 0xffffffff) {
+      if (node.color !== 0xffffffff && node.color !== 0) {
         style += `background-color: ${colorToRgba(node.color)};`
         style += `mask-image: ${bgImg.join(',')};`
         if (bgPos !== null) {
