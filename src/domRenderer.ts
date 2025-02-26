@@ -105,7 +105,7 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
     if (node.letterSpacing) style += `letter-spacing: ${node.letterSpacing}px;`
     if (node.textAlign !== 'left') style += `text-align: ${node.textAlign};`
     // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
-    if (node.maxLines) {
+    if (node.maxLines > 0) {
       // https://stackoverflow.com/a/13924997
       style += `display: -webkit-box;
         overflow: hidden;
@@ -113,8 +113,10 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
         line-clamp: ${node.maxLines};
         -webkit-box-orient: vertical;`
     }
-    // if (node.contain) style += `contain: ${node.contain};`
-    if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
+    if (node.contain !== 'none') {
+      style += `overflow: hidden;` // not sure if there is a way to support it proparely
+    }
+    // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
   }
   // <Node>
   else {
@@ -211,7 +213,7 @@ class DOMNode implements lng.INode {
     this.el._node = this
     this.el.setAttribute('data-id', String(node.id))
     elMap.set(this, this.el)
-    
+
     updateNodeParent(this)
     updateNodeStyles(this)
     updateNodeData(this)
@@ -253,7 +255,7 @@ class DOMNode implements lng.INode {
     props: Partial<lng.INodeAnimateProps>,
     settings: Partial<lng.AnimationSettings>,
 ): lng.IAnimationController {
-    
+
     let keyframes: Keyframe[] = []
     for (let prop in props) {
       switch (prop) {
@@ -471,7 +473,7 @@ class DOMNode implements lng.INode {
     this.node.shader = v
     updateNodeStyles(this)
   }
-  
+
   get data() {return this.node.data}
   set data(value: any) {
     this.node.data = value
@@ -648,7 +650,7 @@ function updateRootPosition(this: DOMRenderer) {
 
   let scaleX = settings.deviceLogicalPixelRatio ?? 1
   let scaleY = settings.deviceLogicalPixelRatio ?? 1
-  
+
   domRoot.style.left            = `${left}px`
   domRoot.style.top             = `${top}px`
   domRoot.style.width           = `${width}px`
@@ -661,7 +663,7 @@ function updateRootPosition(this: DOMRenderer) {
 }
 
 export class DOMRenderer extends lng.RendererMain {
-  
+
   constructor(settings: lng.RendererMainSettings, target: string | HTMLElement) {
     super(settings, target)
 
