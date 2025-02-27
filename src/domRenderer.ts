@@ -7,28 +7,18 @@ Experimental DOM renderer
 import * as lng from '@lightningjs/renderer'
 import {Config} from './config.js'
 
+// These are not exported from @lightningjs/renderer
+import {CoreNode}                                       from "../../lightning-renderer/src/core/CoreNode.js"
+import {CoreShaderManager}                              from "../../lightning-renderer/src/core/CoreShaderManager.js";
+import {IParsedColor}                                   from "../../lightning-renderer/src/core/renderers/canvas/internal/ColorUtils.js";
+import {UnsupportedShader}                              from "../../lightning-renderer/src/core/renderers/canvas/shaders/UnsupportedShader.js";
+import {CoreContextTexture}                             from "../../lightning-renderer/src/core/renderers/CoreContextTexture.js";
+import {CoreRenderer, CoreRendererOptions, QuadOptions} from "../../lightning-renderer/src/core/renderers/CoreRenderer.js"
+
 let elMap = new WeakMap<DOMNode, HTMLElement>()
 
 let domRoot = document.body.appendChild(document.createElement('div'))
 domRoot.id = 'dom_root'
-
-domRoot.style.backgroundColor = 'white'
-
-// little slider to show/hide the dom renderer output :)
-let rangeInput = document.body.appendChild(document.createElement('input'))
-rangeInput.type  = 'range'
-rangeInput.min   = '0'
-rangeInput.max   = '1'
-rangeInput.step  = '0.1'
-rangeInput.value = '1'
-rangeInput.style.position = 'fixed'
-rangeInput.style.top      = '10px'
-rangeInput.style.right    = '10px'
-rangeInput.style.zIndex   = '65535'
-
-rangeInput.addEventListener('input', () => {
-  domRoot.style.opacity = rangeInput.value
-})
 
 const colorToRgba = (c: number) =>
   `rgba(${(c>>24) & 0xff},${(c>>16) & 0xff},${(c>>8) & 0xff},${(c & 0xff) / 255})`
@@ -162,21 +152,23 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
       style += `background-color: ${colorToRgba(node.color)};`
     }
 
-    for (let prop of Object.getOwnPropertyNames(node.shader.props)) {
-      switch (prop) {
-      case 'border':{
-        let {width, color} = node.shader.props.border as {width: number, color: number}
-        // css border impacts the element's box size when box-shadow doesn't
-        style += `box-shadow: inset 0px 0px 0px ${width}px ${colorToRgba(color)};`
-        break
-      }
-      case 'radius': {
-        let {radius} = node.shader.props.radius as {radius: number}
-        style += `border-radius: ${radius}px;`
-        break
-      }
-      default:
-        console.warn('unhandled shader', node, prop, node.shader.props[prop])
+    if (Array.isArray(node.shader.props.effects)) {
+      for (let effect of node.shader.props.effects) {
+        switch (effect.name) {
+        case 'border':{
+          let {width, color} = effect.props as {width: number, color: number}
+          // css border impacts the element's box size when box-shadow doesn't
+          style += `box-shadow: inset 0px 0px 0px ${width}px ${colorToRgba(color)};`
+          break
+        }
+        case 'radius': {
+          let {radius} = effect.props as {radius: number}
+          style += `border-radius: ${radius}px;`
+          break
+        }
+        default:
+          console.warn('unhandled shader', node, effect)
+        }
       }
     }
   }
@@ -635,7 +627,7 @@ class DOMText extends DOMNode {
   }
 }
 
-function updateRootPosition(this: DOMRenderer) {
+function updateRootPosition(this: DOMRendererMain) {
   let {canvas, settings} = this
 
   let rect = canvas.getBoundingClientRect()
@@ -659,7 +651,7 @@ function updateRootPosition(this: DOMRenderer) {
   domRoot.style.zIndex          = '65534'
 }
 
-export class DOMRenderer extends lng.RendererMain {
+export class DOMRendererMain extends lng.RendererMain {
 
   constructor(settings: lng.RendererMainSettings, target: string | HTMLElement) {
     super(settings, target)
@@ -710,4 +702,81 @@ export class DOMRenderer extends lng.RendererMain {
     let shader = super.createDynamicShader(effects)
     return shader
   }
+}
+
+export class DOMCoreContextTexture extends CoreContextTexture {
+  image: HTMLImageElement | SVGElement | undefined = new Image
+
+  load(): void {}
+
+  free(): void {}
+
+  updateMemSize(): void {}
+
+  hasImage(): boolean {
+    return this.image !== undefined;
+  }
+
+  getImage(color: IParsedColor): HTMLImageElement | SVGElement {
+    return this.image!
+  }
+}
+
+export class DOMCoreRenderer extends CoreRenderer {
+  public renderToTextureActive = false
+  activeRttNode: CoreNode | null = null
+  defShaderCtr: lng.BaseShaderController
+
+  constructor(options: CoreRendererOptions) {
+    super(options)
+
+    this.mode = 'canvas'
+    this.shManager.renderer = this
+
+    // Stub for default shader controller
+    this.defShaderCtr = {
+      type: 'DefaultShader',
+      props: {},
+      shader: new UnsupportedShader('DefaultShader'),
+      getResolvedProps: () => () => {
+        return {}
+      },
+    }
+  }
+
+  reset(): void {}
+
+  render(): void {}
+
+  addQuad(quad: QuadOptions): void {}
+
+  createCtxTexture(textureSource: lng.Texture): CoreContextTexture {
+    return new DOMCoreContextTexture(this.txMemManager, textureSource);
+  }
+
+  getShaderManager(): CoreShaderManager {
+    return this.shManager;
+  }
+
+  override getDefShaderCtr(): lng.BaseShaderController {
+    return this.defShaderCtr;
+  }
+
+  renderRTTNodes(): void {
+    // noop - DOM rendering doesn't need this
+  }
+
+  removeRTTNode(node: CoreNode): void {}
+
+  renderToTexture(node: CoreNode): void {}
+
+  getBufferInfo(): null {
+    return null;
+  }
+
+  getQuadCount(): null {
+    return null;
+  }
+
+  updateClearColor(color: number) {}
 }

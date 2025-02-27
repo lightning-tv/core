@@ -9,7 +9,7 @@ import {
   RendererMain,
 } from '@lightningjs/renderer';
 import {
-  DOMRenderer,
+  DOMRendererMain,
 } from './domRenderer.js'
 
 type SdfFontType = 'ssdf' | 'msdf';
@@ -22,7 +22,7 @@ export function startLightningRenderer(
   options: RendererMainSettings,
   rootId: string | HTMLElement = 'app',
 ) {
-  renderer = new DOMRenderer(options, rootId);
+  renderer = new DOMRendererMain(options, rootId);
   return renderer;
 }
 
