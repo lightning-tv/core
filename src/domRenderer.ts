@@ -801,14 +801,18 @@ export class DOMCoreRenderer extends CoreRenderer {
   updateClearColor(color: number) {}
 }
 
-export class DOMTextRenderer extends TextRenderer {
+export interface DOMTextRendererState extends TextRendererState {
+  node: CoreTextNode
+}
+
+export class DOMTextRenderer extends TextRenderer<DOMTextRendererState> {
   public type: 'canvas' = 'canvas'
 
   constructor(stage: lng.Stage) {
     super(stage)
   }
 
-  override getPropertySetters(): Partial<TrPropSetters> {
+  override getPropertySetters(): Partial<TrPropSetters<DOMTextRendererState>> {
     return {
       fontFamily: (state, value) => {
         state.props.fontFamily = value;
@@ -908,16 +912,17 @@ export class DOMTextRenderer extends TextRenderer {
   }
 
   override addFontFace(fontFace: lng.TrFontFace): void {
-    // noop
+    // console.log('addFontFace', fontFace)
   }
 
   override createState(
     props: TrProps,
     node: CoreTextNode,
-  ): TextRendererState {
+  ): DOMTextRendererState {
     return {
       props,
-      status: 'loaded', // Always set as loaded since DOM renderer handles it
+      node,
+      status: 'initialState', // Always set as loaded since DOM renderer handles it
       updateScheduled: false,
       emitter: new EventEmitter(),
       forceFullLayoutCalc: false,
@@ -936,16 +941,83 @@ export class DOMTextRenderer extends TextRenderer {
     };
   }
 
-  override updateState(state: TextRendererState): void {
-    // Set as loaded - actual rendering is handled by DOMText
-    this.setStatus(state, 'loaded');
+  override updateState(state: DOMTextRendererState): void {
+
+    // Create temporary element to measure text dimensions
+  const measureEl = document.createElement('div');
+  
+    // Apply all text-related styles from the state
+    measureEl.style.position = 'absolute';
+    measureEl.style.visibility = 'hidden';
+    measureEl.style.whiteSpace = 'nowrap'; // For single line measurement
+    measureEl.style.fontFamily = state.props.fontFamily || 'inherit';
+    measureEl.style.fontSize = `${state.props.fontSize || 16}px`;
+    measureEl.style.fontWeight = state.props.fontWeight || 'normal';
+    measureEl.style.fontStyle = state.props.fontStyle || 'normal';
+    measureEl.style.fontStretch = state.props.fontStretch || 'normal';
+    measureEl.style.letterSpacing = `${state.props.letterSpacing || 0}px`;
+    
+    measureEl.style.lineHeight = `${state.props.lineHeight || state.props.fontSize || 16}px`;
+    
+    // Set the text content
+    measureEl.textContent = state.props.text || '';
+    
+    // Handle multiline if needed
+    if (state.props.width && state.props.width > 0 && state.props.contain !== 'none') {
+      measureEl.style.width = `${state.props.width}px`;
+      measureEl.style.whiteSpace = 'normal';
+      
+      if (state.props.maxLines > 0) {
+        measureEl.style.display = '-webkit-box';
+        measureEl.style.webkitLineClamp = `${state.props.maxLines}`;
+        measureEl.style.webkitBoxOrient = 'vertical';
+        measureEl.style.overflow = 'hidden';
+      }
+    }
+    
+    // Append to DOM to measure
+    document.body.appendChild(measureEl);
+    
+    // Get computed dimensions
+    const rect = measureEl.getBoundingClientRect();
+    state.textW = rect.width;
+    state.textH = rect.height;
+    
+    // Clean up
+    document.body.removeChild(measureEl);
+
+    this.setStatus(state, 'loaded')
+
+    // const cssString = getFontCssString(state.props);
+    
+    // const trFontFace = this.stage.fontManager.resolveFontFace(
+    //   this.fontFamilyArray,
+    //   state.props,
+    //   'canvas',
+    // ) as lng.WebTrFontFace | undefined;
+
+    // assertTruthy(trFontFace, `Could not resolve font face for ${cssString}`);
+    // state.fontInfo = {
+    //   fontFace: trFontFace,
+    //   cssString: cssString,
+    //   // TODO: For efficiency we would use this here but it's not reliable on WPE -> document.fonts.check(cssString),
+    //   loaded: false,
+    // };
+    // // If font is not loaded, set up a handler to update the font info when the font loads
+    // if (!state.fontInfo.loaded) {
+    //   globalFontSet
+    //     .load(cssString)
+    //     .then(this.onFontLoaded.bind(this, state, cssString))
+    //     .catch(this.onFontLoadError.bind(this, state, cssString));
+    //   return;
+    // }
   }
 
   override renderQuads(): void {
     // No-op - all rendering is handled by DOMText
   }
 
-  override destroyState(state: TextRendererState): void {
+  override destroyState(state: DOMTextRendererState): void {
     if (state.status === 'destroyed') {
       return;
     }
