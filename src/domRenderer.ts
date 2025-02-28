@@ -5,15 +5,35 @@ Experimental DOM renderer
 */
 
 import * as lng from '@lightningjs/renderer'
+import {assertTruthy, EventEmitter} from '@lightningjs/renderer/utils'
 import {Config} from './config.js'
 
 // These are not exported from @lightningjs/renderer
-import {CoreNode}                                       from "../../lightning-renderer/src/core/CoreNode.js"
-import {CoreShaderManager}                              from "../../lightning-renderer/src/core/CoreShaderManager.js";
-import {IParsedColor}                                   from "../../lightning-renderer/src/core/renderers/canvas/internal/ColorUtils.js";
-import {UnsupportedShader}                              from "../../lightning-renderer/src/core/renderers/canvas/shaders/UnsupportedShader.js";
-import {CoreContextTexture}                             from "../../lightning-renderer/src/core/renderers/CoreContextTexture.js";
-import {CoreRenderer, CoreRendererOptions, QuadOptions} from "../../lightning-renderer/src/core/renderers/CoreRenderer.js"
+import {
+  CoreNode,
+} from "@lightningjs/renderer/src/core/CoreNode.js"
+import {
+  CoreShaderManager,
+} from "@lightningjs/renderer/src/core/CoreShaderManager.js"
+import {
+  IParsedColor,
+} from "@lightningjs/renderer/src/core/renderers/canvas/internal/ColorUtils.js"
+import {
+  UnsupportedShader,
+} from "@lightningjs/renderer/src/core/renderers/canvas/shaders/UnsupportedShader.js"
+import {
+  CoreContextTexture,
+} from "@lightningjs/renderer/src/core/renderers/CoreContextTexture.js"
+import {
+  CoreRenderer, CoreRendererOptions, QuadOptions,
+} from "@lightningjs/renderer/src/core/renderers/CoreRenderer.js"
+import {
+  CoreTextNode,
+} from '@lightningjs/renderer/src/core/CoreTextNode.js'
+import {
+  TrProps, TextRendererState, TextRenderer, TrPropSetters, TrFontProps,
+} from '@lightningjs/renderer/src/core/text-rendering/renderers/TextRenderer.js'
+
 
 let elMap = new WeakMap<DOMNode, HTMLElement>()
 
@@ -779,4 +799,156 @@ export class DOMCoreRenderer extends CoreRenderer {
   }
 
   updateClearColor(color: number) {}
+}
+
+export class DOMTextRenderer extends TextRenderer {
+  public type: 'canvas' = 'canvas'
+
+  constructor(stage: lng.Stage) {
+    super(stage)
+  }
+
+  override getPropertySetters(): Partial<TrPropSetters> {
+    return {
+      fontFamily: (state, value) => {
+        state.props.fontFamily = value;
+        this.scheduleUpdateState(state);
+      },
+      fontWeight: (state, value) => {
+        state.props.fontWeight = value;
+        this.scheduleUpdateState(state);
+      },
+      fontStyle: (state, value) => {
+        state.props.fontStyle = value;
+        this.scheduleUpdateState(state);
+      },
+      fontStretch: (state, value) => {
+        state.props.fontStretch = value;
+        this.scheduleUpdateState(state);
+      },
+      fontSize: (state, value) => {
+        state.props.fontSize = value;
+        this.scheduleUpdateState(state);
+      },
+      text: (state, value) => {
+        state.props.text = value;
+        this.scheduleUpdateState(state);
+      },
+      textAlign: (state, value) => {
+        state.props.textAlign = value;
+        this.scheduleUpdateState(state);
+      },
+      color: (state, value) => {
+        state.props.color = value;
+        this.scheduleUpdateState(state);
+      },
+      x: (state, value) => {
+        state.props.x = value;
+      },
+      y: (state, value) => {
+        state.props.y = value;
+      },
+      contain: (state, value) => {
+        state.props.contain = value;
+        this.scheduleUpdateState(state);
+      },
+      width: (state, value) => {
+        state.props.width = value;
+        if (state.props.contain !== 'none') {
+          this.scheduleUpdateState(state);
+        }
+      },
+      height: (state, value) => {
+        state.props.height = value;
+        if (state.props.contain === 'both') {
+          this.scheduleUpdateState(state);
+        }
+      },
+      offsetY: (state, value) => {
+        state.props.offsetY = value;
+        this.scheduleUpdateState(state);
+      },
+      scrollY: (state, value) => {
+        state.props.scrollY = value;
+      },
+      letterSpacing: (state, value) => {
+        state.props.letterSpacing = value;
+        this.scheduleUpdateState(state);
+      },
+      lineHeight: (state, value) => {
+        state.props.lineHeight = value;
+        this.scheduleUpdateState(state);
+      },
+      maxLines: (state, value) => {
+        state.props.maxLines = value;
+        this.scheduleUpdateState(state);
+      },
+      textBaseline: (state, value) => {
+        state.props.textBaseline = value;
+        this.scheduleUpdateState(state);
+      },
+      verticalAlign: (state, value) => {
+        state.props.verticalAlign = value;
+        this.scheduleUpdateState(state);
+      },
+      overflowSuffix: (state, value) => {
+        state.props.overflowSuffix = value;
+        this.scheduleUpdateState(state);
+      },
+    };
+  }
+
+  override canRenderFont(props: TrFontProps): boolean {
+    // DOM renderer can render any font
+    return true;
+  }
+
+  override isFontFaceSupported(fontFace: lng.TrFontFace): boolean {
+    return fontFace instanceof lng.WebTrFontFace;
+  }
+
+  override addFontFace(fontFace: lng.TrFontFace): void {
+    // noop
+  }
+
+  override createState(
+    props: TrProps,
+    node: CoreTextNode,
+  ): TextRendererState {
+    return {
+      props,
+      status: 'loaded', // Always set as loaded since DOM renderer handles it
+      updateScheduled: false,
+      emitter: new EventEmitter(),
+      forceFullLayoutCalc: false,
+      textW: props.width || 0,
+      textH: props.height || 0,
+      isRenderable: true,
+      debugData: {
+        updateCount: 0,
+        layoutCount: 0,
+        drawCount: 0,
+        lastLayoutNumCharacters: 0,
+        layoutSum: 0,
+        drawSum: 0,
+        bufferSize: 0,
+      },
+    };
+  }
+
+  override updateState(state: TextRendererState): void {
+    // Set as loaded - actual rendering is handled by DOMText
+    this.setStatus(state, 'loaded');
+  }
+
+  override renderQuads(): void {
+    // No-op - all rendering is handled by DOMText
+  }
+
+  override destroyState(state: TextRendererState): void {
+    if (state.status === 'destroyed') {
+      return;
+    }
+    super.destroyState(state);
+  }
 }
