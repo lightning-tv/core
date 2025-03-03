@@ -30,6 +30,8 @@ export default function (node: ElementNode): boolean {
 
   if (hasOrder) {
     children.sort((a, b) => (a.flexOrder || 0) - (b.flexOrder || 0));
+  } else if (node.direction === 'rtl') {
+    children.reverse();
   }
 
   const numChildren = children.length;
@@ -50,23 +52,29 @@ export default function (node: ElementNode): boolean {
   const align = node.alignItems;
   let containerUpdated = false;
 
-  // if there is only 1 children by default it inherits the parent size so we can skip
+  // if there is only 1 child by default it inherits the parent size so we can skip
   if (growSize && numChildren > 1) {
+    node.flexBoundary = node.flexBoundary || 'fixed'; // cant change size of flex container
     const flexBasis = children.reduce(
       (prev, c) =>
         prev +
-        (c.flexGrow ? 0 : c[dimension] || 0) +
+        (c.flexGrow != null && c.flexGrow >= 0 ? 0 : c[dimension] || 0) +
         (c[marginOne] || 0) +
         (c[marginTwo] || 0),
       0,
     );
     const growFactor =
       (containerSize - flexBasis - gap * (numChildren - 1)) / growSize;
-    for (let i = 0; i < numChildren; i++) {
-      const c = children[i]!;
-      if (c.flexGrow && c.flexGrow > 0) {
-        c[dimension] = c.flexGrow * growFactor;
+
+    if (growFactor >= 0) {
+      for (let i = 0; i < numChildren; i++) {
+        const c = children[i]!;
+        if (c.flexGrow != null && c.flexGrow >= 0) {
+          c[dimension] = c.flexGrow * growFactor;
+        }
       }
+    } else {
+      console.warn('Negative growFactor, flexGrow not applied');
     }
   }
 

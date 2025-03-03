@@ -148,6 +148,7 @@ export interface TextProps
         | 'autosize'
         | 'children'
         | 'data'
+        | 'direction'
         | 'display'
         | 'flexBoundary'
         | 'flexDirection'

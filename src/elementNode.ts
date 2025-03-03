@@ -226,6 +226,7 @@ export interface ElementNode extends RendererNode {
   center?: boolean;
   centerX?: boolean;
   centerY?: boolean;
+  direction?: 'ltr' | 'rtl';
   display?: 'flex' | 'block';
   flexBoundary?: 'contain' | 'fixed';
   flexCrossBoundary?: 'fixed'; // default is contain
