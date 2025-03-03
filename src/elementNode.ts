@@ -478,7 +478,7 @@ export class ElementNode extends Object {
   }
 
   emit(event: string, ...args: any[]): boolean {
-    let current = this.parent;
+    let current = this as ElementNode;
     const capitalizedEvent = `on${event.charAt(0).toUpperCase()}${event.slice(1)}`;
 
     while (current) {
