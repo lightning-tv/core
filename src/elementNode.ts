@@ -666,7 +666,9 @@ export class ElementNode extends Object {
    */
   set autofocus(val: any) {
     this._autofocus = val;
-    val && this.setFocus();
+    // Delay setting focus so children can render (useful for Row + Column)
+    // which now uses forwardFocus
+    val && queueMicrotask(() => this.setFocus());
   }
 
   get autofocus() {
