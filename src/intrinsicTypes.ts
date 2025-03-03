@@ -1,14 +1,11 @@
 import {
-  type FadeOutEffectProps,
-  type GlitchEffectProps,
-  type GrayscaleEffectProps,
   type AnimationSettings as RendererAnimationSettings,
-  type LinearGradientEffectProps,
-  type RadialGradientEffectProps,
-  type RadialProgressEffectProps,
+  type LinearGradientProps,
+  type RadialGradientProps,
   type ITextNodeProps,
-  type HolePunchEffectProps,
+  type HolePunchProps,
   type IAnimationController,
+  type ShadowProps,
   NodeLoadedPayload,
   NodeFailedPayload,
 } from '@lightningjs/renderer';
@@ -31,19 +28,16 @@ export type BorderStyle = number | BorderStyleObject;
 export type BorderRadius = number | number[];
 
 export interface Effects {
-  fadeOut?: FadeOutEffectProps;
-  linearGradient?: LinearGradientEffectProps;
-  radialGradient?: RadialGradientEffectProps;
-  radialProgressGradient?: RadialProgressEffectProps;
-  grayscale?: GrayscaleEffectProps;
-  glitch?: GlitchEffectProps;
-  radialProgress?: RadialProgressEffectProps;
-  holePunch?: HolePunchEffectProps;
+  linearGradient?: LinearGradientProps;
+  radialGradient?: RadialGradientProps;
+  holePunch?: HolePunchProps;
+  shadow?: ShadowProps;
 }
 
 export interface BorderEffects {
   radius?: { radius: BorderRadius };
-  border?: BorderStyle;
+  rounded?: { radius: BorderRadius };
+  border?: BorderStyleObject;
   borderTop?: BorderStyle;
   borderRight?: BorderStyle;
   borderBottom?: BorderStyle;

@@ -34,13 +34,11 @@ import type {
   INode,
   INodeAnimateProps,
   INodeProps,
-  LinearGradientEffectProps,
   ITextNodeProps,
   IAnimationController,
-  EffectDescUnion,
-  ShaderController,
-  RadialGradientEffectProps,
-  RadialProgressEffectProps,
+  LinearGradientProps,
+  RadialGradientProps,
+  ITextNode,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -57,17 +55,39 @@ function runLayout() {
   }
 }
 
-function convertEffectsToShader(
-  node: ElementNode,
-  styleEffects: StyleEffects,
-): ShaderController<'DynamicShader'> {
-  const effects: EffectDescUnion[] = [];
-  for (const type in styleEffects) {
-    // @ts-ignore getting the right type info is hard
-    effects.push(renderer.createEffect(type, styleEffects[type], type));
-  }
-  return renderer.createShader('DynamicShader', { effects });
+type ShaderProps = Record<string, any>;
+function convertEffectsToShader(_node: ElementNode, v: StyleEffects): any {
+  const { border, shadow, rounded, radius } = v;
+  const props: ShaderProps = {};
+
+  const parseAndAssignProps = (prefix: string, obj: Record<string, any>) => {
+    Object.entries(obj).forEach(([key, value]) => {
+      props[`${prefix}-${key}`] = value;
+    });
+  };
+
+  if (border) parseAndAssignProps('border', border);
+  if (shadow) parseAndAssignProps('shadow', shadow);
+  if (rounded) Object.assign(props, rounded, radius);
+
+  const typeParts = ['rounded'];
+  if (border) typeParts.push('WithBorder');
+  if (shadow) typeParts.push('WithShadow');
+
+  return renderer.createShader(typeParts.join(''), props);
 }
+
+// function convertEffectsToShader(
+//   _node: ElementNode,
+//   styleEffects: StyleEffects,
+// ): CoreShaderNode<any> {
+//   const effects: CoreShaderNode<any>[] = [];
+//   for (const type in styleEffects) {
+//     // @ts-ignore getting the right type info is hard
+//     effects.push(renderer.createEffect(type, styleEffects[type], type));
+//   }
+//   return renderer.createShader('DynamicShader', { effects });
+// }
 
 function updateShaderEffects(
   node: ElementNode,
@@ -207,7 +227,7 @@ export interface ElementNode extends RendererNode {
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
   forwardStates?: boolean;
-  lng: INode | Partial<ElementNode>;
+  lng: INode | Partial<ElementNode> | ITextNode;
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   rendered: boolean;
   renderer?: RendererMain;
@@ -241,9 +261,8 @@ export interface ElementNode extends RendererNode {
     | 'center'
     | 'spaceBetween'
     | 'spaceEvenly';
-  linearGradient?: LinearGradientEffectProps;
-  radialGradient?: RadialGradientEffectProps;
-  radialProgress?: RadialProgressEffectProps;
+  linearGradient?: LinearGradientProps;
+  radialGradient?: RadialGradientProps;
   marginBottom?: number;
   marginLeft?: number;
   marginRight?: number;
@@ -1008,25 +1027,20 @@ Object.defineProperties(ElementNode.prototype, {
   borderRight: borderAccessor('Right'),
   borderTop: borderAccessor('Top'),
   borderBottom: borderAccessor('Bottom'),
-  linearGradient:
-    createEffectAccessor<LinearGradientEffectProps>('linearGradient'),
-  radialGradient:
-    createEffectAccessor<RadialGradientEffectProps>('radialGradient'),
-  radialProgress: createEffectAccessor<RadialProgressEffectProps>(
-    'radialProgressGradient',
-  ),
+  linearGradient: createEffectAccessor<LinearGradientProps>('linearGradient'),
+  radialGradient: createEffectAccessor<RadialGradientProps>('radialGradient'),
   borderRadius: {
     set(this: ElementNode, radius: BorderRadius) {
       this.effects = this.effects
         ? {
             ...this.effects,
-            radius: { radius },
+            rounded: { radius },
           }
-        : { radius: { radius } };
+        : { rounded: { radius } };
     },
 
     get(this: ElementNode): BorderRadius | undefined {
-      return this.effects?.radius?.radius;
+      return this.effects?.rounded?.radius;
     },
   },
 });
