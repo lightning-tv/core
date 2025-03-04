@@ -6,6 +6,7 @@ Experimental DOM renderer
 
 import * as lng from '@lightningjs/renderer'
 import {assertTruthy, EventEmitter} from '@lightningjs/renderer/utils'
+import { CanvasShaderType } from '@lightningjs/renderer/canvas'
 import {Config} from './config.js'
 
 // These are not exported from @lightningjs/renderer
@@ -13,14 +14,13 @@ import {
   CoreNode,
 } from "@lightningjs/renderer/src/core/CoreNode.js"
 import {
-  CoreShaderManager,
+  ExtractShaderProps,
+  OptionalShaderProps,
+  ShaderMap,
 } from "@lightningjs/renderer/src/core/CoreShaderManager.js"
 import {
   IParsedColor,
 } from "@lightningjs/renderer/src/core/renderers/canvas/internal/ColorUtils.js"
-import {
-  UnsupportedShader,
-} from "@lightningjs/renderer/src/core/renderers/canvas/shaders/UnsupportedShader.js"
 import {
   CoreContextTexture,
 } from "@lightningjs/renderer/src/core/renderers/CoreContextTexture.js"
@@ -33,7 +33,14 @@ import {
 import {
   TrProps, TextRendererState, TextRenderer, TrPropSetters, TrFontProps,
 } from '@lightningjs/renderer/src/core/text-rendering/renderers/TextRenderer.js'
+import { CoreShaderNode } from '@lightningjs/renderer'
 
+type ShaderRounded = {
+  kind:  'rounded',
+  props: lng.RoundedProps,
+}
+
+type Shader = ShaderRounded
 
 let elMap = new WeakMap<DOMNode, HTMLElement>()
 
@@ -172,7 +179,7 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
       style += `background-color: ${colorToRgba(node.color)};`
     }
 
-    if (Array.isArray(node.shader.props.effects)) {
+    if (node.shader && node.shader.props && Array.isArray(node.shader.props.effects)) {
       for (let effect of node.shader.props.effects) {
         switch (effect.name) {
         case 'border':{
@@ -478,7 +485,7 @@ class DOMNode implements lng.INode {
     updateNodeStyles(this)
   }
   get shader(){return this.node.shader}
-  set shader(v: lng.BaseShaderController){
+  set shader(v: lng.CoreShaderNode){
     this.node.shader = v
     updateNodeStyles(this)
   }
@@ -696,11 +703,9 @@ export class DOMRendererMain extends lng.RendererMain {
     window.addEventListener('resize', updateRootPosition.bind(this))
   }
 
-  override createNode<
-    ShCtr extends lng.BaseShaderController = lng.ShaderController<'DefaultShader'>,
-  >(
-    props: Partial<lng.INodeProps<ShCtr>>,
-  ): lng.INode<ShCtr> {
+  override createNode<ShNode extends CoreShaderNode<any>>(
+    props: Partial<lng.INodeProps<ShNode>>,
+  ): lng.INode<ShNode> {
     return new DOMNode(super.createNode(props))
   }
 
@@ -708,18 +713,11 @@ export class DOMRendererMain extends lng.RendererMain {
     return new DOMText(super.createTextNode(props))
   }
 
-  override createShader<ShType extends keyof lng.ShaderMap>(
-    shaderType: ShType,
-    props?: any,
-  ): lng.ShaderController<ShType> {
-    let shader = super.createShader(shaderType, props)
-    return shader
-  }
-
-  override createDynamicShader<
-      T extends lng.DynamicEffects<[...{ name?: string; type: keyof lng.EffectMap }[]]>,
-    >(effects: [...T]): lng.DynamicShaderController<T> {
-    let shader = super.createDynamicShader(effects)
+  override createShader<ShType extends keyof ShaderMap>(
+    shType: ShType,
+    props?: OptionalShaderProps<ShType>,
+  ) {
+    let shader = super.createShader(shType, props)
     return shader
   }
 }
@@ -743,25 +741,14 @@ export class DOMCoreContextTexture extends CoreContextTexture {
 }
 
 export class DOMCoreRenderer extends CoreRenderer {
+
   public renderToTextureActive = false
   activeRttNode: CoreNode | null = null
-  defShaderCtr: lng.BaseShaderController
 
   constructor(options: CoreRendererOptions) {
     super(options)
 
     this.mode = 'canvas'
-    this.shManager.renderer = this
-
-    // Stub for default shader controller
-    this.defShaderCtr = {
-      type: 'DefaultShader',
-      props: {},
-      shader: new UnsupportedShader('DefaultShader'),
-      getResolvedProps: () => () => {
-        return {}
-      },
-    }
   }
 
   reset(): void {}
@@ -771,15 +758,7 @@ export class DOMCoreRenderer extends CoreRenderer {
   addQuad(quad: QuadOptions): void {}
 
   createCtxTexture(textureSource: lng.Texture): CoreContextTexture {
-    return new DOMCoreContextTexture(this.txMemManager, textureSource);
-  }
-
-  getShaderManager(): CoreShaderManager {
-    return this.shManager;
-  }
-
-  override getDefShaderCtr(): lng.BaseShaderController {
-    return this.defShaderCtr;
+    return new DOMCoreContextTexture(this.stage.txMemManager, textureSource)
   }
 
   renderRTTNodes(): void {
@@ -799,7 +778,88 @@ export class DOMCoreRenderer extends CoreRenderer {
   }
 
   updateClearColor(color: number) {}
+
+  createShaderProgram(){
+    return null;
+  }
+  
+  createShaderNode(
+    shaderKey: string,
+    shaderType: Readonly<CanvasShaderType>,
+    props?: Record<string, any>,
+  ){
+    return new CanvasShaderNode(shaderKey, shaderType, this.stage, props);
+  }
+  
+  supportsShaderType(shaderType: Readonly<CanvasShaderType>): boolean {
+    return shaderType.render !== undefined;
+  }
+  
+  getDefaultShaderNode(){
+    return null;
+  }
 }
+
+export class CanvasShaderNode<
+  Props extends object = Record<string, unknown>,
+  Computed extends object = Record<string, unknown>,
+> extends CoreShaderNode<Props> {
+  private updater: ((node: CoreNode, props?: Props) => void) | undefined =
+    undefined;
+  private valueKey: string = '';
+  computed: Partial<Computed> = {};
+  applySNR: boolean;
+  render: CanvasShaderType<Props>['render'];
+
+  constructor(
+    shaderKey: string,
+    config: CanvasShaderType<Props>,
+    stage: lng.Stage,
+    props?: Props,
+  ) {
+    super(shaderKey, config, stage, props);
+    this.applySNR = config.saveAndRestore || false;
+    this.render = config.render;
+    if (config.update !== undefined) {
+      this.updater = config.update!;
+      if (this.props === undefined) {
+        this.updater!(this.node as CoreNode, this.props);
+        return;
+      }
+
+      this.update = () => {
+        const prevKey = this.valueKey;
+        this.valueKey = '';
+        for (const key in this.resolvedProps) {
+          this.valueKey += `${key}:${this.resolvedProps[key]!};`;
+        }
+
+        if (prevKey === this.valueKey) {
+          return;
+        }
+
+        if (prevKey.length > 0) {
+          this.stage.shManager.mutateShaderValueUsage(prevKey, -1);
+        }
+
+        const computed = this.stage.shManager.getShaderValues(
+          this.valueKey,
+        ) as Record<string, unknown>;
+        if (computed !== undefined) {
+          this.computed = computed as Computed;
+        }
+        this.computed = {};
+        this.updater!(this.node as CoreNode);
+        this.stage.shManager.setShaderValues(this.valueKey, this.computed);
+      };
+    }
+  }
+
+  toColorString(rgba: number) {
+    return (this.stage.renderer as DOMCoreRenderer).getParsedColor(rgba, true);
+  }
+}
+
 
 export interface DOMTextRendererState extends TextRendererState {
   node: CoreTextNode
