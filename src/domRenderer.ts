@@ -179,22 +179,19 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
       style += `background-color: ${colorToRgba(node.color)};`
     }
 
-    if (node.shader && node.shader.props && Array.isArray(node.shader.props.effects)) {
-      for (let effect of node.shader.props.effects) {
-        switch (effect.name) {
-        case 'border':{
-          let {width, color} = effect.props as {width: number, color: number}
+    if (node.shader != null) {
+      let shader = node.shader.getResolvedProps()
+      if (shader != null) {
+        // Border
+        if (typeof shader['border-width'] === 'number' && shader['border-width'] > 0 &&
+            typeof shader['border-color'] === 'number' && shader['border-color'] > 0
+        ) {
           // css border impacts the element's box size when box-shadow doesn't
-          style += `box-shadow: inset 0px 0px 0px ${width}px ${colorToRgba(color)};`
-          break
+          style += `box-shadow: inset 0px 0px 0px ${shader['border-width']}px ${colorToRgba(shader['border-color'])};`
         }
-        case 'radius': {
-          let {radius} = effect.props as {radius: number}
-          style += `border-radius: ${radius}px;`
-          break
-        }
-        default:
-          console.warn('unhandled shader', node, effect)
+        // Rounded
+        if (typeof shader['radius'] === 'number' && shader['radius'] > 0) {
+            style += `border-radius: ${shader['radius']}px;`
         }
       }
     }
@@ -717,8 +714,7 @@ export class DOMRendererMain extends lng.RendererMain {
     shType: ShType,
     props?: OptionalShaderProps<ShType>,
   ) {
-    let shader = super.createShader(shType, props)
-    return shader
+    return new CanvasShaderNode(shType, {props}, this.stage, props)
   }
 }
 
