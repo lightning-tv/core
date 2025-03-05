@@ -714,7 +714,7 @@ export class DOMRendererMain extends lng.RendererMain {
     shType: ShType,
     props?: OptionalShaderProps<ShType>,
   ) {
-    return new CanvasShaderNode(shType, {props}, this.stage, props)
+    return new CoreShaderNode(shType, {props}, this.stage, props)
   }
 }
 
@@ -784,7 +784,7 @@ export class DOMCoreRenderer extends CoreRenderer {
     shaderType: Readonly<CanvasShaderType>,
     props?: Record<string, any>,
   ){
-    return new CanvasShaderNode(shaderKey, shaderType, this.stage, props);
+    return new CoreShaderNode(shaderKey, shaderType, this.stage, props);
   }
   
   supportsShaderType(shaderType: Readonly<CanvasShaderType>): boolean {
@@ -795,67 +795,6 @@ export class DOMCoreRenderer extends CoreRenderer {
     return null;
   }
 }
-
-export class CanvasShaderNode<
-  Props extends object = Record<string, unknown>,
-  Computed extends object = Record<string, unknown>,
-> extends CoreShaderNode<Props> {
-  private updater: ((node: CoreNode, props?: Props) => void) | undefined =
-    undefined;
-  private valueKey: string = '';
-  computed: Partial<Computed> = {};
-  applySNR: boolean;
-  render: CanvasShaderType<Props>['render'];
-
-  constructor(
-    shaderKey: string,
-    config: CanvasShaderType<Props>,
-    stage: lng.Stage,
-    props?: Props,
-  ) {
-    super(shaderKey, config, stage, props);
-    this.applySNR = config.saveAndRestore || false;
-    this.render = config.render;
-    if (config.update !== undefined) {
-      this.updater = config.update!;
-      if (this.props === undefined) {
-        this.updater!(this.node as CoreNode, this.props);
-        return;
-      }
-
-      this.update = () => {
-        const prevKey = this.valueKey;
-        this.valueKey = '';
-        for (const key in this.resolvedProps) {
-          this.valueKey += `${key}:${this.resolvedProps[key]!};`;
-        }
-
-        if (prevKey === this.valueKey) {
-          return;
-        }
-
-        if (prevKey.length > 0) {
-          this.stage.shManager.mutateShaderValueUsage(prevKey, -1);
-        }
-
-        const computed = this.stage.shManager.getShaderValues(
-          this.valueKey,
-        ) as Record<string, unknown>;
-        if (computed !== undefined) {
-          this.computed = computed as Computed;
-        }
-        this.computed = {};
-        this.updater!(this.node as CoreNode);
-        this.stage.shManager.setShaderValues(this.valueKey, this.computed);
-      };
-    }
-  }
-
-  toColorString(rgba: number) {
-    return (this.stage.renderer as DOMCoreRenderer).getParsedColor(rgba, true);
-  }
-}
-
 
 export interface DOMTextRendererState extends TextRendererState {
   node: CoreTextNode
