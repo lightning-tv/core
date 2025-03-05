@@ -12,12 +12,16 @@ import {Config} from './config.js'
 // These are not exported from @lightningjs/renderer
 import {
   CoreNode,
+  CoreNodeProps,
 } from "@lightningjs/renderer/src/core/CoreNode.js"
 import {
-  ExtractShaderProps,
+  ExtractProps,
   OptionalShaderProps,
   ShaderMap,
 } from "@lightningjs/renderer/src/core/CoreShaderManager.js"
+import {
+  Stage,
+} from "@lightningjs/renderer/src/core/Stage.js"
 import {
   IParsedColor,
 } from "@lightningjs/renderer/src/core/renderers/canvas/internal/ColorUtils.js"
@@ -25,13 +29,19 @@ import {
   CoreContextTexture,
 } from "@lightningjs/renderer/src/core/renderers/CoreContextTexture.js"
 import {
-  CoreRenderer, CoreRendererOptions, QuadOptions,
+  CoreRenderer,
+  CoreRendererOptions,
+  QuadOptions,
 } from "@lightningjs/renderer/src/core/renderers/CoreRenderer.js"
 import {
   CoreTextNode,
 } from '@lightningjs/renderer/src/core/CoreTextNode.js'
 import {
-  TrProps, TextRendererState, TextRenderer, TrPropSetters, TrFontProps,
+  TrProps,
+  TextRendererState,
+  TextRenderer,
+  TrPropSetters,
+  TrFontProps,
 } from '@lightningjs/renderer/src/core/text-rendering/renderers/TextRenderer.js'
 import { CoreShaderNode } from '@lightningjs/renderer'
 
@@ -216,6 +226,68 @@ function updateNodeData(node: DOMNode | DOMText) {
   }
 }
 
+function resolveNodeDefaults(props: Partial<CoreNodeProps>): CoreNodeProps {
+  
+  const color = props.color ?? 0xffffffff;
+  const colorTl = props.colorTl ?? props.colorTop ?? props.colorLeft ?? color;
+  const colorTr =
+    props.colorTr ?? props.colorTop ?? props.colorRight ?? color;
+  const colorBl =
+    props.colorBl ?? props.colorBottom ?? props.colorLeft ?? color;
+  const colorBr =
+    props.colorBr ?? props.colorBottom ?? props.colorRight ?? color;
+
+  let data = {};
+
+  return {
+    x: props.x ?? 0,
+    y: props.y ?? 0,
+    width: props.width ?? 0,
+    height: props.height ?? 0,
+    alpha: props.alpha ?? 1,
+    autosize: props.autosize ?? false,
+    boundsMargin: props.boundsMargin ?? null,
+    clipping: props.clipping ?? false,
+    color,
+    colorTop: props.colorTop ?? color,
+    colorBottom: props.colorBottom ?? color,
+    colorLeft: props.colorLeft ?? color,
+    colorRight: props.colorRight ?? color,
+    colorBl,
+    colorBr,
+    colorTl,
+    colorTr,
+    zIndex: props.zIndex ?? 0,
+    zIndexLocked: props.zIndexLocked ?? 0,
+    parent: props.parent ?? null,
+    texture: props.texture ?? null,
+    textureOptions: props.textureOptions ?? {},
+    shader: props.shader ?? this.defShaderNode,
+    // Since setting the `src` will trigger a texture load, we need to set it after
+    // we set the texture. Otherwise, problems happen.
+    src: props.src ?? null,
+    srcHeight: props.srcHeight,
+    srcWidth: props.srcWidth,
+    srcX: props.srcX,
+    srcY: props.srcY,
+    scale: props.scale ?? null,
+    scaleX: props.scaleX ?? props.scale ?? 1,
+    scaleY: props.scaleY ?? props.scale ?? 1,
+    mount: props.mount ?? 0,
+    mountX: props.mountX ?? props.mount ?? 0,
+    mountY: props.mountY ?? props.mount ?? 0,
+    pivot: props.pivot ?? 0.5,
+    pivotX: props.pivotX ?? props.pivot ?? 0.5,
+    pivotY: props.pivotY ?? props.pivot ?? 0.5,
+    rotation: props.rotation ?? 0,
+    rtt: props.rtt ?? false,
+    data: data,
+    preventCleanup: props.preventCleanup ?? false,
+    imageType: props.imageType,
+    strictBounds: props.strictBounds ?? this.strictBounds,
+  };
+}
+
 class DOMNode implements lng.INode {
 
   el = document.createElement('div')
@@ -244,6 +316,7 @@ class DOMNode implements lng.INode {
   get props() {return this.node.props}
   get children() {return this.node.children}
   get parent(){return this.node.parent}
+  set parent(c){this.node.parent = c}
   get rttParent() {return this.node.rttParent}
   get updateType() {return this.node.updateType}
   get childUpdateType() {return this.node.childUpdateType}
@@ -267,9 +340,9 @@ class DOMNode implements lng.INode {
   get parentHasRenderTexture() {return this.node.parentHasRenderTexture}
 
   animate(
-    props: Partial<lng.INodeAnimateProps>,
+    props:    Partial<lng.INodeAnimateProps>,
     settings: Partial<lng.AnimationSettings>,
-): lng.IAnimationController {
+  ): lng.IAnimationController {
 
     let keyframes: Keyframe[] = []
     for (let prop in props) {
@@ -677,10 +750,52 @@ function updateRootPosition(this: DOMRendererMain) {
   domRoot.style.zIndex          = '65534'
 }
 
-export class DOMRendererMain extends lng.RendererMain {
+export class DOMRendererMain implements lng.RendererMain {
 
-  constructor(settings: lng.RendererMainSettings, target: string | HTMLElement) {
-    super(settings, target)
+  root: lng.INode
+  stage: Stage
+  canvas: HTMLCanvasElement
+
+  constructor(
+    public settings: lng.RendererMainSettings,
+    public target: string | HTMLElement
+  ) {
+    // super(settings, target)
+
+    let canvas = document.body.appendChild(document.createElement('canvas'))
+    canvas.style.position = 'absolute'
+    canvas.style.top      = '0'
+    canvas.style.left     = '0'
+    canvas.style.width    = '100vw'
+    canvas.style.height   = '100vh'
+
+    this.canvas = canvas
+
+    // Initialize the stage
+    this.stage = new Stage({
+      appWidth: this.settings.appWidth || 1920,
+      appHeight: this.settings.appHeight || 1080,
+      boundsMargin: this.settings.boundsMargin,
+      clearColor: this.settings.clearColor,
+      canvas: canvas,
+      deviceLogicalPixelRatio: this.settings.deviceLogicalPixelRatio,
+      devicePhysicalPixelRatio: this.settings.devicePhysicalPixelRatio,
+      enableContextSpy: this.settings.enableContextSpy,
+      forceWebGL2: this.settings.forceWebGL2,
+      fpsUpdateInterval: this.settings.fpsUpdateInterval,
+      numImageWorkers: this.settings.numImageWorkers,
+      renderEngine: this.settings.renderEngine,
+      textureMemory: {},
+      eventBus: new EventEmitter,
+      quadBufferSize: this.settings.quadBufferSize,
+      fontEngines: this.settings.fontEngines,
+      inspector: this.settings.inspector !== null,
+      strictBounds: this.settings.strictBounds,
+      textureProcessingTimeLimit: this.settings.textureProcessingTimeLimit,
+      createImageBitmapSupport: this.settings.createImageBitmapSupport,
+    });
+
+    this.root = this.stage.root as any
 
     if (Config.fontSettings.fontFamily != null) {
       domRoot.style.setProperty('font-family', Config.fontSettings.fontFamily)
@@ -702,22 +817,46 @@ export class DOMRendererMain extends lng.RendererMain {
     window.addEventListener('resize', updateRootPosition.bind(this))
   }
 
-  override createNode<ShNode extends CoreShaderNode<any>>(
+  createNode<ShNode extends CoreShaderNode<any>>(
     props: Partial<lng.INodeProps<ShNode>>,
   ): lng.INode<ShNode> {
-    return new DOMNode(super.createNode(props))
+    return new DOMNode(this.stage.createNode(props))
   }
 
-  override createTextNode(props: Partial<lng.ITextNodeProps>): lng.ITextNode {
-    return new DOMText(super.createTextNode(props))
+  createTextNode(props: Partial<lng.ITextNodeProps>): lng.ITextNode {
+    return new DOMText(this.stage.createTextNode(props))
   }
 
-  override createShader<ShType extends keyof ShaderMap>(
+  createShader<ShType extends keyof ShaderMap>(
     shType: ShType,
     props?: OptionalShaderProps<ShType>,
   ) {
     return new CoreShaderNode(shType, {props}, this.stage, props)
   }
+
+  createTexture<TxType extends keyof lng.TextureMap>(
+    textureType: TxType,
+    props: ExtractProps<lng.TextureMap[TxType]>,
+  ): InstanceType<lng.TextureMap[TxType]> {
+    let type = lng.TextureType.generic
+    switch (textureType) {
+    case 'SubTexture':    type = lng.TextureType.subTexture ;break
+    case 'ImageTexture':  type = lng.TextureType.image ;break
+    case 'ColorTexture':  type = lng.TextureType.color ;break
+    case 'NoiseTexture':  type = lng.TextureType.noise ;break
+    case 'RenderTexture': type = lng.TextureType.renderToTexture ;break
+    }
+    return {
+      type: type,
+      props: props,
+      setRenderableOwner: () => {},
+      on: () => {}
+    }
+  }
+
+  on(name: string, callback: (target: any, data: any) => void) {
+    console.log('on', name, callback)
+  } 
 }
 
 export class DOMCoreContextTexture extends CoreContextTexture {
