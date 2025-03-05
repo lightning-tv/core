@@ -43,7 +43,6 @@ import {
   TrPropSetters,
   TrFontProps,
 } from '@lightningjs/renderer/src/core/text-rendering/renderers/TextRenderer.js'
-import { CoreShaderNode } from '@lightningjs/renderer'
 
 type ShaderRounded = {
   kind:  'rounded',
@@ -191,7 +190,7 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
     }
 
     if (node.shader != null) {
-      let shader = node.shader.getResolvedProps()
+      let shader = node.shader.props
       if (shader != null) {
         // Border
         if (typeof shader['border-width'] === 'number' && shader['border-width'] > 0 &&
@@ -817,7 +816,7 @@ export class DOMRendererMain implements lng.RendererMain {
     window.addEventListener('resize', updateRootPosition.bind(this))
   }
 
-  createNode<ShNode extends CoreShaderNode<any>>(
+  createNode<ShNode extends lng.CoreShaderNode<any>>(
     props: Partial<lng.INodeProps<ShNode>>,
   ): lng.INode<ShNode> {
     return new DOMNode(this.stage.createNode(props))
@@ -831,7 +830,16 @@ export class DOMRendererMain implements lng.RendererMain {
     shType: ShType,
     props?: OptionalShaderProps<ShType>,
   ) {
-    return new CoreShaderNode(shType, {props}, this.stage, props)
+    return {
+      shaderType: shType,
+      stage: this.stage,
+      props: props,
+      resolvedProps: props,
+      node: null as CoreNode | null,
+      attachNode(node: CoreNode) {
+        this.node = node
+      }
+    }
   }
 
   createTexture<TxType extends keyof lng.TextureMap>(
@@ -925,7 +933,7 @@ export class DOMCoreRenderer extends CoreRenderer {
     shaderType: Readonly<CanvasShaderType>,
     props?: Record<string, any>,
   ){
-    return new CoreShaderNode(shaderKey, shaderType, this.stage, props);
+    return new lng.CoreShaderNode(shaderKey, shaderType, this.stage, props);
   }
   
   supportsShaderType(shaderType: Readonly<CanvasShaderType>): boolean {
