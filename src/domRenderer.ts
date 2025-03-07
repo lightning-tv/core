@@ -12,6 +12,185 @@ let elMap = new WeakMap<DOMNode, HTMLElement>()
 let domRoot = document.body.appendChild(document.createElement('div'))
 domRoot.id = 'dom_root'
 
+/*
+ Animations
+*/
+type AnimationTask = {
+  node:        DOMNode
+  propsStart:  Record<string, number>
+  propsEnd:    Record<string, number>
+  timeStart:   number
+  timeEnd:     number
+  settings:    Required<lng.AnimationSettings>
+  iteration:   number
+  paused:      boolean
+  pausedTime?: number
+}
+
+let animationTasks: AnimationTask[] = []
+let animationFrameRequested = false
+
+function requestAnimationUpdate() {
+  if (!animationFrameRequested && animationTasks.length > 0) {
+    animationFrameRequested = true
+    requestAnimationFrame(updateAnimations)
+  }
+}
+
+function updateAnimations(time: number) {
+  animationFrameRequested = false
+  
+  /*
+   tasks are iterated in insertion order
+   so that the later task will override the earlier ones
+  */
+  for (let i = 0; i < animationTasks.length; i++) {
+    let task = animationTasks[i]!
+    if (task.paused) continue
+    
+    let elapsed = time - task.timeStart
+    
+    // Still in delay period
+    if (elapsed < task.settings.delay) {
+      requestAnimationUpdate()
+      continue
+    }
+    
+    let activeTime = elapsed - task.settings.delay
+    
+    if (activeTime >= task.settings.duration) {
+      // Start next iteration
+      if (task.settings.loop || task.iteration < task.settings.repeat - 1) {
+        task.iteration++
+        task.timeStart = time - task.settings.delay
+        if (task.settings.repeatDelay > 0) {
+          task.timeStart += task.settings.repeatDelay
+        }
+        requestAnimationUpdate()
+      }
+      // Animation complete
+      else {
+        Object.assign(task.node.props, task.propsEnd)
+        updateNodeStyles(task.node)
+        animationTasks.splice(i, 1)
+        i--
+      }
+      continue
+    }
+    
+    
+    /*
+     Update props and styles
+    */
+    let progress = applyEasing(activeTime / task.settings.duration, task.settings.easing)
+
+    for (let prop in task.propsEnd) {
+      let valueStart = task.propsStart[prop]!
+      let valueEnd = task.propsEnd[prop]!
+      ;(task.node.props as any)[prop] = valueStart + (valueEnd - valueStart) * progress
+    }
+    
+    updateNodeStyles(task.node)
+  }
+
+  requestAnimationUpdate()
+}
+
+function applyEasing(progress: number, easing: string): number {
+  switch (easing) {
+  case 'linear':
+  default:            return progress
+  case 'ease-in':     return progress * progress
+  case 'ease-out':    return progress * (2 - progress)
+  case 'ease-in-out': return progress < 0.5 
+                              ? 2 * progress * progress 
+                              : -1 + (4 - 2 * progress) * progress
+  }
+}
+
+class AnimationController implements lng.IAnimationController {
+
+  state: lng.AnimationControllerState = 'paused'
+
+  constructor(
+    public task: AnimationTask,
+  ) {}
+
+  start() {
+    this.task.paused = false
+    // If it was paused, adjust startTime
+    if (this.task.pausedTime !== undefined) {
+      this.task.timeStart += performance.now() - this.task.pausedTime
+      this.task.pausedTime = undefined
+    } else {
+      this.task.timeStart = performance.now()
+    }
+    requestAnimationUpdate()
+    return this
+  }
+  pause() {
+    this.task.paused = true
+    this.task.pausedTime = performance.now()
+    return this
+  }
+  stop() {
+    let index = animationTasks.indexOf(this.task)
+    if (index !== -1) {
+      animationTasks.splice(index, 1)
+    }
+    return this
+  }
+
+  restore() {return this}
+  waitUntilStopped() {return Promise.resolve()}
+  on() {return this}
+  once() {return this}
+  off() {return this}
+  emit() {return this}
+}
+
+function animate(
+  this: DOMNode,
+  props: Partial<lng.INodeAnimateProps<any>>,
+  settings: Partial<lng.AnimationSettings>,
+): lng.IAnimationController {
+
+  let fullSettings: Required<lng.AnimationSettings> = {
+    duration:    settings.duration ?? 300,
+    delay:       settings.delay ?? 0,
+    easing:      settings.easing ?? 'linear',
+    loop:        settings.loop ?? false,
+    repeat:      settings.repeat ?? 1,
+    repeatDelay: settings.repeatDelay ?? 0,
+    stopMethod:  false,
+  }
+
+  let now = performance.now()
+
+  // Create the animation task
+  let task: AnimationTask = {
+    node: this,
+    propsStart: {},
+    propsEnd: {},
+    timeStart: now,
+    timeEnd: now + fullSettings.delay + fullSettings.duration,
+    settings: fullSettings,
+    iteration: 0,
+    paused: true,
+  }
+
+  for (let [prop, value] of Object.entries(props)) {
+    if (value != null && typeof value === 'number') {
+      task.propsStart[prop] = (this.props as any)[prop]
+      task.propsEnd[prop] = value
+    }
+  }
+
+  animationTasks.push(task)
+
+  return new AnimationController(task)
+}
+
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`
 
@@ -342,69 +521,7 @@ class DOMNode implements lng.INode {
   hasRTTupdates = undefined
   parentHasRenderTexture = undefined
 
-  animate(
-    props: Partial<lng.INodeAnimateProps<any>>,
-    settings: Partial<lng.AnimationSettings>,
-  ): lng.IAnimationController {
-
-    let keyframes: Keyframe[] = []
-    for (let prop in props) {
-      switch (prop) {
-      case 'scale':
-        keyframes.push({transform: `scale(${props.scale})`})
-        break
-      case 'alpha':
-        keyframes.push({opacity: props.alpha})
-        break
-      case 'x':
-        keyframes.push({left: props.x+'px'})
-        break
-      case 'y':
-        keyframes.push({top: props.y+'px'})
-        break
-      case 'width':
-        keyframes.push({width: props.width+'px'})
-        break
-      case 'height':
-        keyframes.push({height: props.height+'px'})
-        break
-      case 'color':
-        if (this instanceof DOMText) {
-          keyframes.push({color: colorToRgba(props.color!)})
-        } else {
-          keyframes.push({backgroundColor: colorToRgba(props.color!)})
-        }
-        break
-      default:
-        // TODO handle all animateable props
-        console.warn('unhandled animate prop', prop)
-      }
-    }
-
-    // TODO: handle all animation settings
-
-    let animation = this.el.animate(keyframes, {
-      duration:   settings.duration,
-      easing:     settings.easing,
-      delay:      settings.delay,
-      iterations: settings.loop ? Infinity : settings.repeat,
-    })
-    animation.pause()
-
-    // Update the styles after the animation finishes (not interrupted)
-    // instead of using forwards fill because it has too high specificity
-    animation.onfinish = () => {
-      Object.assign(this.props, props)
-      updateNodeStyles(this)
-    }
-
-    return {
-      start() {
-        animation.play()
-        return this
-      }
-    }
-  }
+  animate = animate;
 
   get x(): number { return this.props.x }
   set x(value: number) {
