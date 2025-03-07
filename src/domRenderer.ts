@@ -320,28 +320,27 @@ class DOMNode implements lng.INode {
   }
 
   globalTransform = undefined
-
-  get children() { return this.node.children }
-  get rttParent() { return this.node.rttParent }
-  get updateType() { return this.node.updateType }
-  get childUpdateType() { return this.node.childUpdateType }
-  get scaleRotateTransform() { return this.node.scaleRotateTransform }
-  get localTransform() { return this.node.localTransform }
-  get renderCoords() { return this.node.renderCoords }
-  get renderBound() { return this.node.renderBound }
-  get strictBound() { return this.node.strictBound }
-  get preloadBound() { return this.node.preloadBound }
-  get clippingRect() { return this.node.clippingRect }
-  get isRenderable() { return this.node.isRenderable }
-  get renderState() { return this.node.renderState }
-  get worldAlpha() { return this.node.worldAlpha }
-  get premultipliedColorTl() { return this.node.premultipliedColorTl }
-  get premultipliedColorTr() { return this.node.premultipliedColorTr }
-  get premultipliedColorBl() { return this.node.premultipliedColorBl }
-  get premultipliedColorBr() { return this.node.premultipliedColorBr }
-  get calcZIndex() { return this.node.calcZIndex }
-  get hasRTTupdates() { return this.node.hasRTTupdates }
-  get parentHasRenderTexture() { return this.node.parentHasRenderTexture }
+  children = undefined
+  rttParent = undefined
+  updateType = undefined
+  childUpdateType = undefined
+  scaleRotateTransform = undefined
+  localTransform = undefined
+  renderCoords = undefined
+  renderBound = undefined
+  strictBound = undefined
+  preloadBound = undefined
+  clippingRect = undefined
+  isRenderable = undefined
+  renderState = undefined
+  worldAlpha = undefined
+  premultipliedColorTl = undefined
+  premultipliedColorTr = undefined
+  premultipliedColorBl = undefined
+  premultipliedColorBr = undefined
+  calcZIndex = undefined
+  hasRTTupdates = undefined
+  parentHasRenderTexture = undefined
 
   animate(
     props: Partial<lng.INodeAnimateProps<any>>,
