@@ -7,16 +7,6 @@ Experimental DOM renderer
 import * as lng from '@lightningjs/renderer'
 import { Config } from './config.js'
 
-// These are not exported from @lightningjs/renderer
-import type {
-  CoreNode,
-} from "@lightningjs/renderer/src/core/CoreNode.js"
-import type {
-  ExtractProps,
-  OptionalShaderProps,
-  ShaderMap,
-} from "@lightningjs/renderer/src/core/CoreShaderManager.js"
-
 let elMap = new WeakMap<DOMNode, HTMLElement>()
 
 let domRoot = document.body.appendChild(document.createElement('div'))
@@ -266,21 +256,35 @@ function resolveTextNodeDefaults(props: Partial<lng.ITextNodeProps>): lng.ITextN
   }
 }
 
-type RendererInterface = {
+type RendererInterfaceCoreRenderer = {
   mode: 'canvas' | 'webgl'
 }
-type FontManagerInterface = {
+type RendererInterfaceFontManager = {
   addFontFace: (...a: any[]) => void
 }
-type StageInterface = {
+type RendererInterfaceStage = {
   root: lng.INode
-  renderer: RendererInterface
-  fontManager: FontManagerInterface
+  renderer: RendererInterfaceCoreRenderer
+  fontManager: RendererInterfaceFontManager
 }
 
-type ShaderInterface = {}
+type RendererInterfaceShader = {
+  shaderType: string,
+  props: RendererInterfaceShaderProps
+  resolvedProps: RendererInterfaceShaderProps
+  node: lng.INode | null
+  attachNode(node: lng.INode): void
+}
+type RendererInterfaceShaderProps = {}
+type RendererInterfaceTexture = {
+  props: RendererInterfaceTextureProps
+  type: lng.TextureType
+  setRenderableOwner: () => void;
+  on: () => void;
+}
+type RendererInterfaceTextureProps = {}
 
-const defaultShader: ShaderInterface = {}
+const defaultShader: RendererInterfaceShader = {}
 
 let lastNodeId = 0
 
@@ -290,7 +294,7 @@ class DOMNode implements lng.INode {
   id = ++lastNodeId
 
   constructor(
-    public stage: StageInterface,
+    public stage: RendererInterfaceStage,
     public props: lng.INodeProps<any>,
   ) {
 
@@ -650,7 +654,7 @@ class DOMNode implements lng.INode {
 class DOMText extends DOMNode {
 
   constructor(
-    stage: StageInterface,
+    stage: RendererInterfaceStage,
     public override props: lng.ITextNodeProps
   ) {
     super(stage, props)
@@ -783,7 +787,7 @@ export class DOMRendererMain implements lng.RendererMain {
   root: lng.INode
   canvas: HTMLCanvasElement
 
-  stage: StageInterface
+  stage: RendererInterfaceStage
 
   constructor(
     public settings: lng.RendererMainSettings,
@@ -882,32 +886,26 @@ export class DOMRendererMain implements lng.RendererMain {
     return new DOMText(this.stage, resolveTextNodeDefaults(props))
   }
 
-  createShader<ShType extends keyof ShaderMap>(
-    shType: ShType,
-    props?: OptionalShaderProps<ShType>,
-  ) {
+  createShader(shType: string, props?: RendererInterfaceShaderProps): RendererInterfaceShader {
     return {
       shaderType: shType,
       props: props,
       resolvedProps: props,
-      node: null as CoreNode | null,
-      attachNode(node: CoreNode) {
+      node: null as lng.INode | null,
+      attachNode(node: lng.INode) {
         this.node = node
       }
     }
   }
 
-  createTexture<TxType extends keyof lng.TextureMap>(
-    textureType: TxType,
-    props: ExtractProps<lng.TextureMap[TxType]>,
-  ): InstanceType<lng.TextureMap[TxType]> {
+  createTexture(textureType: keyof lng.TextureMap, props: RendererInterfaceTextureProps): RendererInterfaceTexture {
     let type = lng.TextureType.generic
     switch (textureType) {
-      case 'SubTexture': type = lng.TextureType.subTexture; break
-      case 'ImageTexture': type = lng.TextureType.image; break
-      case 'ColorTexture': type = lng.TextureType.color; break
-      case 'NoiseTexture': type = lng.TextureType.noise; break
-      case 'RenderTexture': type = lng.TextureType.renderToTexture; break
+      case 'SubTexture':    type = lng.TextureType.subTexture      ;break
+      case 'ImageTexture':  type = lng.TextureType.image           ;break
+      case 'ColorTexture':  type = lng.TextureType.color           ;break
+      case 'NoiseTexture':  type = lng.TextureType.noise           ;break
+      case 'RenderTexture': type = lng.TextureType.renderToTexture ;break
     }
     return {
       type: type,
