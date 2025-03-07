@@ -16,15 +16,14 @@ domRoot.id = 'dom_root'
  Animations
 */
 type AnimationTask = {
-  node:        DOMNode
-  propsStart:  Record<string, number>
-  propsEnd:    Record<string, number>
-  timeStart:   number
-  timeEnd:     number
-  settings:    Required<lng.AnimationSettings>
-  iteration:   number
-  paused:      boolean
-  pausedTime?: number
+  node:       DOMNode
+  propsStart: Record<string, number>
+  propsEnd:   Record<string, number>
+  timeStart:  number
+  timeEnd:    number
+  settings:   Required<lng.AnimationSettings>
+  iteration:  number
+  pausedTime: number | null
 }
 
 let animationTasks: AnimationTask[] = []
@@ -46,7 +45,7 @@ function updateAnimations(time: number) {
   */
   for (let i = 0; i < animationTasks.length; i++) {
     let task = animationTasks[i]!
-    if (task.paused) continue
+    if (task.pausedTime != null) continue
     
     let elapsed = time - task.timeStart
     
@@ -117,11 +116,9 @@ class AnimationController implements lng.IAnimationController {
   ) {}
 
   start() {
-    this.task.paused = false
-    // If it was paused, adjust startTime
-    if (this.task.pausedTime !== undefined) {
+    if (this.task.pausedTime != null) {
       this.task.timeStart += performance.now() - this.task.pausedTime
-      this.task.pausedTime = undefined
+      this.task.pausedTime = null
     } else {
       this.task.timeStart = performance.now()
     }
@@ -129,7 +126,6 @@ class AnimationController implements lng.IAnimationController {
     return this
   }
   pause() {
-    this.task.paused = true
     this.task.pausedTime = performance.now()
     return this
   }
@@ -169,14 +165,14 @@ function animate(
 
   // Create the animation task
   let task: AnimationTask = {
-    node: this,
+    node:       this,
     propsStart: {},
-    propsEnd: {},
-    timeStart: now,
-    timeEnd: now + fullSettings.delay + fullSettings.duration,
-    settings: fullSettings,
-    iteration: 0,
-    paused: true,
+    propsEnd:   {},
+    timeStart:  now,
+    timeEnd:    now + fullSettings.delay + fullSettings.duration,
+    settings:   fullSettings,
+    iteration:  0,
+    pausedTime: null,
   }
 
   for (let [prop, value] of Object.entries(props)) {
