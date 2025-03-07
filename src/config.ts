@@ -16,6 +16,7 @@ interface Config {
   rendererOptions?: Partial<RendererMainSettings>;
   setActiveElement: (elm: ElementNode) => void;
   focusStateKey: DollarString;
+  lockStyles?: boolean;
 }
 
 function isDevEnv(): boolean {

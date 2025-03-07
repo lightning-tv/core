@@ -567,6 +567,10 @@ export class ElementNode extends Object {
       );
     }
 
+    if (Config.lockStyles && this._style) {
+      return;
+    }
+
     if (!style) {
       return;
     }
