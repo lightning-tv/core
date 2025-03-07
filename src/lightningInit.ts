@@ -24,9 +24,6 @@ export function loadFonts(
     | (Partial<lng.SdfTrFontFaceOptions> & { type: SdfFontType })
   )[],
 ) {
-  if (renderer.stage == null)
-    return
-  
   for (const font of fonts) {
     // WebGL — SDF
     if (renderer.stage.renderer.mode === 'webgl' &&
