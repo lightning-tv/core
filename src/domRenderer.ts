@@ -7,10 +7,8 @@ Experimental DOM renderer
 import * as lng from '@lightningjs/renderer'
 import { Config } from './config.js'
 
-let elMap = new WeakMap<DOMNode, HTMLElement>()
-
-let domRoot = document.body.appendChild(document.createElement('div'))
-domRoot.id = 'dom_root'
+const colorToRgba = (c: number) =>
+  `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`
 
 /*
  Animations
@@ -81,12 +79,11 @@ function updateAnimations(time: number) {
     /*
      Update props and styles
     */
-    let progress = applyEasing(activeTime / task.settings.duration, task.settings.easing)
+    let t = applyEasing(activeTime / task.settings.duration, task.settings.easing)
 
     for (let prop in task.propsEnd) {
-      let valueStart = task.propsStart[prop]!
-      let valueEnd = task.propsEnd[prop]!
-      ;(task.node.props as any)[prop] = valueStart + (valueEnd - valueStart) * progress
+      let fn = prop.startsWith('color') ? interpolateColor : interpolate
+      ;(task.node.props as any)[prop] = fn(task.propsStart[prop]!, task.propsEnd[prop]!, t)
     }
     
     updateNodeStyles(task.node)
@@ -105,6 +102,19 @@ function applyEasing(progress: number, easing: string): number {
                               ? 2 * progress * progress 
                               : -1 + (4 - 2 * progress) * progress
   }
+}
+
+function interpolate(start: number, end: number, t: number): number {
+  return start + (end - start) * t
+}
+
+function interpolateColor(start: number, end: number, t: number): number {
+  return (
+    (interpolate((start >> 24) & 0xff, (end >> 24) & 0xff, t) << 24) |
+    (interpolate((start >> 16) & 0xff, (end >> 16) & 0xff, t) << 16) |
+    (interpolate((start >> 8) & 0xff, (end >> 8) & 0xff, t) << 8) |
+    interpolate(start & 0xff, end & 0xff, t)
+  )
 }
 
 class AnimationController implements lng.IAnimationController {
@@ -187,8 +197,10 @@ function animate(
   return new AnimationController(task)
 }
 
-const colorToRgba = (c: number) =>
-  `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`
+let elMap = new WeakMap<DOMNode, HTMLElement>()
+
+let domRoot = document.body.appendChild(document.createElement('div'))
+domRoot.id = 'dom_root'
 
 function updateNodeParent(node: DOMNode | DOMText) {
   if (node.parent != null) {
