@@ -389,9 +389,15 @@ class DOMNode implements lng.INode {
       easing:     settings.easing,
       delay:      settings.delay,
       iterations: settings.loop ? Infinity : settings.repeat,
-      fill:       'forwards',
     })
     animation.pause()
+
+    // Update the styles after the animation finishes (not interrupted)
+    // instead of using forwards fill because it has too high specificity
+    animation.onfinish = () => {
+      Object.assign(this.props, props)
+      updateNodeStyles(this)
+    }
 
     return {
       start() {
