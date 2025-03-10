@@ -6,7 +6,7 @@ import type {
 } from './intrinsicTypes.js';
 import { type ElementNode } from './elementNode.js';
 
-interface Config {
+export interface Config {
   debug: boolean;
   focusDebug: boolean;
   keyDebug: boolean;
