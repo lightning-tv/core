@@ -1,4 +1,9 @@
-import { IRendererNode, IRendererNodeProps, IRendererTextNode, renderer } from './lightningInit.js';
+import {
+  IRendererNode,
+  IRendererNodeProps,
+  IRendererTextNode,
+  renderer,
+} from './lightningInit.js';
 import {
   type BorderRadius,
   type BorderStyle,

@@ -6,80 +6,81 @@ export type SdfFontType = 'ssdf' | 'msdf';
 
 /** Based on {@link lng.CoreRenderer} */
 export interface IRendererCoreRenderer {
-  mode: 'canvas' | 'webgl' | undefined
+  mode: 'canvas' | 'webgl' | undefined;
 }
 /** Based on {@link lng.TrFontManager} */
 export interface IRendererFontManager {
-  addFontFace: (...a: any[]) => void
+  addFontFace: (...a: any[]) => void;
 }
 /** Based on {@link lng.Stage} */
 export interface IRendererStage {
-  root:        IRendererNode
-  renderer:    IRendererCoreRenderer
-  fontManager: IRendererFontManager
+  root: IRendererNode;
+  renderer: IRendererCoreRenderer;
+  fontManager: IRendererFontManager;
 }
 
 /** Based on {@link lng.CoreShaderNode} */
 export interface IRendererShader {
-  shaderType: IRendererShaderType,
-  props:      IRendererShaderProps | undefined
+  shaderType: IRendererShaderType;
+  props: IRendererShaderProps | undefined;
 }
 /** Based on {@link lng.CoreShaderType} */
-export interface IRendererShaderType {
-}
-export type IRendererShaderProps = Record<string, unknown>
+export interface IRendererShaderType {}
+export type IRendererShaderProps = Record<string, unknown>;
 
 /** Based on {@link lng.Texture} */
 export interface IRendererTexture {
-  props: IRendererTextureProps
-  type:  lng.TextureType
+  props: IRendererTextureProps;
+  type: lng.TextureType;
 }
-export interface IRendererTextureProps {
-}
+export interface IRendererTextureProps {}
 
 export interface IRendererNodeShaded {
-  stage:   IRendererStage
-  id:      number
+  stage: IRendererStage;
+  id: number;
   animate: (
-    props:    Partial<lng.INodeAnimateProps<any>>,
+    props: Partial<lng.INodeAnimateProps<any>>,
     settings: Partial<lng.AnimationSettings>,
-  ) => lng.IAnimationController
-  on:      (e: string, cb: (...a: any[]) => void) => void
-  get absX(): number
-  get absY(): number
+  ) => lng.IAnimationController;
+  on: (e: string, cb: (...a: any[]) => void) => void;
+  get absX(): number;
+  get absY(): number;
 }
 
 /** Based on {@link lng.INodeProps} */
 export interface IRendererNodeProps
-  extends Omit<lng.INodeProps<lng.CoreShaderNode>, 'shader' | 'parent'>
-{
-  shader: IRendererShader | null
-  parent: IRendererNode | null
+  extends Omit<lng.INodeProps<lng.CoreShaderNode>, 'shader' | 'parent'> {
+  shader: IRendererShader | null;
+  parent: IRendererNode | null;
 }
 /** Based on {@link lng.INode} */
 export interface IRendererNode extends IRendererNodeShaded, IRendererNodeProps {
-  props:   IRendererNodeProps
+  props: IRendererNodeProps;
 }
 
 /** Based on {@link lng.ITextNodeProps} */
 export interface IRendererTextNodeProps
-  extends Omit<lng.ITextNodeProps, 'shader' | 'parent'>
-{
-  shader: IRendererShader | null
-  parent: IRendererNode | null
+  extends Omit<lng.ITextNodeProps, 'shader' | 'parent'> {
+  shader: IRendererShader | null;
+  parent: IRendererNode | null;
 }
 /** Based on {@link lng.ITextNode} */
-export interface IRendererTextNode extends IRendererNodeShaded, IRendererTextNodeProps {
-  props:   IRendererTextNodeProps
+export interface IRendererTextNode
+  extends IRendererNodeShaded,
+    IRendererTextNodeProps {
+  props: IRendererTextNodeProps;
 }
 
 /** Based on {@link lng.RendererMain} */
 export interface IRendererMain {
-  stage:          IRendererStage
-  createTextNode: (props: Partial<IRendererTextNodeProps>) => IRendererTextNode
-  createNode:     (props: Partial<IRendererNodeProps>) => IRendererNode
-  createShader:   (kind: string, props: IRendererShaderProps) => IRendererShader
-  createTexture:  (kind: keyof lng.TextureMap, props: IRendererTextureProps) => IRendererTexture
+  stage: IRendererStage;
+  createTextNode: (props: Partial<IRendererTextNodeProps>) => IRendererTextNode;
+  createNode: (props: Partial<IRendererNodeProps>) => IRendererNode;
+  createShader: (kind: string, props: IRendererShaderProps) => IRendererShader;
+  createTexture: (
+    kind: keyof lng.TextureMap,
+    props: IRendererTextureProps,
+  ) => IRendererTexture;
 }
 
 export let renderer: IRendererMain;
@@ -92,7 +93,7 @@ export function startLightningRenderer(
 ) {
   renderer = Config.domRendering
     ? new DOMRendererMain(options, rootId)
-    : new lng.RendererMain(options, rootId) as any as IRendererMain;
+    : (new lng.RendererMain(options, rootId) as any as IRendererMain);
   return renderer;
 }
 
@@ -104,9 +105,10 @@ export function loadFonts(
 ) {
   for (const font of fonts) {
     // WebGL — SDF
-    if (renderer.stage.renderer.mode === 'webgl' &&
-        'type' in font &&
-        (font.type === 'msdf' || font.type === 'ssdf')
+    if (
+      renderer.stage.renderer.mode === 'webgl' &&
+      'type' in font &&
+      (font.type === 'msdf' || font.type === 'ssdf')
     ) {
       renderer.stage.fontManager.addFontFace(
         new lng.SdfTrFontFace(font.type, {

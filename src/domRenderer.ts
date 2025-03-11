@@ -4,11 +4,9 @@ Experimental DOM renderer
 
 */
 
-import * as lng from '@lightningjs/renderer'
+import * as lng from '@lightningjs/renderer';
 
-import {
-  Config,
-} from './config.js'
+import { Config } from './config.js';
 import {
   IRendererShader,
   IRendererStage,
@@ -20,108 +18,118 @@ import {
   IRendererNodeProps,
   IRendererTextNode,
   IRendererTextNodeProps,
-} from './lightningInit.js'
-import { EventEmitter } from '@lightningjs/renderer/utils'
+} from './lightningInit.js';
+import { EventEmitter } from '@lightningjs/renderer/utils';
 
 const colorToRgba = (c: number) =>
-  `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`
+  `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
 
 /*
  Animations
 */
 type AnimationTask = {
-  node:       DOMNode
-  propsStart: Record<string, number>
-  propsEnd:   Record<string, number>
-  timeStart:  number
-  timeEnd:    number
-  settings:   Required<lng.AnimationSettings>
-  iteration:  number
-  pausedTime: number | null
-}
+  node: DOMNode;
+  propsStart: Record<string, number>;
+  propsEnd: Record<string, number>;
+  timeStart: number;
+  timeEnd: number;
+  settings: Required<lng.AnimationSettings>;
+  iteration: number;
+  pausedTime: number | null;
+};
 
-let animationTasks: AnimationTask[] = []
-let animationFrameRequested = false
+let animationTasks: AnimationTask[] = [];
+let animationFrameRequested = false;
 
 function requestAnimationUpdate() {
   if (!animationFrameRequested && animationTasks.length > 0) {
-    animationFrameRequested = true
-    requestAnimationFrame(updateAnimations)
+    animationFrameRequested = true;
+    requestAnimationFrame(updateAnimations);
   }
 }
 
 function updateAnimations(time: number) {
-  animationFrameRequested = false
+  animationFrameRequested = false;
 
   /*
    tasks are iterated in insertion order
    so that the later task will override the earlier ones
   */
   for (let i = 0; i < animationTasks.length; i++) {
-    let task = animationTasks[i]!
-    if (task.pausedTime != null) continue
+    let task = animationTasks[i]!;
+    if (task.pausedTime != null) continue;
 
-    let elapsed = time - task.timeStart
+    let elapsed = time - task.timeStart;
 
     // Still in delay period
     if (elapsed < task.settings.delay) {
-      requestAnimationUpdate()
-      continue
+      requestAnimationUpdate();
+      continue;
     }
 
-    let activeTime = elapsed - task.settings.delay
+    let activeTime = elapsed - task.settings.delay;
 
     if (activeTime >= task.settings.duration) {
       // Start next iteration
       if (task.settings.loop || task.iteration < task.settings.repeat - 1) {
-        task.iteration++
-        task.timeStart = time - task.settings.delay
+        task.iteration++;
+        task.timeStart = time - task.settings.delay;
         if (task.settings.repeatDelay > 0) {
-          task.timeStart += task.settings.repeatDelay
+          task.timeStart += task.settings.repeatDelay;
         }
-        requestAnimationUpdate()
+        requestAnimationUpdate();
       }
       // Animation complete
       else {
-        Object.assign(task.node.props, task.propsEnd)
-        updateNodeStyles(task.node)
-        animationTasks.splice(i, 1)
-        i--
+        Object.assign(task.node.props, task.propsEnd);
+        updateNodeStyles(task.node);
+        animationTasks.splice(i, 1);
+        i--;
       }
-      continue
+      continue;
     }
-
 
     /*
      Update props and styles
     */
-    let t = applyEasing(activeTime / task.settings.duration, task.settings.easing)
+    let t = applyEasing(
+      activeTime / task.settings.duration,
+      task.settings.easing,
+    );
 
     for (let prop in task.propsEnd) {
-      let fn = prop.startsWith('color') ? interpolateColor : interpolate
-      ;(task.node.props as any)[prop] = fn(task.propsStart[prop]!, task.propsEnd[prop]!, t)
+      let fn = prop.startsWith('color') ? interpolateColor : interpolate;
+      (task.node.props as any)[prop] = fn(
+        task.propsStart[prop]!,
+        task.propsEnd[prop]!,
+        t,
+      );
     }
 
-    updateNodeStyles(task.node)
+    updateNodeStyles(task.node);
   }
 
-  requestAnimationUpdate()
+  requestAnimationUpdate();
 }
 
 function applyEasing(progress: number, easing: string): number {
   switch (easing) {
-  case 'linear':
-  default:            return progress
-  case 'ease-in':     return progress * progress
-  case 'ease-out':    return progress * (2 - progress)
-  case 'ease-in-out': return progress < 0.5
-                              ? 2 * progress * progress
-                              : -1 + (4 - 2 * progress) * progress
+    case 'linear':
+    default:
+      return progress;
+    case 'ease-in':
+      return progress * progress;
+    case 'ease-out':
+      return progress * (2 - progress);
+    case 'ease-in-out':
+      return progress < 0.5
+        ? 2 * progress * progress
+        : -1 + (4 - 2 * progress) * progress;
   }
 }
 
 function interpolate(start: number, end: number, t: number): number {
-  return start + (end - start) * t
+  return start + (end - start) * t;
 }
 
 function interpolateColor(start: number, end: number, t: number): number {
@@ -130,165 +138,174 @@ function interpolateColor(start: number, end: number, t: number): number {
     (interpolate((start >> 16) & 0xff, (end >> 16) & 0xff, t) << 16) |
     (interpolate((start >> 8) & 0xff, (end >> 8) & 0xff, t) << 8) |
     interpolate(start & 0xff, end & 0xff, t)
-  )
+  );
 }
 
 class AnimationController implements lng.IAnimationController {
+  state: lng.AnimationControllerState = 'paused';
 
-  state: lng.AnimationControllerState = 'paused'
-
-  constructor(
-    public task: AnimationTask,
-  ) {}
+  constructor(public task: AnimationTask) {}
 
   start() {
     if (this.task.pausedTime != null) {
-      this.task.timeStart += performance.now() - this.task.pausedTime
-      this.task.pausedTime = null
+      this.task.timeStart += performance.now() - this.task.pausedTime;
+      this.task.pausedTime = null;
     } else {
-      this.task.timeStart = performance.now()
+      this.task.timeStart = performance.now();
     }
-    requestAnimationUpdate()
-    return this
+    requestAnimationUpdate();
+    return this;
   }
   pause() {
-    this.task.pausedTime = performance.now()
-    return this
+    this.task.pausedTime = performance.now();
+    return this;
   }
   stop() {
-    let index = animationTasks.indexOf(this.task)
+    let index = animationTasks.indexOf(this.task);
     if (index !== -1) {
-      animationTasks.splice(index, 1)
+      animationTasks.splice(index, 1);
     }
-    return this
+    return this;
   }
 
-  restore() {return this}
-  waitUntilStopped() {return Promise.resolve()}
-  on() {return this}
-  once() {return this}
-  off() {return this}
-  emit() {return this}
+  restore() {
+    return this;
+  }
+  waitUntilStopped() {
+    return Promise.resolve();
+  }
+  on() {
+    return this;
+  }
+  once() {
+    return this;
+  }
+  off() {
+    return this;
+  }
+  emit() {
+    return this;
+  }
 }
 
 function animate(
-  this:     DOMNode,
-  props:    Partial<lng.INodeAnimateProps<any>>,
+  this: DOMNode,
+  props: Partial<lng.INodeAnimateProps<any>>,
   settings: Partial<lng.AnimationSettings>,
 ): lng.IAnimationController {
-
   let fullSettings: Required<lng.AnimationSettings> = {
-    duration:    settings.duration ?? 300,
-    delay:       settings.delay ?? 0,
-    easing:      settings.easing ?? 'linear',
-    loop:        settings.loop ?? false,
-    repeat:      settings.repeat ?? 1,
+    duration: settings.duration ?? 300,
+    delay: settings.delay ?? 0,
+    easing: settings.easing ?? 'linear',
+    loop: settings.loop ?? false,
+    repeat: settings.repeat ?? 1,
     repeatDelay: settings.repeatDelay ?? 0,
-    stopMethod:  false,
-  }
+    stopMethod: false,
+  };
 
-  let now = performance.now()
+  let now = performance.now();
 
   // Create the animation task
   let task: AnimationTask = {
-    node:       this,
+    node: this,
     propsStart: {},
-    propsEnd:   {},
-    timeStart:  now,
-    timeEnd:    now + fullSettings.delay + fullSettings.duration,
-    settings:   fullSettings,
-    iteration:  0,
+    propsEnd: {},
+    timeStart: now,
+    timeEnd: now + fullSettings.delay + fullSettings.duration,
+    settings: fullSettings,
+    iteration: 0,
     pausedTime: null,
-  }
+  };
 
   for (let [prop, value] of Object.entries(props)) {
     if (value != null && typeof value === 'number') {
-      task.propsStart[prop] = (this.props as any)[prop]
-      task.propsEnd[prop] = value
+      task.propsStart[prop] = (this.props as any)[prop];
+      task.propsEnd[prop] = value;
     }
   }
 
-  animationTasks.push(task)
+  animationTasks.push(task);
 
-  return new AnimationController(task)
+  return new AnimationController(task);
 }
 
-let elMap = new WeakMap<DOMNode, HTMLElement>()
+let elMap = new WeakMap<DOMNode, HTMLElement>();
 
-let domRoot = document.body.appendChild(document.createElement('div'))
-domRoot.id = 'dom_root'
+let domRoot = document.body.appendChild(document.createElement('div'));
+domRoot.id = 'dom_root';
 
 function updateNodeParent(node: DOMNode | DOMText) {
   if (node.parent != null) {
     if (node.parent.id === 1) {
-      domRoot.appendChild(node.el)
+      domRoot.appendChild(node.el);
     } else {
-      elMap.get(node.parent as DOMNode)!.appendChild(node.el)
+      elMap.get(node.parent as DOMNode)!.appendChild(node.el);
     }
   } else {
-    console.warn('no parent?')
+    console.warn('no parent?');
   }
 }
 
 function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
-  let style = "position: absolute;"
+  let style = 'position: absolute;';
 
-  if (node.alpha !== 1) style += `opacity: ${node.alpha};`
+  if (node.alpha !== 1) style += `opacity: ${node.alpha};`;
 
-  let { x, y } = node
+  let { x, y } = node;
 
   if (node.mountX != null) {
-    x -= (node.width ?? 0) * node.mountX
+    x -= (node.width ?? 0) * node.mountX;
   }
 
   if (node.mountY != null) {
-    y -= (node.height ?? 0) * node.mountY
+    y -= (node.height ?? 0) * node.mountY;
   }
 
-  if (x !== 0) style += `left: ${x}px;`
+  if (x !== 0) style += `left: ${x}px;`;
 
-  if (y !== 0) style += `top: ${y}px;`
+  if (y !== 0) style += `top: ${y}px;`;
 
-  if (node.width !== 0) style += `width: ${node.width}px;`
+  if (node.width !== 0) style += `width: ${node.width}px;`;
 
-  if (node.height !== 0) style += `height: ${node.height}px;`
+  if (node.height !== 0) style += `height: ${node.height}px;`;
 
   if (node.zIndex !== 0) {
-    style += `z-index: ${node.zIndex};`
+    style += `z-index: ${node.zIndex};`;
   }
 
   if (node.clipping) {
-    style += `overflow: hidden;`
+    style += `overflow: hidden;`;
   }
 
-  let transform = ''
+  let transform = '';
 
-  if (node.rotation !== 0) transform += `rotate(${node.rotation}rad);`
-  if (node.scale !== 1) transform += `scale(${node.scale});`
+  if (node.rotation !== 0) transform += `rotate(${node.rotation}rad);`;
+  if (node.scale !== 1) transform += `scale(${node.scale});`;
   else {
-    if (node.scaleX !== 1) transform += `scaleX(${node.scaleX});`
-    if (node.scaleY !== 1) transform += `scaleY(${node.scaleY});`
+    if (node.scaleX !== 1) transform += `scaleX(${node.scaleX});`;
+    if (node.scaleY !== 1) transform += `scaleY(${node.scaleY});`;
   }
 
   if (transform.length > 0) {
-    style += `transform: ${transform}`
+    style += `transform: ${transform}`;
   }
 
   // <Text>
   if (node instanceof DOMText) {
-
     if (node.color != null && node.color !== 0) {
-      style += `color: ${colorToRgba(node.color)};`
+      style += `color: ${colorToRgba(node.color)};`;
     }
 
-    if (node.fontFamily) style += `font-family: ${node.fontFamily};`
-    if (node.fontSize) style += `font-size: ${node.fontSize}px;`
-    if (node.fontStyle !== 'normal') style += `font-style: ${node.fontStyle};`
-    if (node.fontWeight !== 'normal') style += `font-weight: ${node.fontWeight};`
-    if (node.fontStretch !== 'normal') style += `font-stretch: ${node.fontStretch};`
-    if (node.lineHeight != null) style += `line-height: ${node.lineHeight}px;`
-    if (node.letterSpacing) style += `letter-spacing: ${node.letterSpacing}px;`
-    if (node.textAlign !== 'left') style += `text-align: ${node.textAlign};`
+    if (node.fontFamily) style += `font-family: ${node.fontFamily};`;
+    if (node.fontSize) style += `font-size: ${node.fontSize}px;`;
+    if (node.fontStyle !== 'normal') style += `font-style: ${node.fontStyle};`;
+    if (node.fontWeight !== 'normal')
+      style += `font-weight: ${node.fontWeight};`;
+    if (node.fontStretch !== 'normal')
+      style += `font-stretch: ${node.fontStretch};`;
+    if (node.lineHeight != null) style += `line-height: ${node.lineHeight}px;`;
+    if (node.letterSpacing) style += `letter-spacing: ${node.letterSpacing}px;`;
+    if (node.textAlign !== 'left') style += `text-align: ${node.textAlign};`;
     // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
     if (node.maxLines > 0) {
       // https://stackoverflow.com/a/13924997
@@ -296,93 +313,102 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
         overflow: hidden;
         -webkit-line-clamp: ${node.maxLines};
         line-clamp: ${node.maxLines};
-        -webkit-box-orient: vertical;`
+        -webkit-box-orient: vertical;`;
     }
     if (node.contain !== 'none') {
-      style += `overflow: hidden;` // not sure if there is a way to support it proparely
+      style += `overflow: hidden;`; // not sure if there is a way to support it proparely
     }
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
   }
   // <Node>
   else {
-
-    let bgImg: string[] = []
-    let bgPos: null | { x: number, y: number } = null
+    let bgImg: string[] = [];
+    let bgPos: null | { x: number; y: number } = null;
 
     if (node.colorBottom !== node.colorTop) {
-      bgImg.push(`linear-gradient(${colorToRgba(node.colorTop)}, ${colorToRgba(node.colorBottom)})`)
+      bgImg.push(
+        `linear-gradient(${colorToRgba(node.colorTop)}, ${colorToRgba(node.colorBottom)})`,
+      );
     }
     if (node.colorLeft !== node.colorRight) {
-      bgImg.push(`linear-gradient(to right, ${colorToRgba(node.colorLeft)}, ${colorToRgba(node.colorRight)})`)
+      bgImg.push(
+        `linear-gradient(to right, ${colorToRgba(node.colorLeft)}, ${colorToRgba(node.colorRight)})`,
+      );
     }
 
-    if (node.texture != null && node.texture.type === lng.TextureType.subTexture) {
-      bgPos = (node.texture as any).props
-      bgImg.push(`url(${(node.texture as any).props.texture.props.src})`)
+    if (
+      node.texture != null &&
+      node.texture.type === lng.TextureType.subTexture
+    ) {
+      bgPos = (node.texture as any).props;
+      bgImg.push(`url(${(node.texture as any).props.texture.props.src})`);
     } else if (node.src != null) {
-      bgImg.push(`url(${node.src})`)
+      bgImg.push(`url(${node.src})`);
     }
 
     if (bgImg.length > 0) {
-      style += `background-image: ${bgImg.join(',')}; background-blend-mode: multiply;`
+      style += `background-image: ${bgImg.join(',')}; background-blend-mode: multiply;`;
       if (bgPos !== null) {
-        style += `background-position: -${bgPos.x}px -${bgPos.y}px;`
+        style += `background-position: -${bgPos.x}px -${bgPos.y}px;`;
       } else {
-        style += 'background-size: 100% 100%;'
+        style += 'background-size: 100% 100%;';
       }
 
       if (node.color !== 0xffffffff && node.color !== 0) {
-        style += `background-color: ${colorToRgba(node.color)};`
-        style += `mask-image: ${bgImg.join(',')};`
+        style += `background-color: ${colorToRgba(node.color)};`;
+        style += `mask-image: ${bgImg.join(',')};`;
         if (bgPos !== null) {
-          style += `mask-position: -${bgPos.x}px -${bgPos.y}px;`
+          style += `mask-position: -${bgPos.x}px -${bgPos.y}px;`;
         } else {
-          style += `mask-size: 100% 100%;`
+          style += `mask-size: 100% 100%;`;
         }
       }
-
     } else if (node.color !== 0) {
-      style += `background-color: ${colorToRgba(node.color)};`
+      style += `background-color: ${colorToRgba(node.color)};`;
     }
 
     if (node.shader != null) {
-      let shader = node.shader.props
+      let shader = node.shader.props;
       if (shader != null) {
         // Border
-        if (typeof shader['border-width'] === 'number' && shader['border-width'] > 0 &&
-          typeof shader['border-color'] === 'number' && shader['border-color'] > 0
+        if (
+          typeof shader['border-width'] === 'number' &&
+          shader['border-width'] > 0 &&
+          typeof shader['border-color'] === 'number' &&
+          shader['border-color'] > 0
         ) {
           // css border impacts the element's box size when box-shadow doesn't
-          style += `box-shadow: inset 0px 0px 0px ${shader['border-width']}px ${colorToRgba(shader['border-color'])};`
+          style += `box-shadow: inset 0px 0px 0px ${shader['border-width']}px ${colorToRgba(shader['border-color'])};`;
         }
         // Rounded
         if (typeof shader['radius'] === 'number' && shader['radius'] > 0) {
-          style += `border-radius: ${shader['radius']}px;`
+          style += `border-radius: ${shader['radius']}px;`;
         }
       }
     }
   }
 
-  return style
+  return style;
 }
 
 function updateNodeStyles(node: DOMNode | DOMText) {
-  node.el.setAttribute('style', getNodeStyles(node))
+  node.el.setAttribute('style', getNodeStyles(node));
 }
 
 function updateNodeData(node: DOMNode | DOMText) {
   for (let key in node.data) {
-    let keyValue: unknown = node.data[key]
+    let keyValue: unknown = node.data[key];
     if (keyValue === undefined) {
-      node.el.removeAttribute('data-' + key)
+      node.el.removeAttribute('data-' + key);
     } else {
-      node.el.setAttribute('data-' + key, String(keyValue))
+      node.el.setAttribute('data-' + key, String(keyValue));
     }
   }
 }
 
-function resolveNodeDefaults(props: Partial<IRendererNodeProps>): IRendererNodeProps {
-
+function resolveNodeDefaults(
+  props: Partial<IRendererNodeProps>,
+): IRendererNodeProps {
   const color = props.color ?? 0xffffffff;
 
   return {
@@ -434,7 +460,9 @@ function resolveNodeDefaults(props: Partial<IRendererNodeProps>): IRendererNodeP
   };
 }
 
-function resolveTextNodeDefaults(props: Partial<IRendererTextNodeProps>): IRendererTextNodeProps {
+function resolveTextNodeDefaults(
+  props: Partial<IRendererTextNodeProps>,
+): IRendererTextNodeProps {
   return {
     ...resolveNodeDefaults(props),
     text: props.text ?? '',
@@ -456,441 +484,566 @@ function resolveTextNodeDefaults(props: Partial<IRendererTextNodeProps>): IRende
     verticalAlign: props.verticalAlign ?? 'middle',
     overflowSuffix: props.overflowSuffix ?? '...',
     debug: props.debug ?? {},
-  }
+  };
 }
 
 const defaultShader: IRendererShader = {
   shaderType: '',
   props: undefined,
-}
+};
 
-let lastNodeId = 0
+let lastNodeId = 0;
 
 class DOMNode extends EventEmitter implements IRendererNode {
-
-  el = document.createElement('div')
-  id = ++lastNodeId
+  el = document.createElement('div');
+  id = ++lastNodeId;
 
   constructor(
     public stage: IRendererStage,
     public props: IRendererNodeProps,
   ) {
-    super()
+    super();
 
     // @ts-ignore
-    this.el._node = this
-    this.el.setAttribute('data-id', String(this.id))
-    elMap.set(this, this.el)
+    this.el._node = this;
+    this.el.setAttribute('data-id', String(this.id));
+    elMap.set(this, this.el);
 
-    updateNodeParent(this)
-    updateNodeStyles(this)
-    updateNodeData(this)
+    updateNodeParent(this);
+    updateNodeStyles(this);
+    updateNodeData(this);
   }
 
   destroy(): void {
-    elMap.delete(this)
-    this.el.parentNode!.removeChild(this.el)
+    elMap.delete(this);
+    this.el.parentNode!.removeChild(this.el);
   }
 
-  get parent() {return this.props.parent}
+  get parent() {
+    return this.props.parent;
+  }
   set parent(value: IRendererNode | null) {
-    this.props.parent = value
-    updateNodeParent(this)
+    this.props.parent = value;
+    updateNodeParent(this);
   }
 
-  globalTransform = undefined
-  children = undefined
-  rttParent = undefined
-  updateType = undefined
-  childUpdateType = undefined
-  scaleRotateTransform = undefined
-  localTransform = undefined
-  renderCoords = undefined
-  renderBound = undefined
-  strictBound = undefined
-  preloadBound = undefined
-  clippingRect = undefined
-  isRenderable = undefined
-  renderState = undefined
-  worldAlpha = undefined
-  premultipliedColorTl = undefined
-  premultipliedColorTr = undefined
-  premultipliedColorBl = undefined
-  premultipliedColorBr = undefined
-  calcZIndex = undefined
-  hasRTTupdates = undefined
-  parentHasRenderTexture = undefined
+  globalTransform = undefined;
+  children = undefined;
+  rttParent = undefined;
+  updateType = undefined;
+  childUpdateType = undefined;
+  scaleRotateTransform = undefined;
+  localTransform = undefined;
+  renderCoords = undefined;
+  renderBound = undefined;
+  strictBound = undefined;
+  preloadBound = undefined;
+  clippingRect = undefined;
+  isRenderable = undefined;
+  renderState = undefined;
+  worldAlpha = undefined;
+  premultipliedColorTl = undefined;
+  premultipliedColorTr = undefined;
+  premultipliedColorBl = undefined;
+  premultipliedColorBr = undefined;
+  calcZIndex = undefined;
+  hasRTTupdates = undefined;
+  parentHasRenderTexture = undefined;
 
   animate = animate;
 
-  get x() {return this.props.x}
+  get x() {
+    return this.props.x;
+  }
   set x(v) {
-    this.props.x = v
-    updateNodeStyles(this)
+    this.props.x = v;
+    updateNodeStyles(this);
   }
-  get y() {return this.props.y}
+  get y() {
+    return this.props.y;
+  }
   set y(v) {
-    this.props.y = v
-    updateNodeStyles(this)
+    this.props.y = v;
+    updateNodeStyles(this);
   }
-  get width() {return this.props.width}
+  get width() {
+    return this.props.width;
+  }
   set width(v) {
-    this.props.width = v
-    updateNodeStyles(this)
+    this.props.width = v;
+    updateNodeStyles(this);
   }
-  get height() {return this.props.height}
+  get height() {
+    return this.props.height;
+  }
   set height(v) {
-    this.props.height = v
-    updateNodeStyles(this)
+    this.props.height = v;
+    updateNodeStyles(this);
   }
-  get alpha() {return this.props.alpha}
+  get alpha() {
+    return this.props.alpha;
+  }
   set alpha(v) {
-    this.props.alpha = v
-    updateNodeStyles(this)
+    this.props.alpha = v;
+    updateNodeStyles(this);
   }
-  get autosize() {return this.props.autosize}
+  get autosize() {
+    return this.props.autosize;
+  }
   set autosize(v) {
-    this.props.autosize = v
-    updateNodeStyles(this)
+    this.props.autosize = v;
+    updateNodeStyles(this);
   }
-  get clipping() {return this.props.clipping}
+  get clipping() {
+    return this.props.clipping;
+  }
   set clipping(v) {
-    this.props.clipping = v
-    updateNodeStyles(this)
+    this.props.clipping = v;
+    updateNodeStyles(this);
   }
-  get color() {return this.props.color}
+  get color() {
+    return this.props.color;
+  }
   set color(v) {
-    this.props.color = v
-    updateNodeStyles(this)
+    this.props.color = v;
+    updateNodeStyles(this);
   }
-  get colorTop() {return this.props.colorTop}
+  get colorTop() {
+    return this.props.colorTop;
+  }
   set colorTop(v) {
-    this.props.colorTop = v
-    updateNodeStyles(this)
+    this.props.colorTop = v;
+    updateNodeStyles(this);
   }
-  get colorBottom() {return this.props.colorBottom}
+  get colorBottom() {
+    return this.props.colorBottom;
+  }
   set colorBottom(v) {
-    this.props.colorBottom = v
-    updateNodeStyles(this)
+    this.props.colorBottom = v;
+    updateNodeStyles(this);
   }
-  get colorLeft() {return this.props.colorLeft}
+  get colorLeft() {
+    return this.props.colorLeft;
+  }
   set colorLeft(v) {
-    this.props.colorLeft = v
-    updateNodeStyles(this)
+    this.props.colorLeft = v;
+    updateNodeStyles(this);
   }
-  get colorRight() {return this.props.colorRight}
+  get colorRight() {
+    return this.props.colorRight;
+  }
   set colorRight(v) {
-    this.props.colorRight = v
-    updateNodeStyles(this)
+    this.props.colorRight = v;
+    updateNodeStyles(this);
   }
-  get colorTl() {return this.props.colorTl}
+  get colorTl() {
+    return this.props.colorTl;
+  }
   set colorTl(v) {
-    this.props.colorTl = v
-    updateNodeStyles(this)
+    this.props.colorTl = v;
+    updateNodeStyles(this);
   }
-  get colorTr() {return this.props.colorTr}
+  get colorTr() {
+    return this.props.colorTr;
+  }
   set colorTr(v) {
-    this.props.colorTr = v
-    updateNodeStyles(this)
+    this.props.colorTr = v;
+    updateNodeStyles(this);
   }
-  get colorBr() {return this.props.colorBr}
+  get colorBr() {
+    return this.props.colorBr;
+  }
   set colorBr(v) {
-    this.props.colorBr = v
-    updateNodeStyles(this)
+    this.props.colorBr = v;
+    updateNodeStyles(this);
   }
-  get colorBl() {return this.props.colorBl}
+  get colorBl() {
+    return this.props.colorBl;
+  }
   set colorBl(v) {
-    this.props.colorBl = v
-    updateNodeStyles(this)
+    this.props.colorBl = v;
+    updateNodeStyles(this);
   }
-  get zIndex() {return this.props.zIndex}
+  get zIndex() {
+    return this.props.zIndex;
+  }
   set zIndex(v) {
-    this.props.zIndex = v
-    updateNodeStyles(this)
+    this.props.zIndex = v;
+    updateNodeStyles(this);
   }
-  get texture() {return this.props.texture}
+  get texture() {
+    return this.props.texture;
+  }
   set texture(v) {
-    this.props.texture = v
-    updateNodeStyles(this)
+    this.props.texture = v;
+    updateNodeStyles(this);
   }
-  get preventCleanup() {return this.props.preventCleanup}
+  get preventCleanup() {
+    return this.props.preventCleanup;
+  }
   set preventCleanup(v) {
-    this.props.preventCleanup = v
-    updateNodeStyles(this)
+    this.props.preventCleanup = v;
+    updateNodeStyles(this);
   }
-  get textureOptions(): IRendererNode['textureOptions'] {return this.props.textureOptions}
+  get textureOptions(): IRendererNode['textureOptions'] {
+    return this.props.textureOptions;
+  }
   set textureOptions(v) {
-    this.props.textureOptions = v
-    updateNodeStyles(this)
+    this.props.textureOptions = v;
+    updateNodeStyles(this);
   }
-  get src() {return this.props.src}
+  get src() {
+    return this.props.src;
+  }
   set src(v) {
-    this.props.src = v
-    updateNodeStyles(this)
+    this.props.src = v;
+    updateNodeStyles(this);
   }
-  get zIndexLocked() {return this.props.zIndexLocked}
+  get zIndexLocked() {
+    return this.props.zIndexLocked;
+  }
   set zIndexLocked(v) {
-    this.props.zIndexLocked = v
-    updateNodeStyles(this)
+    this.props.zIndexLocked = v;
+    updateNodeStyles(this);
   }
-  get scale() {return this.props.scale ?? 1}
+  get scale() {
+    return this.props.scale ?? 1;
+  }
   set scale(v) {
-    this.props.scale = v
-    updateNodeStyles(this)
+    this.props.scale = v;
+    updateNodeStyles(this);
   }
-  get scaleX() {return this.props.scaleX}
+  get scaleX() {
+    return this.props.scaleX;
+  }
   set scaleX(v) {
-    this.props.scaleX = v
-    updateNodeStyles(this)
+    this.props.scaleX = v;
+    updateNodeStyles(this);
   }
-  get scaleY() {return this.props.scaleY}
+  get scaleY() {
+    return this.props.scaleY;
+  }
   set scaleY(v) {
-    this.props.scaleY = v
-    updateNodeStyles(this)
+    this.props.scaleY = v;
+    updateNodeStyles(this);
   }
-  get mount() {return this.props.mount}
+  get mount() {
+    return this.props.mount;
+  }
   set mount(v) {
-    this.props.mount = v
-    updateNodeStyles(this)
+    this.props.mount = v;
+    updateNodeStyles(this);
   }
-  get mountX() {return this.props.mountX}
+  get mountX() {
+    return this.props.mountX;
+  }
   set mountX(v) {
-    this.props.mountX = v
-    updateNodeStyles(this)
+    this.props.mountX = v;
+    updateNodeStyles(this);
   }
-  get mountY() {return this.props.mountY}
+  get mountY() {
+    return this.props.mountY;
+  }
   set mountY(v) {
-    this.props.mountY = v
-    updateNodeStyles(this)
+    this.props.mountY = v;
+    updateNodeStyles(this);
   }
-  get pivot() {return this.props.pivot}
+  get pivot() {
+    return this.props.pivot;
+  }
   set pivot(v) {
-    this.props.pivot = v
-    updateNodeStyles(this)
+    this.props.pivot = v;
+    updateNodeStyles(this);
   }
-  get pivotX() {return this.props.pivotX}
+  get pivotX() {
+    return this.props.pivotX;
+  }
   set pivotX(v) {
-    this.props.pivotX = v
-    updateNodeStyles(this)
+    this.props.pivotX = v;
+    updateNodeStyles(this);
   }
-  get pivotY() {return this.props.pivotY}
+  get pivotY() {
+    return this.props.pivotY;
+  }
   set pivotY(v) {
-    this.props.pivotY = v
-    updateNodeStyles(this)
+    this.props.pivotY = v;
+    updateNodeStyles(this);
   }
-  get rotation() {return this.props.rotation}
+  get rotation() {
+    return this.props.rotation;
+  }
   set rotation(v) {
-    this.props.rotation = v
-    updateNodeStyles(this)
+    this.props.rotation = v;
+    updateNodeStyles(this);
   }
-  get rtt() {return this.props.rtt}
+  get rtt() {
+    return this.props.rtt;
+  }
   set rtt(v) {
-    this.props.rtt = v
-    updateNodeStyles(this)
+    this.props.rtt = v;
+    updateNodeStyles(this);
   }
-  get shader() {return this.props.shader}
+  get shader() {
+    return this.props.shader;
+  }
   set shader(v) {
-    this.props.shader = v
-    updateNodeStyles(this)
+    this.props.shader = v;
+    updateNodeStyles(this);
   }
-  get strictBounds() {return this.props.strictBounds}
+  get strictBounds() {
+    return this.props.strictBounds;
+  }
   set strictBounds(v) {
-    this.props.strictBounds = v
-    updateNodeStyles(this)
+    this.props.strictBounds = v;
+    updateNodeStyles(this);
   }
 
-  get data(): IRendererNode['data'] {return this.props.data}
+  get data(): IRendererNode['data'] {
+    return this.props.data;
+  }
   set data(v) {
-    this.props.data = v
-    updateNodeData(this)
+    this.props.data = v;
+    updateNodeData(this);
   }
 
-  get imageType() {return this.props.imageType}
-  set imageType(v) {this.props.imageType = v}
-  get srcWidth() {return this.props.srcWidth}
-  set srcWidth(v) {this.props.srcWidth = v}
-  get srcHeight() {return this.props.srcHeight}
-  set srcHeight(v) {this.props.srcHeight = v}
-  get srcX() {return this.props.srcX}
-  set srcX(v) {this.props.srcX = v}
-  get srcY() {return this.props.srcY}
-  set srcY(v) {this.props.srcY = v}
+  get imageType() {
+    return this.props.imageType;
+  }
+  set imageType(v) {
+    this.props.imageType = v;
+  }
+  get srcWidth() {
+    return this.props.srcWidth;
+  }
+  set srcWidth(v) {
+    this.props.srcWidth = v;
+  }
+  get srcHeight() {
+    return this.props.srcHeight;
+  }
+  set srcHeight(v) {
+    this.props.srcHeight = v;
+  }
+  get srcX() {
+    return this.props.srcX;
+  }
+  set srcX(v) {
+    this.props.srcX = v;
+  }
+  get srcY() {
+    return this.props.srcY;
+  }
+  set srcY(v) {
+    this.props.srcY = v;
+  }
 
   get boundsMargin(): number | [number, number, number, number] | null {
-    return this.props.boundsMargin
+    return this.props.boundsMargin;
   }
   set boundsMargin(value: number | [number, number, number, number] | null) {
-    this.props.boundsMargin = value
+    this.props.boundsMargin = value;
   }
 
   get absX(): number {
-    return (
-      this.x +
-      -this.width * this.mountX +
-      (this.parent?.absX ?? 0)
-    )
+    return this.x + -this.width * this.mountX + (this.parent?.absX ?? 0);
   }
   get absY(): number {
-    return (
-      this.y +
-      -this.height * this.mountY +
-      (this.parent?.absY ?? 0)
-    )
+    return this.y + -this.height * this.mountY + (this.parent?.absY ?? 0);
   }
 }
 
 class DOMText extends DOMNode {
-
   constructor(
     stage: IRendererStage,
     public override props: IRendererTextNodeProps,
   ) {
-    super(stage, props)
-    this.el.innerText = props.text
+    super(stage, props);
+    this.el.innerText = props.text;
   }
 
-  get text() {return this.props.text}
+  get text() {
+    return this.props.text;
+  }
   set text(v) {
-    this.props.text = v
-    this.el.innerText = v
+    this.props.text = v;
+    this.el.innerText = v;
   }
-  get fontFamily() {return this.props.fontFamily}
+  get fontFamily() {
+    return this.props.fontFamily;
+  }
   set fontFamily(v) {
-    this.props.fontFamily = v
-    updateNodeStyles(this)
+    this.props.fontFamily = v;
+    updateNodeStyles(this);
   }
-  get fontSize() {return this.props.fontSize}
+  get fontSize() {
+    return this.props.fontSize;
+  }
   set fontSize(v) {
-    this.props.fontSize = v
-    updateNodeStyles(this)
+    this.props.fontSize = v;
+    updateNodeStyles(this);
   }
-  get fontStyle() {return this.props.fontStyle}
+  get fontStyle() {
+    return this.props.fontStyle;
+  }
   set fontStyle(v) {
-    this.props.fontStyle = v
-    updateNodeStyles(this)
+    this.props.fontStyle = v;
+    updateNodeStyles(this);
   }
-  get fontWeight() {return this.props.fontWeight}
+  get fontWeight() {
+    return this.props.fontWeight;
+  }
   set fontWeight(v) {
-    this.props.fontWeight = v
-    updateNodeStyles(this)
+    this.props.fontWeight = v;
+    updateNodeStyles(this);
   }
-  get fontStretch() {return this.props.fontStretch}
+  get fontStretch() {
+    return this.props.fontStretch;
+  }
   set fontStretch(v) {
-    this.props.fontStretch = v
-    updateNodeStyles(this)
+    this.props.fontStretch = v;
+    updateNodeStyles(this);
   }
-  get lineHeight() {return this.props.lineHeight}
+  get lineHeight() {
+    return this.props.lineHeight;
+  }
   set lineHeight(v) {
-    this.props.lineHeight = v
-    updateNodeStyles(this)
+    this.props.lineHeight = v;
+    updateNodeStyles(this);
   }
-  get letterSpacing() {return this.props.letterSpacing}
+  get letterSpacing() {
+    return this.props.letterSpacing;
+  }
   set letterSpacing(v) {
-    this.props.letterSpacing = v
-    updateNodeStyles(this)
+    this.props.letterSpacing = v;
+    updateNodeStyles(this);
   }
-  get textAlign() {return this.props.textAlign}
+  get textAlign() {
+    return this.props.textAlign;
+  }
   set textAlign(v) {
-    this.props.textAlign = v
-    updateNodeStyles(this)
+    this.props.textAlign = v;
+    updateNodeStyles(this);
   }
-  get overflowSuffix() {return this.props.overflowSuffix}
+  get overflowSuffix() {
+    return this.props.overflowSuffix;
+  }
   set overflowSuffix(v) {
-    this.props.overflowSuffix = v
-    updateNodeStyles(this)
+    this.props.overflowSuffix = v;
+    updateNodeStyles(this);
   }
-  get maxLines() {return this.props.maxLines}
+  get maxLines() {
+    return this.props.maxLines;
+  }
   set maxLines(v) {
-    this.props.maxLines = v
-    updateNodeStyles(this)
+    this.props.maxLines = v;
+    updateNodeStyles(this);
   }
-  get contain() {return this.props.contain}
+  get contain() {
+    return this.props.contain;
+  }
   set contain(v) {
-    this.props.contain = v
-    updateNodeStyles(this)
+    this.props.contain = v;
+    updateNodeStyles(this);
   }
-  get verticalAlign() {return this.props.verticalAlign}
+  get verticalAlign() {
+    return this.props.verticalAlign;
+  }
   set verticalAlign(v) {
-    this.props.verticalAlign = v
-    updateNodeStyles(this)
+    this.props.verticalAlign = v;
+    updateNodeStyles(this);
   }
-  get textBaseline() {return this.props.textBaseline}
+  get textBaseline() {
+    return this.props.textBaseline;
+  }
   set textBaseline(v) {
-    this.props.textBaseline = v
-    updateNodeStyles(this)
+    this.props.textBaseline = v;
+    updateNodeStyles(this);
   }
-  get textRendererOverride() {return this.props.textRendererOverride}
+  get textRendererOverride() {
+    return this.props.textRendererOverride;
+  }
   set textRendererOverride(v) {
-    this.props.textRendererOverride = v
-    updateNodeStyles(this)
+    this.props.textRendererOverride = v;
+    updateNodeStyles(this);
   }
-  get scrollable() {return this.props.scrollable}
+  get scrollable() {
+    return this.props.scrollable;
+  }
   set scrollable(v) {
-    this.props.scrollable = v
-    updateNodeStyles(this)
+    this.props.scrollable = v;
+    updateNodeStyles(this);
   }
-  get scrollY() {return this.props.scrollY}
+  get scrollY() {
+    return this.props.scrollY;
+  }
   set scrollY(v) {
-    this.props.scrollY = v
-    updateNodeStyles(this)
+    this.props.scrollY = v;
+    updateNodeStyles(this);
   }
-  get offsetY() {return this.props.offsetY}
+  get offsetY() {
+    return this.props.offsetY;
+  }
   set offsetY(v) {
-    this.props.offsetY = v
-    updateNodeStyles(this)
+    this.props.offsetY = v;
+    updateNodeStyles(this);
   }
-  get debug() {return this.props.debug}
+  get debug() {
+    return this.props.debug;
+  }
   set debug(v) {
-    this.props.debug = v
-    updateNodeStyles(this)
+    this.props.debug = v;
+    updateNodeStyles(this);
   }
 }
 
 function updateRootPosition(this: DOMRendererMain) {
-  let { canvas, settings } = this
+  let { canvas, settings } = this;
 
-  let rect = canvas.getBoundingClientRect()
-  let top = document.documentElement.scrollTop + rect.top
-  let left = document.documentElement.scrollLeft + rect.left
+  let rect = canvas.getBoundingClientRect();
+  let top = document.documentElement.scrollTop + rect.top;
+  let left = document.documentElement.scrollLeft + rect.left;
 
-  let height = Math.ceil(settings.appHeight ?? 1080 / (settings.deviceLogicalPixelRatio ?? 1))
-  let width = Math.ceil(settings.appWidth ?? 1920 / (settings.deviceLogicalPixelRatio ?? 1))
+  let height = Math.ceil(
+    settings.appHeight ?? 1080 / (settings.deviceLogicalPixelRatio ?? 1),
+  );
+  let width = Math.ceil(
+    settings.appWidth ?? 1920 / (settings.deviceLogicalPixelRatio ?? 1),
+  );
 
-  let scaleX = settings.deviceLogicalPixelRatio ?? 1
-  let scaleY = settings.deviceLogicalPixelRatio ?? 1
+  let scaleX = settings.deviceLogicalPixelRatio ?? 1;
+  let scaleY = settings.deviceLogicalPixelRatio ?? 1;
 
-  domRoot.style.left = `${left}px`
-  domRoot.style.top = `${top}px`
-  domRoot.style.width = `${width}px`
-  domRoot.style.height = `${height}px`
-  domRoot.style.position = 'absolute'
-  domRoot.style.transformOrigin = '0 0 0'
-  domRoot.style.transform = `scale(${scaleX}, ${scaleY})`
-  domRoot.style.overflow = 'hidden'
-  domRoot.style.zIndex = '65534'
+  domRoot.style.left = `${left}px`;
+  domRoot.style.top = `${top}px`;
+  domRoot.style.width = `${width}px`;
+  domRoot.style.height = `${height}px`;
+  domRoot.style.position = 'absolute';
+  domRoot.style.transformOrigin = '0 0 0';
+  domRoot.style.transform = `scale(${scaleX}, ${scaleY})`;
+  domRoot.style.overflow = 'hidden';
+  domRoot.style.zIndex = '65534';
 }
 
 export class DOMRendererMain implements IRendererMain {
+  root: DOMNode;
+  canvas: HTMLCanvasElement;
 
-  root: DOMNode
-  canvas: HTMLCanvasElement
-
-  stage: IRendererStage
+  stage: IRendererStage;
 
   constructor(
     public settings: lng.RendererMainSettings,
-    public target: string | HTMLElement
+    public target: string | HTMLElement,
   ) {
     // super(settings, target)
 
-    let canvas = document.body.appendChild(document.createElement('canvas'))
-    canvas.style.position = 'absolute'
-    canvas.style.top = '0'
-    canvas.style.left = '0'
-    canvas.style.width = '100vw'
-    canvas.style.height = '100vh'
+    let canvas = document.body.appendChild(document.createElement('canvas'));
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
 
-    this.canvas = canvas
+    this.canvas = canvas;
 
     this.stage = {
       root: null!,
@@ -898,9 +1051,9 @@ export class DOMRendererMain implements IRendererMain {
         mode: 'canvas',
       },
       fontManager: {
-        addFontFace: () => { }
-      }
-    }
+        addFontFace: () => {},
+      },
+    };
 
     this.root = new DOMNode(this.stage, {
       x: 0,
@@ -940,55 +1093,76 @@ export class DOMRendererMain implements IRendererMain {
       scale: 1,
       preventCleanup: false,
       strictBounds: false,
-    })
-    this.stage.root = this.root
-
+    });
+    this.stage.root = this.root;
 
     if (Config.fontSettings.fontFamily != null) {
-      domRoot.style.setProperty('font-family', Config.fontSettings.fontFamily)
+      domRoot.style.setProperty('font-family', Config.fontSettings.fontFamily);
     }
     if (Config.fontSettings.fontSize != null) {
-      domRoot.style.setProperty('font-size', Config.fontSettings.fontSize + 'px')
+      domRoot.style.setProperty(
+        'font-size',
+        Config.fontSettings.fontSize + 'px',
+      );
     }
 
-    domRoot.style.setProperty('line-height',
+    domRoot.style.setProperty(
+      'line-height',
       Config.fontSettings.lineHeight
         ? Config.fontSettings.lineHeight + 'px'
-        : '1' // 1 = same as font size
-    )
+        : '1', // 1 = same as font size
+    );
 
-    updateRootPosition.call(this)
+    updateRootPosition.call(this);
 
-    new MutationObserver(updateRootPosition.bind(this)).observe(this.canvas, { attributes: true })
-    new ResizeObserver(updateRootPosition.bind(this)).observe(this.canvas)
-    window.addEventListener('resize', updateRootPosition.bind(this))
+    new MutationObserver(updateRootPosition.bind(this)).observe(this.canvas, {
+      attributes: true,
+    });
+    new ResizeObserver(updateRootPosition.bind(this)).observe(this.canvas);
+    window.addEventListener('resize', updateRootPosition.bind(this));
   }
 
   createNode(props: Partial<IRendererNodeProps>): IRendererNode {
-    return new DOMNode(this.stage, resolveNodeDefaults(props))
+    return new DOMNode(this.stage, resolveNodeDefaults(props));
   }
 
   createTextNode(props: Partial<IRendererTextNodeProps>): IRendererTextNode {
-    return new DOMText(this.stage, resolveTextNodeDefaults(props))
+    return new DOMText(this.stage, resolveTextNodeDefaults(props));
   }
 
-  createShader(shaderType: string, props?: IRendererShaderProps): IRendererShader {
-    return {shaderType, props}
+  createShader(
+    shaderType: string,
+    props?: IRendererShaderProps,
+  ): IRendererShader {
+    return { shaderType, props };
   }
 
-  createTexture(textureType: keyof lng.TextureMap, props: IRendererTextureProps): IRendererTexture {
-    let type = lng.TextureType.generic
+  createTexture(
+    textureType: keyof lng.TextureMap,
+    props: IRendererTextureProps,
+  ): IRendererTexture {
+    let type = lng.TextureType.generic;
     switch (textureType) {
-      case 'SubTexture':    type = lng.TextureType.subTexture      ;break
-      case 'ImageTexture':  type = lng.TextureType.image           ;break
-      case 'ColorTexture':  type = lng.TextureType.color           ;break
-      case 'NoiseTexture':  type = lng.TextureType.noise           ;break
-      case 'RenderTexture': type = lng.TextureType.renderToTexture ;break
+      case 'SubTexture':
+        type = lng.TextureType.subTexture;
+        break;
+      case 'ImageTexture':
+        type = lng.TextureType.image;
+        break;
+      case 'ColorTexture':
+        type = lng.TextureType.color;
+        break;
+      case 'NoiseTexture':
+        type = lng.TextureType.noise;
+        break;
+      case 'RenderTexture':
+        type = lng.TextureType.renderToTexture;
+        break;
     }
-    return {type, props}
+    return { type, props };
   }
 
   on(name: string, callback: (target: any, data: any) => void) {
-    console.log('on', name, callback)
+    console.log('on', name, callback);
   }
 }

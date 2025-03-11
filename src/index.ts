@@ -10,4 +10,4 @@ export { type AnimationSettings } from './intrinsicTypes.js';
 import { assertTruthy, deg2Rad } from '@lightningjs/renderer/utils';
 export { assertTruthy, deg2Rad };
 // export type * from '@lightningjs/renderer/utils';
-export * from './domRenderer.js'
+export * from './domRenderer.js';
