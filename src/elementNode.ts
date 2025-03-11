@@ -28,7 +28,7 @@ import {
   logRenderTree,
   isFunction,
 } from './utils.js';
-import { Config, isDev } from './config.js';
+import { Config, isDev, SHADERS_ENABLED } from './config.js';
 import type {
   RendererMain,
   INode,
@@ -312,7 +312,7 @@ export class ElementNode extends Object {
 
   set effects(v: StyleEffects) {
     this._effects = v;
-    if (this.rendered) {
+    if (SHADERS_ENABLED && this.rendered) {
       this.lng.shader = convertEffectsToShader(this, v);
       // if (this.lng.shader) {
       //   updateShaderEffects(this, v);
@@ -864,7 +864,8 @@ export class ElementNode extends Object {
         }
       }
 
-      if (node._effects) {
+      // Can you put effects on Text nodes? Need to confirm...
+      if (SHADERS_ENABLED && node._effects) {
         props.shader = convertEffectsToShader(node, node._effects);
       }
 
@@ -900,7 +901,7 @@ export class ElementNode extends Object {
         }
       }
 
-      if (node._effects) {
+      if (SHADERS_ENABLED && node._effects) {
         props.shader = convertEffectsToShader(node, node._effects);
       }
 

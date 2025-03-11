@@ -24,6 +24,11 @@ function isDevEnv(): boolean {
 }
 export const isDev = isDevEnv() || false;
 
+function shadersEnabled(): boolean {
+  return !(import.meta.env && import.meta.env.VITE_DISABLE_SHADERS === 'true');
+}
+export const SHADERS_ENABLED = shadersEnabled();
+
 export const Config: Config = {
   debug: false,
   focusDebug: false,
