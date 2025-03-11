@@ -5,7 +5,23 @@ Experimental DOM renderer
 */
 
 import * as lng from '@lightningjs/renderer'
-import { Config } from './config.js'
+
+import {
+  Config,
+} from './config.js'
+import {
+  IRendererShader,
+  IRendererStage,
+  IRendererShaderProps,
+  IRendererTextureProps,
+  IRendererTexture,
+  IRendererMain,
+  IRendererNode,
+  IRendererNodeProps,
+  IRendererTextNode,
+  IRendererTextNodeProps,
+} from './lightningInit.js'
+import { EventEmitter } from '@lightningjs/renderer/utils'
 
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`
@@ -36,7 +52,7 @@ function requestAnimationUpdate() {
 
 function updateAnimations(time: number) {
   animationFrameRequested = false
-  
+
   /*
    tasks are iterated in insertion order
    so that the later task will override the earlier ones
@@ -44,17 +60,17 @@ function updateAnimations(time: number) {
   for (let i = 0; i < animationTasks.length; i++) {
     let task = animationTasks[i]!
     if (task.pausedTime != null) continue
-    
+
     let elapsed = time - task.timeStart
-    
+
     // Still in delay period
     if (elapsed < task.settings.delay) {
       requestAnimationUpdate()
       continue
     }
-    
+
     let activeTime = elapsed - task.settings.delay
-    
+
     if (activeTime >= task.settings.duration) {
       // Start next iteration
       if (task.settings.loop || task.iteration < task.settings.repeat - 1) {
@@ -74,8 +90,8 @@ function updateAnimations(time: number) {
       }
       continue
     }
-    
-    
+
+
     /*
      Update props and styles
     */
@@ -85,7 +101,7 @@ function updateAnimations(time: number) {
       let fn = prop.startsWith('color') ? interpolateColor : interpolate
       ;(task.node.props as any)[prop] = fn(task.propsStart[prop]!, task.propsEnd[prop]!, t)
     }
-    
+
     updateNodeStyles(task.node)
   }
 
@@ -98,8 +114,8 @@ function applyEasing(progress: number, easing: string): number {
   default:            return progress
   case 'ease-in':     return progress * progress
   case 'ease-out':    return progress * (2 - progress)
-  case 'ease-in-out': return progress < 0.5 
-                              ? 2 * progress * progress 
+  case 'ease-in-out': return progress < 0.5
+                              ? 2 * progress * progress
                               : -1 + (4 - 2 * progress) * progress
   }
 }
@@ -155,9 +171,9 @@ class AnimationController implements lng.IAnimationController {
   emit() {return this}
 }
 
-function animate(
-  this: DOMNode,
-  props: Partial<lng.INodeAnimateProps<any>>,
+export function animate(
+  this:     DOMNode,
+  props:    Partial<lng.INodeAnimateProps<any>>,
   settings: Partial<lng.AnimationSettings>,
 ): lng.IAnimationController {
 
@@ -365,7 +381,7 @@ function updateNodeData(node: DOMNode | DOMText) {
   }
 }
 
-function resolveNodeDefaults(props: Partial<lng.INodeProps<any>>): lng.INodeProps<any> {
+function resolveNodeDefaults(props: Partial<IRendererNodeProps>): IRendererNodeProps {
 
   const color = props.color ?? 0xffffffff;
 
@@ -418,7 +434,7 @@ function resolveNodeDefaults(props: Partial<lng.INodeProps<any>>): lng.INodeProp
   };
 }
 
-function resolveTextNodeDefaults(props: Partial<lng.ITextNodeProps>): lng.ITextNodeProps {
+function resolveTextNodeDefaults(props: Partial<IRendererTextNodeProps>): IRendererTextNodeProps {
   return {
     ...resolveNodeDefaults(props),
     text: props.text ?? '',
@@ -443,47 +459,23 @@ function resolveTextNodeDefaults(props: Partial<lng.ITextNodeProps>): lng.ITextN
   }
 }
 
-type RendererInterfaceCoreRenderer = {
-  mode: 'canvas' | 'webgl'
+const defaultShader: IRendererShader = {
+  shaderType: '',
+  props: undefined,
 }
-type RendererInterfaceFontManager = {
-  addFontFace: (...a: any[]) => void
-}
-type RendererInterfaceStage = {
-  root: lng.INode
-  renderer: RendererInterfaceCoreRenderer
-  fontManager: RendererInterfaceFontManager
-}
-
-type RendererInterfaceShader = {
-  shaderType: string,
-  props: RendererInterfaceShaderProps
-  resolvedProps: RendererInterfaceShaderProps
-  node: lng.INode | null
-  attachNode(node: lng.INode): void
-}
-type RendererInterfaceShaderProps = {}
-type RendererInterfaceTexture = {
-  props: RendererInterfaceTextureProps
-  type: lng.TextureType
-  setRenderableOwner: () => void;
-  on: () => void;
-}
-type RendererInterfaceTextureProps = {}
-
-const defaultShader: RendererInterfaceShader = {}
 
 let lastNodeId = 0
 
-class DOMNode implements lng.INode {
+class DOMNode extends EventEmitter implements IRendererNode {
 
   el = document.createElement('div')
   id = ++lastNodeId
 
   constructor(
-    public stage: RendererInterfaceStage,
-    public props: lng.INodeProps<any>,
+    public stage: IRendererStage,
+    public props: IRendererNodeProps,
   ) {
+    super()
 
     // @ts-ignore
     this.el._node = this
@@ -500,8 +492,8 @@ class DOMNode implements lng.INode {
     this.el.parentNode!.removeChild(this.el)
   }
 
-  get parent(): DOMNode | null { return this.props.parent }
-  set parent(value: DOMNode | null) {
+  get parent() {return this.props.parent}
+  set parent(value: IRendererNode | null) {
     this.props.parent = value
     updateNodeParent(this)
   }
@@ -531,198 +523,198 @@ class DOMNode implements lng.INode {
 
   animate = animate;
 
-  get x(): number { return this.props.x }
-  set x(value: number) {
-    this.props.x = value
+  get x() {return this.props.x}
+  set x(v) {
+    this.props.x = v
     updateNodeStyles(this)
   }
-  get y(): number { return this.props.y }
-  set y(value: number) {
-    this.props.y = value
+  get y() {return this.props.y}
+  set y(v) {
+    this.props.y = v
     updateNodeStyles(this)
   }
-  get width(): number { return this.props.width }
-  set width(value: number) {
-    this.props.width = value
+  get width() {return this.props.width}
+  set width(v) {
+    this.props.width = v
     updateNodeStyles(this)
   }
-  get height(): number { return this.props.height }
-  set height(value: number) {
-    this.props.height = value
+  get height() {return this.props.height}
+  set height(v) {
+    this.props.height = v
     updateNodeStyles(this)
   }
-  get alpha(): number { return this.props.alpha }
-  set alpha(value: number) {
-    this.props.alpha = value
+  get alpha() {return this.props.alpha}
+  set alpha(v) {
+    this.props.alpha = v
     updateNodeStyles(this)
   }
-  get autosize(): boolean { return this.props.autosize }
-  set autosize(value: boolean) {
-    this.props.autosize = value
+  get autosize() {return this.props.autosize}
+  set autosize(v) {
+    this.props.autosize = v
     updateNodeStyles(this)
   }
-  get clipping(): boolean { return this.props.clipping }
-  set clipping(value: boolean) {
-    this.props.clipping = value
+  get clipping() {return this.props.clipping}
+  set clipping(v) {
+    this.props.clipping = v
     updateNodeStyles(this)
   }
-  get color(): number { return this.props.color }
-  set color(value: number) {
-    this.props.color = value
+  get color() {return this.props.color}
+  set color(v) {
+    this.props.color = v
     updateNodeStyles(this)
   }
-  get colorTop(): number { return this.props.colorTop }
-  set colorTop(value: number) {
-    this.props.colorTop = value
+  get colorTop() {return this.props.colorTop}
+  set colorTop(v) {
+    this.props.colorTop = v
     updateNodeStyles(this)
   }
-  get colorBottom(): number { return this.props.colorBottom }
-  set colorBottom(value: number) {
-    this.props.colorBottom = value
+  get colorBottom() {return this.props.colorBottom}
+  set colorBottom(v) {
+    this.props.colorBottom = v
     updateNodeStyles(this)
   }
-  get colorLeft(): number { return this.props.colorLeft }
-  set colorLeft(value: number) {
-    this.props.colorLeft = value
+  get colorLeft() {return this.props.colorLeft}
+  set colorLeft(v) {
+    this.props.colorLeft = v
     updateNodeStyles(this)
   }
-  get colorRight(): number { return this.props.colorRight }
-  set colorRight(value: number) {
-    this.props.colorRight = value
+  get colorRight() {return this.props.colorRight}
+  set colorRight(v) {
+    this.props.colorRight = v
     updateNodeStyles(this)
   }
-  get colorTl(): number { return this.props.colorTl }
-  set colorTl(value: number) {
-    this.props.colorTl = value
+  get colorTl() {return this.props.colorTl}
+  set colorTl(v) {
+    this.props.colorTl = v
     updateNodeStyles(this)
   }
-  get colorTr(): number { return this.props.colorTr }
-  set colorTr(value: number) {
-    this.props.colorTr = value
+  get colorTr() {return this.props.colorTr}
+  set colorTr(v) {
+    this.props.colorTr = v
     updateNodeStyles(this)
   }
-  get colorBr(): number { return this.props.colorBr }
-  set colorBr(value: number) {
-    this.props.colorBr = value
+  get colorBr() {return this.props.colorBr}
+  set colorBr(v) {
+    this.props.colorBr = v
     updateNodeStyles(this)
   }
-  get colorBl(): number { return this.props.colorBl }
-  set colorBl(value: number) {
-    this.props.colorBl = value
+  get colorBl() {return this.props.colorBl}
+  set colorBl(v) {
+    this.props.colorBl = v
     updateNodeStyles(this)
   }
-  get zIndex(): number { return this.props.zIndex }
-  set zIndex(value: number) {
-    this.props.zIndex = value
+  get zIndex() {return this.props.zIndex}
+  set zIndex(v) {
+    this.props.zIndex = v
     updateNodeStyles(this)
   }
-  get texture(): lng.Texture | null { return this.props.texture }
-  set texture(value: lng.Texture | null) {
-    this.props.texture = value
+  get texture() {return this.props.texture}
+  set texture(v) {
+    this.props.texture = v
     updateNodeStyles(this)
   }
-  get preventCleanup(): boolean { return this.props.preventCleanup }
-  set preventCleanup(value: boolean) {
-    this.props.preventCleanup = value
+  get preventCleanup() {return this.props.preventCleanup}
+  set preventCleanup(v) {
+    this.props.preventCleanup = v
     updateNodeStyles(this)
   }
-  get textureOptions() { return this.props.textureOptions }
-  set textureOptions(value: any) {
-    this.props.textureOptions = value
+  get textureOptions(): IRendererNode['textureOptions'] {return this.props.textureOptions}
+  set textureOptions(v) {
+    this.props.textureOptions = v
     updateNodeStyles(this)
   }
-  get src(): string | null { return this.props.src }
-  set src(value: string | null) {
-    this.props.src = value
+  get src() {return this.props.src}
+  set src(v) {
+    this.props.src = v
     updateNodeStyles(this)
   }
-  get zIndexLocked(): number { return this.props.zIndexLocked }
-  set zIndexLocked(value: number) {
-    this.props.zIndexLocked = value
+  get zIndexLocked() {return this.props.zIndexLocked}
+  set zIndexLocked(v) {
+    this.props.zIndexLocked = v
     updateNodeStyles(this)
   }
-  get scale(): number { return this.props.scale ?? 1 }
-  set scale(value: number) {
-    this.props.scale = value
+  get scale() {return this.props.scale ?? 1}
+  set scale(v) {
+    this.props.scale = v
     updateNodeStyles(this)
   }
-  get scaleX(): number { return this.props.scaleX }
-  set scaleX(value: number) {
-    this.props.scaleX = value
+  get scaleX() {return this.props.scaleX}
+  set scaleX(v) {
+    this.props.scaleX = v
     updateNodeStyles(this)
   }
-  get scaleY(): number { return this.props.scaleY }
-  set scaleY(value: number) {
-    this.props.scaleY = value
+  get scaleY() {return this.props.scaleY}
+  set scaleY(v) {
+    this.props.scaleY = v
     updateNodeStyles(this)
   }
-  get mount(): number { return this.props.mount }
-  set mount(value: number) {
-    this.props.mount = value
+  get mount() {return this.props.mount}
+  set mount(v) {
+    this.props.mount = v
     updateNodeStyles(this)
   }
-  get mountX(): number { return this.props.mountX }
-  set mountX(value: number) {
-    this.props.mountX = value
+  get mountX() {return this.props.mountX}
+  set mountX(v) {
+    this.props.mountX = v
     updateNodeStyles(this)
   }
-  get mountY(): number { return this.props.mountY }
-  set mountY(value: number) {
-    this.props.mountY = value
+  get mountY() {return this.props.mountY}
+  set mountY(v) {
+    this.props.mountY = v
     updateNodeStyles(this)
   }
-  get pivot(): number { return this.props.pivot }
-  set pivot(value: number) {
-    this.props.pivot = value
+  get pivot() {return this.props.pivot}
+  set pivot(v) {
+    this.props.pivot = v
     updateNodeStyles(this)
   }
-  get pivotX(): number { return this.props.pivotX }
-  set pivotX(value: number) {
-    this.props.pivotX = value
+  get pivotX() {return this.props.pivotX}
+  set pivotX(v) {
+    this.props.pivotX = v
     updateNodeStyles(this)
   }
-  get pivotY(): number { return this.props.pivotY }
-  set pivotY(value: number) {
-    this.props.pivotY = value
+  get pivotY() {return this.props.pivotY}
+  set pivotY(v) {
+    this.props.pivotY = v
     updateNodeStyles(this)
   }
-  get rotation(): number { return this.props.rotation }
-  set rotation(value: number) {
-    this.props.rotation = value
+  get rotation() {return this.props.rotation}
+  set rotation(v) {
+    this.props.rotation = v
     updateNodeStyles(this)
   }
-  get rtt(): boolean { return this.props.rtt }
-  set rtt(value: boolean) {
-    this.props.rtt = value
+  get rtt() {return this.props.rtt}
+  set rtt(v) {
+    this.props.rtt = v
     updateNodeStyles(this)
   }
-  get shader() { return this.props.shader }
-  set shader(v: lng.CoreShaderNode) {
+  get shader() {return this.props.shader}
+  set shader(v) {
     this.props.shader = v
     updateNodeStyles(this)
   }
-  get strictBounds(): boolean { return this.props.strictBounds }
-  set strictBounds(value: boolean) {
-    this.props.strictBounds = value
+  get strictBounds() {return this.props.strictBounds}
+  set strictBounds(v) {
+    this.props.strictBounds = v
     updateNodeStyles(this)
   }
 
-  get data() { return this.props.data }
-  set data(value: any) {
-    this.props.data = value
+  get data(): IRendererNode['data'] {return this.props.data}
+  set data(v) {
+    this.props.data = v
     updateNodeData(this)
   }
 
-  get imageType(): 'regular' | 'compressed' | 'svg' | null { return this.props.imageType }
-  set imageType(value: 'regular' | 'compressed' | 'svg' | null) { this.props.imageType = value }
-  get srcWidth(): number | undefined { return this.props.srcWidth }
-  set srcWidth(value: number | undefined) { this.props.srcWidth = value }
-  get srcHeight(): number | undefined { return this.props.srcHeight }
-  set srcHeight(value: number | undefined) { this.props.srcHeight = value }
-  get srcX(): number | undefined { return this.props.srcX }
-  set srcX(value: number | undefined) { this.props.srcX = value }
-  get srcY(): number | undefined { return this.props.srcY }
-  set srcY(value: number | undefined) { this.props.srcY = value }
+  get imageType() {return this.props.imageType}
+  set imageType(v) {this.props.imageType = v}
+  get srcWidth() {return this.props.srcWidth}
+  set srcWidth(v) {this.props.srcWidth = v}
+  get srcHeight() {return this.props.srcHeight}
+  set srcHeight(v) {this.props.srcHeight = v}
+  get srcX() {return this.props.srcX}
+  set srcX(v) {this.props.srcX = v}
+  get srcY() {return this.props.srcY}
+  set srcY(v) {this.props.srcY = v}
 
   get boundsMargin(): number | [number, number, number, number] | null {
     return this.props.boundsMargin
@@ -745,145 +737,111 @@ class DOMNode implements lng.INode {
       (this.parent?.absY ?? 0)
     )
   }
-
-  get framebufferDimensions(): lng.Dimensions { return this.node.framebufferDimensions }
-  get parentRenderTexture() { return this.node.parentRenderTexture }
-
-  loadTexture(): void { }
-  unloadTexture(): void { }
-  autosizeNode(dimensions: lng.Dimensions): void { }
-  sortChildren(): void { }
-  updateScaleRotateTransform(): void { }
-  updateLocalTransform(): void { }
-  checkRenderBounds(): lng.CoreNodeRenderState { }
-  updateBoundingRect(): void { }
-  createRenderBounds(): void { }
-  updateRenderState(renderState: lng.CoreNodeRenderState): void { }
-  updateIsRenderable(): void { }
-  checkBasicRenderability(): boolean { }
-  setRenderable(isRenderable: boolean): void { }
-  updateTextureOwnership(isRenderable: boolean): void { }
-  isOutOfBounds(): boolean { }
-  hasDimensions(): boolean { }
-  hasColorProperties(): boolean { }
-  hasShader(): boolean { }
-  calculateRenderCoords(): void { }
-  calculateZIndex(): void { }
-  flush(): void { }
-  on(event: string, listener: (target: any, data: any) => void): void { }
-  off(event: string, listener?: (target: any, data: any) => void): void { }
-  once(event: string, listener: (target: any, data: any) => void): void { }
-  emit(event: string, data?: any): void { }
-  removeAllListeners(): void { }
-  setUpdateType(type: any) { }
-  update(delta: number, parentClippingRect: any) { }
-  calculateClippingRect(parentClippingRect: any) { }
-  renderQuads(renderer: any) { }
 }
 
 class DOMText extends DOMNode {
 
   constructor(
-    stage: RendererInterfaceStage,
-    public override props: lng.ITextNodeProps
+    stage: IRendererStage,
+    public override props: IRendererTextNodeProps,
   ) {
     super(stage, props)
     this.el.innerText = props.text
   }
 
-  get text(): string { return this.props.text }
-  set text(value: string) {
-    this.props.text = value
-    this.el.innerText = value
+  get text() {return this.props.text}
+  set text(v) {
+    this.props.text = v
+    this.el.innerText = v
   }
-  get fontFamily(): string { return this.props.fontFamily }
-  set fontFamily(value: string) {
-    this.props.fontFamily = value
+  get fontFamily() {return this.props.fontFamily}
+  set fontFamily(v) {
+    this.props.fontFamily = v
     updateNodeStyles(this)
   }
-  get fontSize(): number { return this.props.fontSize }
-  set fontSize(value: number) {
-    this.props.fontSize = value
+  get fontSize() {return this.props.fontSize}
+  set fontSize(v) {
+    this.props.fontSize = v
     updateNodeStyles(this)
   }
-  get fontStyle(): lng.ITextNode['fontStyle'] { return this.props.fontStyle }
-  set fontStyle(value: lng.ITextNode['fontStyle']) {
-    this.props.fontStyle = value
+  get fontStyle() {return this.props.fontStyle}
+  set fontStyle(v) {
+    this.props.fontStyle = v
     updateNodeStyles(this)
   }
-  get fontWeight(): lng.ITextNode['fontWeight'] { return this.props.fontWeight }
-  set fontWeight(value: lng.ITextNode['fontWeight']) {
-    this.props.fontWeight = value
+  get fontWeight() {return this.props.fontWeight}
+  set fontWeight(v) {
+    this.props.fontWeight = v
     updateNodeStyles(this)
   }
-  get fontStretch(): lng.ITextNode['fontStretch'] { return this.props.fontStretch }
-  set fontStretch(value: lng.ITextNode['fontStretch']) {
-    this.props.fontStretch = value
+  get fontStretch() {return this.props.fontStretch}
+  set fontStretch(v) {
+    this.props.fontStretch = v
     updateNodeStyles(this)
   }
-  get lineHeight(): number | undefined { return this.props.lineHeight }
-  set lineHeight(value: number | undefined) {
-    this.props.lineHeight = value
+  get lineHeight() {return this.props.lineHeight}
+  set lineHeight(v) {
+    this.props.lineHeight = v
     updateNodeStyles(this)
   }
-  get letterSpacing(): number { return this.props.letterSpacing }
-  set letterSpacing(value: number) {
-    this.props.letterSpacing = value
+  get letterSpacing() {return this.props.letterSpacing}
+  set letterSpacing(v) {
+    this.props.letterSpacing = v
     updateNodeStyles(this)
   }
-  get textAlign(): lng.ITextNode['textAlign'] { return this.props.textAlign }
-  set textAlign(value: lng.ITextNode['textAlign']) {
-    this.props.textAlign = value
+  get textAlign() {return this.props.textAlign}
+  set textAlign(v) {
+    this.props.textAlign = v
     updateNodeStyles(this)
   }
-  get overflowSuffix(): string { return this.props.overflowSuffix }
-  set overflowSuffix(value: string) {
-    this.props.overflowSuffix = value
+  get overflowSuffix() {return this.props.overflowSuffix}
+  set overflowSuffix(v) {
+    this.props.overflowSuffix = v
     updateNodeStyles(this)
   }
-  get maxLines(): number { return this.props.maxLines }
-  set maxLines(value: number) {
-    this.props.maxLines = value
+  get maxLines() {return this.props.maxLines}
+  set maxLines(v) {
+    this.props.maxLines = v
     updateNodeStyles(this)
   }
-  get contain(): lng.ITextNode['contain'] { return this.props.contain }
-  set contain(value: lng.ITextNode['contain']) {
-    this.props.contain = value
+  get contain() {return this.props.contain}
+  set contain(v) {
+    this.props.contain = v
     updateNodeStyles(this)
   }
-  get verticalAlign(): lng.ITextNode['verticalAlign'] { return this.props.verticalAlign }
-  set verticalAlign(value: lng.ITextNode['verticalAlign']) {
-    this.props.verticalAlign = value
+  get verticalAlign() {return this.props.verticalAlign}
+  set verticalAlign(v) {
+    this.props.verticalAlign = v
     updateNodeStyles(this)
   }
-  get textBaseline(): lng.ITextNode['textBaseline'] { return this.props.textBaseline }
-  set textBaseline(value: lng.ITextNode['textBaseline']) {
-    this.props.textBaseline = value
+  get textBaseline() {return this.props.textBaseline}
+  set textBaseline(v) {
+    this.props.textBaseline = v
     updateNodeStyles(this)
   }
-  get textRendererOverride(): lng.ITextNode['textRendererOverride'] { return this.props.textRendererOverride }
-  set textRendererOverride(value: lng.ITextNode['textRendererOverride']) {
-    this.props.textRendererOverride = value
+  get textRendererOverride() {return this.props.textRendererOverride}
+  set textRendererOverride(v) {
+    this.props.textRendererOverride = v
     updateNodeStyles(this)
   }
-  get scrollable(): boolean { return this.props.scrollable }
-  set scrollable(value: boolean) {
-    this.props.scrollable = value
+  get scrollable() {return this.props.scrollable}
+  set scrollable(v) {
+    this.props.scrollable = v
     updateNodeStyles(this)
   }
-  get scrollY(): number { return this.props.scrollY }
-  set scrollY(value: number) {
-    this.props.scrollY = value
+  get scrollY() {return this.props.scrollY}
+  set scrollY(v) {
+    this.props.scrollY = v
     updateNodeStyles(this)
   }
-  get offsetY(): number { return this.props.offsetY }
-  set offsetY(value: number) {
-    this.props.offsetY = value
+  get offsetY() {return this.props.offsetY}
+  set offsetY(v) {
+    this.props.offsetY = v
     updateNodeStyles(this)
   }
-  get debug(): lng.ITextNode['debug'] { return this.props.debug }
-  set debug(value: lng.ITextNode['debug']) {
-    this.props.debug = value
+  get debug() {return this.props.debug}
+  set debug(v) {
+    this.props.debug = v
     updateNodeStyles(this)
   }
 }
@@ -912,12 +870,12 @@ function updateRootPosition(this: DOMRendererMain) {
   domRoot.style.zIndex = '65534'
 }
 
-export class DOMRendererMain implements lng.RendererMain {
+export class DOMRendererMain implements IRendererMain {
 
-  root: lng.INode
+  root: DOMNode
   canvas: HTMLCanvasElement
 
-  stage: RendererInterfaceStage
+  stage: IRendererStage
 
   constructor(
     public settings: lng.RendererMainSettings,
@@ -1006,29 +964,19 @@ export class DOMRendererMain implements lng.RendererMain {
     window.addEventListener('resize', updateRootPosition.bind(this))
   }
 
-  createNode<ShNode extends lng.CoreShaderNode<any>>(
-    props: Partial<lng.INodeProps<ShNode>>,
-  ): lng.INode<ShNode> {
+  createNode(props: Partial<IRendererNodeProps>): IRendererNode {
     return new DOMNode(this.stage, resolveNodeDefaults(props))
   }
 
-  createTextNode(props: Partial<lng.ITextNodeProps>): lng.ITextNode {
+  createTextNode(props: Partial<IRendererTextNodeProps>): IRendererTextNode {
     return new DOMText(this.stage, resolveTextNodeDefaults(props))
   }
 
-  createShader(shType: string, props?: RendererInterfaceShaderProps): RendererInterfaceShader {
-    return {
-      shaderType: shType,
-      props: props,
-      resolvedProps: props,
-      node: null as lng.INode | null,
-      attachNode(node: lng.INode) {
-        this.node = node
-      }
-    }
+  createShader(shaderType: string, props?: IRendererShaderProps): IRendererShader {
+    return {shaderType, props}
   }
 
-  createTexture(textureType: keyof lng.TextureMap, props: RendererInterfaceTextureProps): RendererInterfaceTexture {
+  createTexture(textureType: keyof lng.TextureMap, props: IRendererTextureProps): IRendererTexture {
     let type = lng.TextureType.generic
     switch (textureType) {
       case 'SubTexture':    type = lng.TextureType.subTexture      ;break
@@ -1037,12 +985,7 @@ export class DOMRendererMain implements lng.RendererMain {
       case 'NoiseTexture':  type = lng.TextureType.noise           ;break
       case 'RenderTexture': type = lng.TextureType.renderToTexture ;break
     }
-    return {
-      type: type,
-      props: props,
-      setRenderableOwner: () => { },
-      on: () => { }
-    }
+    return {type, props}
   }
 
   on(name: string, callback: (target: any, data: any) => void) {
