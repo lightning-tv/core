@@ -171,7 +171,7 @@ class AnimationController implements lng.IAnimationController {
   emit() {return this}
 }
 
-export function animate(
+function animate(
   this:     DOMNode,
   props:    Partial<lng.INodeAnimateProps<any>>,
   settings: Partial<lng.AnimationSettings>,

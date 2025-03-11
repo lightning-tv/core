@@ -46,14 +46,17 @@ export interface IRendererNodeProps
 }
 /** Based on {@link lng.INode} */
 export interface IRendererNode extends IRendererNodeProps {
+  stage:   IRendererStage
+  props:   IRendererNodeProps
   id:      number
   animate: (
     props:    Partial<lng.INodeAnimateProps<any>>,
     settings: Partial<lng.AnimationSettings>,
   ) => lng.IAnimationController
-  on: (e: string, cb: (...a: any[]) => void) => void
+  on:      (e: string, cb: (...a: any[]) => void) => void
 }
 
+/** Based on {@link lng.ITextNodeProps} */
 export interface IRendererTextNodeProps
   extends Omit<lng.ITextNodeProps, 'shader' | 'parent'>
 {
@@ -61,8 +64,17 @@ export interface IRendererTextNodeProps
   parent: IRendererNode | null
 }
 /** Based on {@link lng.ITextNode} */
-export interface IRendererTextNode extends IRendererNode {
+export interface IRendererTextNode extends IRendererTextNodeProps {
+  stage:   IRendererStage
+  props:   IRendererTextNodeProps
+  id:      number
+  animate: (
+    props:    Partial<lng.INodeAnimateProps<any>>,
+    settings: Partial<lng.AnimationSettings>,
+  ) => lng.IAnimationController
+  on:      (e: string, cb: (...a: any[]) => void) => void
 }
+
 /** Based on {@link lng.RendererMain} */
 export interface IRendererMain {
   stage:          IRendererStage
