@@ -92,7 +92,7 @@ export function startLightningRenderer(
 ) {
   renderer = Config.domRendering
     ? new DOMRendererMain(options, rootId)
-    : new lng.RendererMain(options, rootId);
+    : new lng.RendererMain(options, rootId) as any as IRendererMain;
   return renderer;
 }
 
