@@ -727,7 +727,7 @@ class DOMNode extends EventEmitter implements IRendererNode {
     return (
       this.x +
       -this.width * this.mountX +
-      (this.parent?.absX || this.parent?.globalTransform?.tx || 0)
+      (this.parent?.absX ?? 0)
     )
   }
   get absY(): number {
