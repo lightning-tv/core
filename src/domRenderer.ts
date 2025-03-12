@@ -244,20 +244,6 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
 
   if (node.alpha !== 1) style += `opacity: ${node.alpha};`;
 
-  let { x, y } = node;
-
-  if (node.mountX != null) {
-    x -= (node.width ?? 0) * node.mountX;
-  }
-
-  if (node.mountY != null) {
-    y -= (node.height ?? 0) * node.mountY;
-  }
-
-  if (x !== 0) style += `left: ${x}px;`;
-
-  if (y !== 0) style += `top: ${y}px;`;
-
   if (node.width !== 0) style += `width: ${node.width}px;`;
 
   if (node.height !== 0) style += `height: ${node.height}px;`;
@@ -270,17 +256,35 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
     style += `overflow: hidden;`;
   }
 
-  let transform = '';
-
-  if (node.rotation !== 0) transform += `rotate(${node.rotation}rad);`;
-  if (node.scale !== 1) transform += `scale(${node.scale});`;
-  else {
-    if (node.scaleX !== 1) transform += `scaleX(${node.scaleX});`;
-    if (node.scaleY !== 1) transform += `scaleY(${node.scaleY});`;
-  }
-
-  if (transform.length > 0) {
-    style += `transform: ${transform}`;
+  // Transform
+  {
+    let transform = '';
+  
+    let { x, y } = node;
+  
+    if (node.mountX != null) {
+      x -= (node.width ?? 0) * node.mountX;
+    }
+  
+    if (node.mountY != null) {
+      y -= (node.height ?? 0) * node.mountY;
+    }
+  
+    if (x !== 0) transform += `translateX(${x}px)`;
+  
+    if (y !== 0) transform += `translateY(${y}px)`;
+  
+    if (node.rotation !== 0) transform += `rotate(${node.rotation}rad)`;
+    
+    if (node.scale !== 1) transform += `scale(${node.scale})`;
+    else {
+      if (node.scaleX !== 1) transform += `scaleX(${node.scaleX})`;
+      if (node.scaleY !== 1) transform += `scaleY(${node.scaleY})`;
+    }
+  
+    if (transform.length > 0) {
+      style += `transform: ${transform};`;
+    }
   }
 
   // <Text>
