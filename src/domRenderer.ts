@@ -231,18 +231,11 @@ function animate(
 
 let elMap = new WeakMap<DOMNode, HTMLElement>();
 
-let domRoot = document.body.appendChild(document.createElement('div'));
-domRoot.id = 'dom_root';
-
 function updateNodeParent(node: DOMNode | DOMText) {
   if (node.parent != null) {
-    if (node.parent.id === 1) {
-      domRoot.appendChild(node.el);
-    } else {
-      elMap.get(node.parent as DOMNode)!.appendChild(node.el);
-    }
+    elMap.get(node.parent as DOMNode)!.appendChild(node.el)
   } else {
-    console.warn('no parent?');
+    document.body.appendChild(node.el)
   }
 }
 
@@ -1013,15 +1006,15 @@ function updateRootPosition(this: DOMRendererMain) {
   let scaleX = settings.deviceLogicalPixelRatio ?? 1;
   let scaleY = settings.deviceLogicalPixelRatio ?? 1;
 
-  domRoot.style.left = `${left}px`;
-  domRoot.style.top = `${top}px`;
-  domRoot.style.width = `${width}px`;
-  domRoot.style.height = `${height}px`;
-  domRoot.style.position = 'absolute';
-  domRoot.style.transformOrigin = '0 0 0';
-  domRoot.style.transform = `scale(${scaleX}, ${scaleY})`;
-  domRoot.style.overflow = 'hidden';
-  domRoot.style.zIndex = '65534';
+  this.root.el.style.left = `${left}px`;
+  this.root.el.style.top = `${top}px`;
+  this.root.el.style.width = `${width}px`;
+  this.root.el.style.height = `${height}px`;
+  this.root.el.style.position = 'absolute';
+  this.root.el.style.transformOrigin = '0 0 0';
+  this.root.el.style.transform = `scale(${scaleX}, ${scaleY})`;
+  this.root.el.style.overflow = 'hidden';
+  this.root.el.style.zIndex = '65534';
 }
 
 export class DOMRendererMain implements IRendererMain {
@@ -1097,16 +1090,16 @@ export class DOMRendererMain implements IRendererMain {
     this.stage.root = this.root;
 
     if (Config.fontSettings.fontFamily != null) {
-      domRoot.style.setProperty('font-family', Config.fontSettings.fontFamily);
+      this.root.el.style.setProperty('font-family', Config.fontSettings.fontFamily);
     }
     if (Config.fontSettings.fontSize != null) {
-      domRoot.style.setProperty(
+      this.root.el.style.setProperty(
         'font-size',
         Config.fontSettings.fontSize + 'px',
       );
     }
 
-    domRoot.style.setProperty(
+    this.root.el.style.setProperty(
       'line-height',
       Config.fontSettings.lineHeight
         ? Config.fontSettings.lineHeight + 'px'
