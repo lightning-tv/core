@@ -309,7 +309,7 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
         -webkit-box-orient: vertical;`;
     }
     if (node.contain !== 'none') {
-      style += `overflow: hidden;`; // not sure if there is a way to support it proparely
+      style += `overflow: hidden;`;
     }
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
   }
@@ -386,6 +386,46 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
 
 function updateNodeStyles(node: DOMNode | DOMText) {
   node.el.setAttribute('style', getNodeStyles(node));
+
+  if (node instanceof DOMText) {
+    scheduleUpdateTextNodeMeasurement(node)
+  }
+}
+
+/*
+  Text nodes with contain 'width' or 'none'
+  need to have their height or width calculated.
+  And then cause the flex layout to be recalculated.
+*/
+
+const textNodesToMeasure = new Set<DOMText>()
+
+function updateTextNodeMeasurements() {
+  for (let node of textNodesToMeasure) {
+    switch (node.contain) {
+    case 'width':
+      if (node.props.height !== node.el.clientHeight) {
+        node.props.height = node.el.clientHeight
+        node.emit('loaded')
+      }
+    case 'none':
+      if (node.props.height !== node.el.clientHeight || node.props.width !== node.el.clientWidth) {
+        node.props.width = node.el.clientWidth
+        node.props.height = node.el.clientHeight
+        node.emit('loaded')
+      }
+    }
+  }
+  textNodesToMeasure.clear()
+}
+
+function scheduleUpdateTextNodeMeasurement(node: DOMText) {
+
+  if (textNodesToMeasure.size === 0) {
+    setTimeout(updateTextNodeMeasurements)
+  }
+
+  textNodesToMeasure.add(node)
 }
 
 function updateNodeData(node: DOMNode | DOMText) {
@@ -519,29 +559,6 @@ class DOMNode extends EventEmitter implements IRendererNode {
     this.props.parent = value;
     updateNodeParent(this);
   }
-
-  globalTransform = undefined;
-  children = undefined;
-  rttParent = undefined;
-  updateType = undefined;
-  childUpdateType = undefined;
-  scaleRotateTransform = undefined;
-  localTransform = undefined;
-  renderCoords = undefined;
-  renderBound = undefined;
-  strictBound = undefined;
-  preloadBound = undefined;
-  clippingRect = undefined;
-  isRenderable = undefined;
-  renderState = undefined;
-  worldAlpha = undefined;
-  premultipliedColorTl = undefined;
-  premultipliedColorTr = undefined;
-  premultipliedColorBl = undefined;
-  premultipliedColorBr = undefined;
-  calcZIndex = undefined;
-  hasRTTupdates = undefined;
-  parentHasRenderTexture = undefined;
 
   animate = animate;
 
@@ -860,6 +877,7 @@ class DOMText extends DOMNode {
   set text(v) {
     this.props.text = v;
     this.el.innerText = v;
+    scheduleUpdateTextNodeMeasurement(this)
   }
   get fontFamily() {
     return this.props.fontFamily;
@@ -1027,7 +1045,6 @@ export class DOMRendererMain implements IRendererMain {
     public settings: lng.RendererMainSettings,
     public target: string | HTMLElement,
   ) {
-    // super(settings, target)
 
     let canvas = document.body.appendChild(document.createElement('canvas'));
     canvas.style.position = 'absolute';
