@@ -335,7 +335,7 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
     ) {
       bgPos = (node.texture as any).props;
       bgImg.push(`url(${(node.texture as any).props.texture.props.src})`);
-    } else if (node.src != null) {
+    } else if (node.src) {
       bgImg.push(`url(${node.src})`);
     }
 
