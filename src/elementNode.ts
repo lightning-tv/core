@@ -200,6 +200,7 @@ export interface ElementNode extends RendererNode {
   children: Array<ElementNode | ElementText>;
   debug?: boolean;
   flexGrow?: number;
+  flexWrap?: 'nowrap' | 'wrap';
   flexItem?: boolean;
   flexOrder?: number;
   forwardFocus?:
@@ -215,8 +216,8 @@ export interface ElementNode extends RendererNode {
   preFlexwidth?: number;
   preFlexheight?: number;
   text?: string;
-
   alignItems?: 'flexStart' | 'flexEnd' | 'center';
+  alignSelf?: 'flexStart' | 'flexEnd' | 'center';
   border?: BorderStyle;
   borderBottom?: BorderStyle;
   borderLeft?: BorderStyle;
@@ -232,6 +233,8 @@ export interface ElementNode extends RendererNode {
   flexCrossBoundary?: 'fixed'; // default is contain
   flexDirection?: 'row' | 'column';
   gap?: number;
+  rowGap?: number;
+  columnGap?: number;
   justifyContent?:
     | 'flexStart'
     | 'flexEnd'
