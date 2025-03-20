@@ -6,7 +6,7 @@ import type {
 } from './intrinsicTypes.js';
 import { type ElementNode } from './elementNode.js';
 
-interface Config {
+export interface Config {
   debug: boolean;
   focusDebug: boolean;
   keyDebug: boolean;
@@ -17,12 +17,18 @@ interface Config {
   setActiveElement: (elm: ElementNode) => void;
   focusStateKey: DollarString;
   domRendering: boolean;
+  lockStyles?: boolean;
 }
 
 function isDevEnv(): boolean {
   return !!(import.meta.env && import.meta.env.DEV);
 }
 export const isDev = isDevEnv() || false;
+
+function shadersEnabled(): boolean {
+  return !(import.meta.env && import.meta.env.VITE_DISABLE_SHADERS === 'true');
+}
+export const SHADERS_ENABLED = shadersEnabled();
 
 export const Config: Config = {
   debug: false,

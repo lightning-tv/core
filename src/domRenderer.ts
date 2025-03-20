@@ -233,9 +233,9 @@ let elMap = new WeakMap<DOMNode, HTMLElement>();
 
 function updateNodeParent(node: DOMNode | DOMText) {
   if (node.parent != null) {
-    elMap.get(node.parent as DOMNode)!.appendChild(node.el)
+    elMap.get(node.parent as DOMNode)!.appendChild(node.el);
   } else {
-    document.body.appendChild(node.el)
+    document.body.appendChild(node.el);
   }
 }
 
@@ -259,29 +259,29 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
   // Transform
   {
     let transform = '';
-  
+
     let { x, y } = node;
-  
+
     if (node.mountX != null) {
       x -= (node.width ?? 0) * node.mountX;
     }
-  
+
     if (node.mountY != null) {
       y -= (node.height ?? 0) * node.mountY;
     }
-  
+
     if (x !== 0) transform += `translateX(${x}px)`;
-  
+
     if (y !== 0) transform += `translateY(${y}px)`;
-  
+
     if (node.rotation !== 0) transform += `rotate(${node.rotation}rad)`;
-    
+
     if (node.scale !== 1) transform += `scale(${node.scale})`;
     else {
       if (node.scaleX !== 1) transform += `scaleX(${node.scaleX})`;
       if (node.scaleY !== 1) transform += `scaleY(${node.scaleY})`;
     }
-  
+
     if (transform.length > 0) {
       style += `transform: ${transform};`;
     }
@@ -392,7 +392,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   node.el.setAttribute('style', getNodeStyles(node));
 
   if (node instanceof DOMText) {
-    scheduleUpdateTextNodeMeasurement(node)
+    scheduleUpdateTextNodeMeasurement(node);
   }
 }
 
@@ -402,34 +402,36 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   And then cause the flex layout to be recalculated.
 */
 
-const textNodesToMeasure = new Set<DOMText>()
+const textNodesToMeasure = new Set<DOMText>();
 
 function updateTextNodeMeasurements() {
   for (let node of textNodesToMeasure) {
     switch (node.contain) {
-    case 'width':
-      if (node.props.height !== node.el.clientHeight) {
-        node.props.height = node.el.clientHeight
-        node.emit('loaded')
-      }
-    case 'none':
-      if (node.props.height !== node.el.clientHeight || node.props.width !== node.el.clientWidth) {
-        node.props.width = node.el.clientWidth
-        node.props.height = node.el.clientHeight
-        node.emit('loaded')
-      }
+      case 'width':
+        if (node.props.height !== node.el.clientHeight) {
+          node.props.height = node.el.clientHeight;
+          node.emit('loaded');
+        }
+      case 'none':
+        if (
+          node.props.height !== node.el.clientHeight ||
+          node.props.width !== node.el.clientWidth
+        ) {
+          node.props.width = node.el.clientWidth;
+          node.props.height = node.el.clientHeight;
+          node.emit('loaded');
+        }
     }
   }
-  textNodesToMeasure.clear()
+  textNodesToMeasure.clear();
 }
 
 function scheduleUpdateTextNodeMeasurement(node: DOMText) {
-
   if (textNodesToMeasure.size === 0) {
-    setTimeout(updateTextNodeMeasurements)
+    setTimeout(updateTextNodeMeasurements);
   }
 
-  textNodesToMeasure.add(node)
+  textNodesToMeasure.add(node);
 }
 
 function updateNodeData(node: DOMNode | DOMText) {
@@ -520,6 +522,7 @@ function resolveTextNodeDefaults(
     textBaseline: props.textBaseline ?? 'alphabetic',
     verticalAlign: props.verticalAlign ?? 'middle',
     overflowSuffix: props.overflowSuffix ?? '...',
+    wordBreak: props.wordBreak ?? 'normal',
     debug: props.debug ?? {},
   };
 }
@@ -881,7 +884,7 @@ class DOMText extends DOMNode {
   set text(v) {
     this.props.text = v;
     this.el.innerText = v;
-    scheduleUpdateTextNodeMeasurement(this)
+    scheduleUpdateTextNodeMeasurement(this);
   }
   get fontFamily() {
     return this.props.fontFamily;
@@ -1002,6 +1005,13 @@ class DOMText extends DOMNode {
     this.props.offsetY = v;
     updateNodeStyles(this);
   }
+  get wordBreak() {
+    return this.props.wordBreak;
+  }
+  set wordBreak(v) {
+    this.props.wordBreak = v;
+    updateNodeStyles(this);
+  }
   get debug() {
     return this.props.debug;
   }
@@ -1049,7 +1059,6 @@ export class DOMRendererMain implements IRendererMain {
     public settings: lng.RendererMainSettings,
     public target: string | HTMLElement,
   ) {
-
     let canvas = document.body.appendChild(document.createElement('canvas'));
     canvas.style.position = 'absolute';
     canvas.style.top = '0';
@@ -1111,7 +1120,10 @@ export class DOMRendererMain implements IRendererMain {
     this.stage.root = this.root;
 
     if (Config.fontSettings.fontFamily != null) {
-      this.root.el.style.setProperty('font-family', Config.fontSettings.fontFamily);
+      this.root.el.style.setProperty(
+        'font-family',
+        Config.fontSettings.fontFamily,
+      );
     }
     if (Config.fontSettings.fontSize != null) {
       this.root.el.style.setProperty(

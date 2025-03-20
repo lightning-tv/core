@@ -33,7 +33,7 @@ import {
   logRenderTree,
   isFunction,
 } from './utils.js';
-import { Config, isDev } from './config.js';
+import { Config, isDev, SHADERS_ENABLED } from './config.js';
 import type {
   RendererMain,
   INode,
@@ -224,6 +224,7 @@ export interface ElementNode extends RendererNode {
   children: Array<ElementNode | ElementText>;
   debug?: boolean;
   flexGrow?: number;
+  flexWrap?: 'nowrap' | 'wrap';
   flexItem?: boolean;
   flexOrder?: number;
   forwardFocus?:
@@ -239,8 +240,8 @@ export interface ElementNode extends RendererNode {
   preFlexwidth?: number;
   preFlexheight?: number;
   text?: string;
-
   alignItems?: 'flexStart' | 'flexEnd' | 'center';
+  alignSelf?: 'flexStart' | 'flexEnd' | 'center';
   border?: BorderStyle;
   borderBottom?: BorderStyle;
   borderLeft?: BorderStyle;
@@ -250,11 +251,14 @@ export interface ElementNode extends RendererNode {
   center?: boolean;
   centerX?: boolean;
   centerY?: boolean;
+  direction?: 'ltr' | 'rtl';
   display?: 'flex' | 'block';
   flexBoundary?: 'contain' | 'fixed';
   flexCrossBoundary?: 'fixed'; // default is contain
   flexDirection?: 'row' | 'column';
   gap?: number;
+  rowGap?: number;
+  columnGap?: number;
   justifyContent?:
     | 'flexStart'
     | 'flexEnd'
@@ -334,7 +338,7 @@ export class ElementNode extends Object {
 
   set effects(v: StyleEffects) {
     this._effects = v;
-    if (this.rendered) {
+    if (SHADERS_ENABLED && this.rendered) {
       this.lng.shader = convertEffectsToShader(this, v);
       // if (this.lng.shader) {
       //   updateShaderEffects(this, v);
@@ -501,7 +505,7 @@ export class ElementNode extends Object {
   }
 
   emit(event: string, ...args: any[]): boolean {
-    let current = this.parent;
+    let current = this as ElementNode;
     const capitalizedEvent = `on${event.charAt(0).toUpperCase()}${event.slice(1)}`;
 
     while (current) {
@@ -587,6 +591,10 @@ export class ElementNode extends Object {
       console.warn(
         'Style already set: https://lightning-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
       );
+    }
+
+    if (Config.lockStyles && this._style) {
+      return;
     }
 
     if (!style) {
@@ -688,7 +696,9 @@ export class ElementNode extends Object {
    */
   set autofocus(val: any) {
     this._autofocus = val;
-    val && this.setFocus();
+    // Delay setting focus so children can render (useful for Row + Column)
+    // which now uses forwardFocus
+    val && queueMicrotask(() => this.setFocus());
   }
 
   get autofocus() {
@@ -880,7 +890,8 @@ export class ElementNode extends Object {
         }
       }
 
-      if (node._effects) {
+      // Can you put effects on Text nodes? Need to confirm...
+      if (SHADERS_ENABLED && node._effects) {
         props.shader = convertEffectsToShader(node, node._effects);
       }
 
@@ -916,7 +927,7 @@ export class ElementNode extends Object {
         }
       }
 
-      if (node._effects) {
+      if (SHADERS_ENABLED && node._effects) {
         props.shader = convertEffectsToShader(node, node._effects);
       }
 

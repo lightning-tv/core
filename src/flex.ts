@@ -30,6 +30,8 @@ export default function (node: ElementNode): boolean {
 
   if (hasOrder) {
     children.sort((a, b) => (a.flexOrder || 0) - (b.flexOrder || 0));
+  } else if (node.direction === 'rtl') {
+    children.reverse();
   }
 
   const numChildren = children.length;
@@ -47,26 +49,32 @@ export default function (node: ElementNode): boolean {
   let containerCrossSize = node[crossDimension] || 0;
   const gap = node.gap || 0;
   const justify = node.justifyContent || 'flexStart';
-  const align = node.alignItems;
+  const align = node.alignItems || (node.flexWrap ? 'flexStart' : undefined);
   let containerUpdated = false;
 
-  // if there is only 1 children by default it inherits the parent size so we can skip
+  // if there is only 1 child by default it inherits the parent size so we can skip
   if (growSize && numChildren > 1) {
+    node.flexBoundary = node.flexBoundary || 'fixed'; // cant change size of flex container
     const flexBasis = children.reduce(
       (prev, c) =>
         prev +
-        (c.flexGrow ? 0 : c[dimension] || 0) +
+        (c.flexGrow != null && c.flexGrow >= 0 ? 0 : c[dimension] || 0) +
         (c[marginOne] || 0) +
         (c[marginTwo] || 0),
       0,
     );
     const growFactor =
       (containerSize - flexBasis - gap * (numChildren - 1)) / growSize;
-    for (let i = 0; i < numChildren; i++) {
-      const c = children[i]!;
-      if (c.flexGrow && c.flexGrow > 0) {
-        c[dimension] = c.flexGrow * growFactor;
+
+    if (growFactor >= 0) {
+      for (let i = 0; i < numChildren; i++) {
+        const c = children[i]!;
+        if (c.flexGrow != null && c.flexGrow >= 0) {
+          c[dimension] = c.flexGrow * growFactor;
+        }
       }
+    } else {
+      console.warn('Negative growFactor, flexGrow not applied');
     }
   }
 
@@ -83,24 +91,27 @@ export default function (node: ElementNode): boolean {
     );
   }
 
-  // Only align children if container has a cross size
-  const crossAlignChild =
-    containerCrossSize && align
-      ? (c: ElementNode) => {
-          if (align === 'flexStart') {
-            c[crossProp] = c[crossMarginOne] || 0;
-          } else if (align === 'center') {
-            c[crossProp] =
-              (containerCrossSize - (c[crossDimension] || 0)) / 2 +
-              (c[crossMarginOne] || 0);
-          } else if (align === 'flexEnd') {
-            c[crossProp] =
-              containerCrossSize -
-              (c[crossDimension] || 0) -
-              (c[crossMarginTwo] || 0);
-          }
+  const crossAlignChild = containerCrossSize
+    ? (c: ElementNode, crossStart: number = 0) => {
+        const alignSelf = c.alignSelf || align;
+        if (!alignSelf) {
+          return;
+        } else if (alignSelf === 'flexStart') {
+          c[crossProp] = crossStart + (c[crossMarginOne] || 0);
+        } else if (alignSelf === 'center') {
+          c[crossProp] =
+            crossStart +
+            (containerCrossSize - (c[crossDimension] || 0)) / 2 +
+            (c[crossMarginOne] || 0);
+        } else if (alignSelf === 'flexEnd') {
+          c[crossProp] =
+            crossStart +
+            containerCrossSize -
+            (c[crossDimension] || 0) -
+            (c[crossMarginTwo] || 0);
         }
-      : (c: ElementNode) => c;
+      }
+    : (c: ElementNode) => c;
 
   if (isRow && node._calcHeight && !node.flexCrossBoundary) {
     // Assuming all the children have the same height
@@ -113,15 +124,34 @@ export default function (node: ElementNode): boolean {
 
   if (justify === 'flexStart') {
     let start = node.padding || 0;
-    for (let i = 0; i < children.length; i++) {
-      const c = children[i]!;
-      c[prop] = start + (c[marginOne] || 0);
-      start +=
-        (c[dimension] || 0) + gap + (c[marginOne] || 0) + (c[marginTwo] || 0);
-      crossAlignChild(c);
+    if (node.flexWrap === 'wrap') {
+      let crossStart = 0;
+      const crossGap = isRow ? (node.columnGap ?? gap) : (node.rowGap ?? gap);
+      for (let i = 0; i < children.length; i++) {
+        const c = children[i]!;
+        const nextSize =
+          (c[dimension] || 0) + (c[marginOne] || 0) + (c[marginTwo] || 0);
+        if (start + nextSize > containerSize) {
+          start = node.padding || 0;
+          crossStart += containerCrossSize + crossGap;
+        }
+        c[prop] = start + (c[marginOne] || 0);
+        start += nextSize + gap;
+        crossAlignChild(c, crossStart);
+      }
+      node[`preFlex${crossDimension}`] = containerCrossSize;
+      node[crossDimension] = crossStart + containerCrossSize;
+    } else {
+      for (let i = 0; i < children.length; i++) {
+        const c = children[i]!;
+        c[prop] = start + (c[marginOne] || 0);
+        start +=
+          (c[dimension] || 0) + gap + (c[marginOne] || 0) + (c[marginTwo] || 0);
+        crossAlignChild(c);
+      }
     }
     // Update container size
-    if (node.flexBoundary !== 'fixed') {
+    if (node.flexBoundary !== 'fixed' && node.flexWrap !== 'wrap') {
       const calculatedSize = start - gap + (node.padding || 0);
       if (calculatedSize !== containerSize) {
         // store the original size for Row & Column
