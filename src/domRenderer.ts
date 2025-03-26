@@ -522,7 +522,6 @@ function resolveTextNodeDefaults(
     textBaseline: props.textBaseline ?? 'alphabetic',
     verticalAlign: props.verticalAlign ?? 'middle',
     overflowSuffix: props.overflowSuffix ?? '...',
-    wordBreak: props.wordBreak ?? 'normal',
     debug: props.debug ?? {},
   };
 }
@@ -1003,13 +1002,6 @@ class DOMText extends DOMNode {
   }
   set offsetY(v) {
     this.props.offsetY = v;
-    updateNodeStyles(this);
-  }
-  get wordBreak() {
-    return this.props.wordBreak;
-  }
-  set wordBreak(v) {
-    this.props.wordBreak = v;
     updateNodeStyles(this);
   }
   get debug() {
