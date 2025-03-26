@@ -1076,6 +1076,9 @@ export class DOMRendererMain implements IRendererMain {
       fontManager: {
         addFontFace: () => {},
       },
+      shManager: {
+        registerShaderType() {},
+      },
     };
 
     this.root = new DOMNode(this.stage, {

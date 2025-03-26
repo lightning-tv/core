@@ -17,6 +17,12 @@ export interface IRendererStage {
   root: IRendererNode;
   renderer: IRendererCoreRenderer;
   fontManager: IRendererFontManager;
+  shManager: IRendererShaderManager;
+}
+
+/** Based on {@link lng.CoreShaderManager} */
+export interface IRendererShaderManager {
+  registerShaderType: (name: string, shader: any) => void;
 }
 
 /** Based on {@link lng.CoreShaderNode} */
