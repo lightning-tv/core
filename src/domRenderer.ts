@@ -404,21 +404,33 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
 const textNodesToMeasure = new Set<DOMText>();
 
+type Size = { width: number; height: number };
+
+function getElSize(el: Element): Size {
+  let rect = el.getBoundingClientRect();
+  rect.height = Math.ceil(rect.height);
+  rect.width = Math.ceil(rect.width);
+  return rect;
+}
+
 function updateTextNodeMeasurements() {
   for (let node of textNodesToMeasure) {
+    let size: Size;
     switch (node.contain) {
       case 'width':
-        if (node.props.height !== node.el.clientHeight) {
-          node.props.height = node.el.clientHeight;
+        size = getElSize(node.el);
+        if (node.props.height !== size.height) {
+          node.props.height = size.height;
           node.emit('loaded');
         }
       case 'none':
+        size = getElSize(node.el);
         if (
-          node.props.height !== node.el.clientHeight ||
-          node.props.width !== node.el.clientWidth
+          node.props.height !== size.height ||
+          node.props.width !== size.width
         ) {
-          node.props.width = node.el.clientWidth;
-          node.props.height = node.el.clientHeight;
+          node.props.width = size.width;
+          node.props.height = size.height;
           node.emit('loaded');
         }
     }
