@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@lightningjs/renderer':
-        specifier: ^3.0.0-beta3
-        version: 3.0.0-beta3
+        specifier: ^3.0.0-beta4
+        version: 3.0.0-beta4
     devDependencies:
       '@eslint/js':
         specifier: ^9.15.0
@@ -267,8 +267,8 @@ packages:
     resolution: {integrity: sha512-m+Trk77mp54Zma6xLkLuY+mvanPxlE4A7yNKs2HBiyZ4UkVs28Mv5c/pgWrHeInx+USHeX/WEPzjrWrcJiQgjw==}
     engines: {node: '>=18'}
 
-  '@lightningjs/renderer@3.0.0-beta3':
-    resolution: {integrity: sha512-zesySXNd4TVVegR2qd3Ps8KPjN93NUo035AXji0p4pPmPLJHr/ZDD/S1cmxbRMW33FI9FpDzGIzoWo8pcwpuPA==}
+  '@lightningjs/renderer@3.0.0-beta4':
+    resolution: {integrity: sha512-a1YM99eiTHyok1Vp29G5+526JTML4XOxInfiChFjSV4byJ02FoAt1ou76B/gCMIWpOKg07lhDk5c+I/RamugFQ==}
     engines: {node: '>= 18.0.0', npm: '>= 10.0.0', pnpm: '>= 8.9.2'}
 
   '@nodelib/fs.scandir@2.1.5':
@@ -2035,7 +2035,7 @@ snapshots:
 
   '@inquirer/figures@1.0.7': {}
 
-  '@lightningjs/renderer@3.0.0-beta3': {}
+  '@lightningjs/renderer@3.0.0-beta4': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
