@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@lightningjs/renderer':
-        specifier: ^3.0.0-beta3
+        specifier: ^3.0.0-beta4
         version: 3.0.0-beta4
     devDependencies:
       '@eslint/js':

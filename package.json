@@ -3,17 +3,20 @@
   "version": "3.0.0-0",
   "description": "Lightning TV Core for Universal Renderers",
   "type": "module",
-  "main": "./dist/src/index.js",
-  "browser": "./dist/src/index.js",
-  "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/src/index.d.ts",
-      "import": "./dist/src/index.js"
+      "import": {
+        "@lightningtv/source": "./src/index.ts",
+        "types": "./dist/src/index.d.ts",
+        "default": "./dist/src/index.js"
+      }
     },
     "./focusManager": {
-      "types": "./dist/src/focusManager.d.ts",
-      "import": "./dist/src/focusManager.js"
+      "import": {
+        "@lightningtv/source": "./src/focusManager.ts",
+        "types": "./dist/src/focusManager.d.ts",
+        "default": "./dist/src/focusManager.js"
+      }
     }
   },
   "sideEffects": false,
@@ -43,7 +46,7 @@
   "author": "Chris Lorenzo",
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@lightningjs/renderer": "^3.0.0-beta3"
+    "@lightningjs/renderer": "^3.0.0-beta4"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
