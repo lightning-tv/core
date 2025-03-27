@@ -57,7 +57,7 @@ function runLayout() {
 
 type ShaderProps = Record<string, any>;
 function convertEffectsToShader(_node: ElementNode, v: StyleEffects): any {
-  const { border, shadow, rounded, radius } = v;
+  const { border, shadow, rounded } = v;
   const props: ShaderProps = {};
 
   const parseAndAssignProps = (prefix: string, obj: Record<string, any>) => {
@@ -68,7 +68,7 @@ function convertEffectsToShader(_node: ElementNode, v: StyleEffects): any {
 
   if (border) parseAndAssignProps('border', border);
   if (shadow) parseAndAssignProps('shadow', shadow);
-  if (rounded) Object.assign(props, rounded, radius);
+  if (rounded) Object.assign(props, rounded);
 
   const typeParts = ['rounded'];
   if (border) typeParts.push('WithBorder');
