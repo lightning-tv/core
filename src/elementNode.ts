@@ -459,7 +459,8 @@ export class ElementNode extends Object {
     props: Partial<INodeAnimateProps>,
     animationSettings?: AnimationSettings,
   ): IAnimationController {
-    assertTruthy(this.rendered, 'Node must be rendered before animating');
+    isDev &&
+      assertTruthy(this.rendered, 'Node must be rendered before animating');
     return (this.lng as INode).animate(
       props,
       animationSettings || this.animationSettings || {},
@@ -715,7 +716,7 @@ export class ElementNode extends Object {
 
   updateLayout() {
     if (this.hasChildren) {
-      log('Layout: ', this);
+      isDev && log('Layout: ', this);
 
       if (this.display === 'flex') {
         if (calculateFlex(this)) {
@@ -730,7 +731,7 @@ export class ElementNode extends Object {
   }
 
   _stateChanged() {
-    log('State Changed: ', this, this.states);
+    isDev && log('State Changed: ', this, this.states);
 
     if (this.forwardStates) {
       // apply states to children first
@@ -891,7 +892,7 @@ export class ElementNode extends Object {
         props.shader = convertEffectsToShader(node, node._effects);
       }
 
-      log('Rendering: ', this, props);
+      isDev && log('Rendering: ', this, props);
       node.lng = renderer.createTextNode(props as unknown as ITextNodeProps);
       if (parent.requiresLayout()) {
         if (!props.width || !props.height) {
@@ -927,7 +928,7 @@ export class ElementNode extends Object {
         props.shader = convertEffectsToShader(node, node._effects);
       }
 
-      log('Rendering: ', this, props);
+      isDev && log('Rendering: ', this, props);
       node.lng = renderer.createNode(props as INodeProps);
     }
 
@@ -961,7 +962,7 @@ export class ElementNode extends Object {
       const numChildren = node.children.length;
       for (let i = 0; i < numChildren; i++) {
         const c = node.children[i];
-        assertTruthy(c, 'Child is undefined');
+        isDev && assertTruthy(c, 'Child is undefined');
         if (isElementNode(c)) {
           c.render();
         }
