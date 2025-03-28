@@ -16,6 +16,7 @@ export interface Config {
   rendererOptions?: Partial<RendererMainSettings>;
   setActiveElement: (elm: ElementNode) => void;
   focusStateKey: DollarString;
+  domRendering: boolean;
   lockStyles?: boolean;
 }
 
@@ -44,4 +45,5 @@ export const Config: Config = {
   },
   setActiveElement: () => {},
   focusStateKey: '$focus',
+  domRendering: false,
 };

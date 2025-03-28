@@ -1,4 +1,9 @@
-import { renderer } from './lightningInit.js';
+import {
+  IRendererNode,
+  IRendererNodeProps,
+  IRendererTextNode,
+  renderer,
+} from './lightningInit.js';
 import {
   type BorderRadius,
   type BorderStyle,
@@ -33,12 +38,11 @@ import type {
   RendererMain,
   INode,
   INodeAnimateProps,
-  INodeProps,
   ITextNodeProps,
   IAnimationController,
   LinearGradientProps,
   RadialGradientProps,
-  ITextNode,
+  CoreShaderNode,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -199,7 +203,7 @@ export interface ElementNode extends RendererNode {
   // Properties
   _animationQueue?:
     | Array<{
-        props: Partial<INodeAnimateProps>;
+        props: Partial<INodeAnimateProps<CoreShaderNode>>;
         animationSettings?: AnimationSettings;
       }>
     | undefined;
@@ -227,7 +231,7 @@ export interface ElementNode extends RendererNode {
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
   forwardStates?: boolean;
-  lng: INode | Partial<ElementNode> | ITextNode;
+  lng: Partial<ElementNode> | IRendererNode | IRendererTextNode;
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   rendered: boolean;
   renderer?: RendererMain;
@@ -361,7 +365,7 @@ export class ElementNode extends Object {
   set parent(p) {
     this._parent = p;
     if (this.rendered) {
-      this.lng.parent = (p?.lng as INode) ?? null;
+      this.lng.parent = (p?.lng as IRendererNode) ?? null;
     }
   }
 
@@ -408,7 +412,7 @@ export class ElementNode extends Object {
   set shader(
     shaderProps:
       | Parameters<typeof renderer.createShader>
-      | ReturnType<RendererMain['createShader']>,
+      | ReturnType<typeof renderer.createShader>,
   ) {
     let shProps = shaderProps;
     if (isArray(shaderProps)) {
@@ -452,23 +456,23 @@ export class ElementNode extends Object {
       return animationController.start();
     }
 
-    (this.lng[name as keyof INode] as number | string) = value;
+    (this.lng[name as keyof IRendererNodeProps] as number | string) = value;
   }
 
   animate(
-    props: Partial<INodeAnimateProps>,
+    props: Partial<INodeAnimateProps<CoreShaderNode>>,
     animationSettings?: AnimationSettings,
   ): IAnimationController {
     isDev &&
       assertTruthy(this.rendered, 'Node must be rendered before animating');
-    return (this.lng as INode).animate(
+    return (this.lng as IRendererNode).animate(
       props,
       animationSettings || this.animationSettings || {},
     );
   }
 
   chain(
-    props: Partial<INodeAnimateProps>,
+    props: Partial<INodeAnimateProps<CoreShaderNode>>,
     animationSettings?: AnimationSettings,
   ) {
     if (this._animationRunning) {
@@ -544,7 +548,7 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on('loaded', () => {
+    (this.lng as IRendererNode).on('loaded', () => {
       this.parent!.updateLayout();
     });
   }
@@ -794,7 +798,7 @@ export class ElementNode extends Object {
 
   render(topNode?: boolean) {
     // Elements are inserted from the inside out, then rendered from the outside in.
-    // Render starts when an element is insertered with a parent that is already renderered.
+    // Render starts when an element is inserted with a parent that is already renderered.
     const node = this;
     const parent = this.parent;
 
@@ -825,7 +829,7 @@ export class ElementNode extends Object {
     const props = node.lng;
     props.x = props.x || 0;
     props.y = props.y || 0;
-    props.parent = parent.lng as INode;
+    props.parent = parent.lng as IRendererNode;
 
     if (this.right || this.right === 0) {
       props.x = (parent.width || 0) - this.right;
@@ -929,7 +933,7 @@ export class ElementNode extends Object {
       }
 
       isDev && log('Rendering: ', this, props);
-      node.lng = renderer.createNode(props as INodeProps);
+      node.lng = renderer.createNode(props as IRendererNodeProps);
     }
 
     node.rendered = true;
