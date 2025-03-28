@@ -1,4 +1,9 @@
-import { renderer } from './lightningInit.js';
+import {
+  IRendererNode,
+  IRendererNodeProps,
+  IRendererTextNode,
+  renderer,
+} from './lightningInit.js';
 import {
   type BorderRadius,
   type BorderStyle,
@@ -33,14 +38,11 @@ import type {
   RendererMain,
   INode,
   INodeAnimateProps,
-  INodeProps,
-  LinearGradientEffectProps,
   ITextNodeProps,
   IAnimationController,
-  EffectDescUnion,
-  ShaderController,
-  RadialGradientEffectProps,
-  RadialProgressEffectProps,
+  LinearGradientProps,
+  RadialGradientProps,
+  CoreShaderNode,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -57,17 +59,39 @@ function runLayout() {
   }
 }
 
-function convertEffectsToShader(
-  node: ElementNode,
-  styleEffects: StyleEffects,
-): ShaderController<'DynamicShader'> {
-  const effects: EffectDescUnion[] = [];
-  for (const type in styleEffects) {
-    // @ts-ignore getting the right type info is hard
-    effects.push(renderer.createEffect(type, styleEffects[type], type));
-  }
-  return renderer.createShader('DynamicShader', { effects });
+type ShaderProps = Record<string, any>;
+function convertEffectsToShader(_node: ElementNode, v: StyleEffects): any {
+  const { border, shadow, rounded } = v;
+  const props: ShaderProps = {};
+
+  const parseAndAssignProps = (prefix: string, obj: Record<string, any>) => {
+    Object.entries(obj).forEach(([key, value]) => {
+      props[`${prefix}-${key}`] = value;
+    });
+  };
+
+  if (border) parseAndAssignProps('border', border);
+  if (shadow) parseAndAssignProps('shadow', shadow);
+  if (rounded) Object.assign(props, rounded);
+
+  const typeParts = ['rounded'];
+  if (border) typeParts.push('WithBorder');
+  if (shadow) typeParts.push('WithShadow');
+
+  return renderer.createShader(typeParts.join(''), props);
 }
+
+// function convertEffectsToShader(
+//   _node: ElementNode,
+//   styleEffects: StyleEffects,
+// ): CoreShaderNode<any> {
+//   const effects: CoreShaderNode<any>[] = [];
+//   for (const type in styleEffects) {
+//     // @ts-ignore getting the right type info is hard
+//     effects.push(renderer.createEffect(type, styleEffects[type], type));
+//   }
+//   return renderer.createShader('DynamicShader', { effects });
+// }
 
 function updateShaderEffects(
   node: ElementNode,
@@ -179,7 +203,7 @@ export interface ElementNode extends RendererNode {
   // Properties
   _animationQueue?:
     | Array<{
-        props: Partial<INodeAnimateProps>;
+        props: Partial<INodeAnimateProps<CoreShaderNode>>;
         animationSettings?: AnimationSettings;
       }>
     | undefined;
@@ -207,7 +231,7 @@ export interface ElementNode extends RendererNode {
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
   forwardStates?: boolean;
-  lng: INode | Partial<ElementNode>;
+  lng: Partial<ElementNode> | IRendererNode | IRendererTextNode;
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   rendered: boolean;
   renderer?: RendererMain;
@@ -241,9 +265,8 @@ export interface ElementNode extends RendererNode {
     | 'center'
     | 'spaceBetween'
     | 'spaceEvenly';
-  linearGradient?: LinearGradientEffectProps;
-  radialGradient?: RadialGradientEffectProps;
-  radialProgress?: RadialProgressEffectProps;
+  linearGradient?: LinearGradientProps;
+  radialGradient?: RadialGradientProps;
   marginBottom?: number;
   marginLeft?: number;
   marginRight?: number;
@@ -342,7 +365,7 @@ export class ElementNode extends Object {
   set parent(p) {
     this._parent = p;
     if (this.rendered) {
-      this.lng.parent = (p?.lng as INode) ?? null;
+      this.lng.parent = (p?.lng as IRendererNode) ?? null;
     }
   }
 
@@ -389,7 +412,7 @@ export class ElementNode extends Object {
   set shader(
     shaderProps:
       | Parameters<typeof renderer.createShader>
-      | ReturnType<RendererMain['createShader']>,
+      | ReturnType<typeof renderer.createShader>,
   ) {
     let shProps = shaderProps;
     if (isArray(shaderProps)) {
@@ -433,23 +456,23 @@ export class ElementNode extends Object {
       return animationController.start();
     }
 
-    (this.lng[name as keyof INode] as number | string) = value;
+    (this.lng[name as keyof IRendererNodeProps] as number | string) = value;
   }
 
   animate(
-    props: Partial<INodeAnimateProps>,
+    props: Partial<INodeAnimateProps<CoreShaderNode>>,
     animationSettings?: AnimationSettings,
   ): IAnimationController {
     isDev &&
       assertTruthy(this.rendered, 'Node must be rendered before animating');
-    return (this.lng as INode).animate(
+    return (this.lng as IRendererNode).animate(
       props,
       animationSettings || this.animationSettings || {},
     );
   }
 
   chain(
-    props: Partial<INodeAnimateProps>,
+    props: Partial<INodeAnimateProps<CoreShaderNode>>,
     animationSettings?: AnimationSettings,
   ) {
     if (this._animationRunning) {
@@ -525,7 +548,7 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on('loaded', () => {
+    (this.lng as IRendererNode).on('loaded', () => {
       this.parent!.updateLayout();
     });
   }
@@ -775,7 +798,7 @@ export class ElementNode extends Object {
 
   render(topNode?: boolean) {
     // Elements are inserted from the inside out, then rendered from the outside in.
-    // Render starts when an element is insertered with a parent that is already renderered.
+    // Render starts when an element is inserted with a parent that is already renderered.
     const node = this;
     const parent = this.parent;
 
@@ -806,7 +829,7 @@ export class ElementNode extends Object {
     const props = node.lng;
     props.x = props.x || 0;
     props.y = props.y || 0;
-    props.parent = parent.lng as INode;
+    props.parent = parent.lng as IRendererNode;
 
     if (this.right || this.right === 0) {
       props.x = (parent.width || 0) - this.right;
@@ -910,7 +933,7 @@ export class ElementNode extends Object {
       }
 
       isDev && log('Rendering: ', this, props);
-      node.lng = renderer.createNode(props as INodeProps);
+      node.lng = renderer.createNode(props as IRendererNodeProps);
     }
 
     node.rendered = true;
@@ -1009,25 +1032,20 @@ Object.defineProperties(ElementNode.prototype, {
   borderRight: borderAccessor('Right'),
   borderTop: borderAccessor('Top'),
   borderBottom: borderAccessor('Bottom'),
-  linearGradient:
-    createEffectAccessor<LinearGradientEffectProps>('linearGradient'),
-  radialGradient:
-    createEffectAccessor<RadialGradientEffectProps>('radialGradient'),
-  radialProgress: createEffectAccessor<RadialProgressEffectProps>(
-    'radialProgressGradient',
-  ),
+  linearGradient: createEffectAccessor<LinearGradientProps>('linearGradient'),
+  radialGradient: createEffectAccessor<RadialGradientProps>('radialGradient'),
   borderRadius: {
     set(this: ElementNode, radius: BorderRadius) {
       this.effects = this.effects
         ? {
             ...this.effects,
-            radius: { radius },
+            rounded: { radius },
           }
-        : { radius: { radius } };
+        : { rounded: { radius } };
     },
 
     get(this: ElementNode): BorderRadius | undefined {
-      return this.effects?.radius?.radius;
+      return this.effects?.rounded?.radius;
     },
   },
 });
