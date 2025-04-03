@@ -1040,15 +1040,10 @@ function updateRootPosition(this: DOMRendererMain) {
   let top = document.documentElement.scrollTop + rect.top;
   let left = document.documentElement.scrollLeft + rect.left;
 
-  let height = Math.ceil(
-    settings.appHeight ?? 1080 / (settings.deviceLogicalPixelRatio ?? 1),
-  );
-  let width = Math.ceil(
-    settings.appWidth ?? 1920 / (settings.deviceLogicalPixelRatio ?? 1),
-  );
+  let dpr = settings.deviceLogicalPixelRatio ?? 1;
 
-  let scaleX = settings.deviceLogicalPixelRatio ?? 1;
-  let scaleY = settings.deviceLogicalPixelRatio ?? 1;
+  let height = Math.ceil(settings.appHeight ?? 1080 / dpr);
+  let width = Math.ceil(settings.appWidth ?? 1920 / dpr);
 
   this.root.el.style.left = `${left}px`;
   this.root.el.style.top = `${top}px`;
@@ -1056,7 +1051,7 @@ function updateRootPosition(this: DOMRendererMain) {
   this.root.el.style.height = `${height}px`;
   this.root.el.style.position = 'absolute';
   this.root.el.style.transformOrigin = '0 0 0';
-  this.root.el.style.transform = `scale(${scaleX}, ${scaleY})`;
+  this.root.el.style.transform = `scale(${dpr}, ${dpr})`;
   this.root.el.style.overflow = 'hidden';
   this.root.el.style.zIndex = '65534';
 }
@@ -1097,7 +1092,7 @@ export class DOMRendererMain implements IRendererMain {
       x: 0,
       y: 0,
       width: settings.appWidth ?? 1920,
-      height: settings.appWidth ?? 1080,
+      height: settings.appHeight ?? 1080,
       alpha: 1,
       autosize: false,
       boundsMargin: null,
