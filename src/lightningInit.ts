@@ -41,14 +41,17 @@ export interface IRendererTexture {
 }
 export interface IRendererTextureProps {}
 
-export interface IRendererNodeShaded {
+export interface IEventEmitter {
+  on: (e: string, cb: (...a: any[]) => void) => void;
+}
+
+export interface IRendererNodeShaded extends IEventEmitter {
   stage: IRendererStage;
   id: number;
   animate: (
     props: Partial<lng.INodeAnimateProps<any>>,
     settings: Partial<lng.AnimationSettings>,
   ) => lng.IAnimationController;
-  on: (e: string, cb: (...a: any[]) => void) => void;
   get absX(): number;
   get absY(): number;
 }
@@ -62,6 +65,7 @@ export interface IRendererNodeProps
 /** Based on {@link lng.INode} */
 export interface IRendererNode extends IRendererNodeShaded, IRendererNodeProps {
   props: IRendererNodeProps;
+  renderState: lng.CoreNodeRenderState;
 }
 
 /** Based on {@link lng.ITextNodeProps} */
@@ -75,11 +79,13 @@ export interface IRendererTextNode
   extends IRendererNodeShaded,
     IRendererTextNodeProps {
   props: IRendererTextNodeProps;
+  renderState: lng.CoreNodeRenderState;
 }
 
 /** Based on {@link lng.RendererMain} */
-export interface IRendererMain {
+export interface IRendererMain extends IEventEmitter {
   stage: IRendererStage;
+  root: IRendererNode;
   createTextNode: (props: Partial<IRendererTextNodeProps>) => IRendererTextNode;
   createNode: (props: Partial<IRendererNodeProps>) => IRendererNode;
   createShader: (kind: string, props: IRendererShaderProps) => IRendererShader;

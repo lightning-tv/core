@@ -550,6 +550,8 @@ class DOMNode extends EventEmitter implements IRendererNode {
   el = document.createElement('div');
   id = ++lastNodeId;
 
+  renderState: lng.CoreNodeRenderState = 0 /* Init */;
+
   constructor(
     public stage: IRendererStage,
     public props: IRendererNodeProps,
