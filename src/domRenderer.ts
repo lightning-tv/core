@@ -402,10 +402,11 @@ const textNodesToMeasure = new Set<DOMText>();
 
 type Size = { width: number; height: number };
 
-function getElSize(el: Element): Size {
-  let rect = el.getBoundingClientRect();
-  rect.height = Math.ceil(rect.height);
-  rect.width = Math.ceil(rect.width);
+function getElSize(node: DOMNode): Size {
+  let rect = node.el.getBoundingClientRect();
+  let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
+  rect.height = Math.ceil(rect.height / dpr);
+  rect.width = Math.ceil(rect.width / dpr);
   return rect;
 }
 
@@ -414,14 +415,14 @@ function updateTextNodeMeasurements() {
     let size: Size;
     switch (node.contain) {
       case 'width':
-        size = getElSize(node.el);
+        size = getElSize(node);
         if (node.props.height !== size.height) {
           node.props.height = size.height;
           node.emit('loaded');
         }
         break;
       case 'none':
-        size = getElSize(node.el);
+        size = getElSize(node);
         if (
           node.props.height !== size.height ||
           node.props.width !== size.width
