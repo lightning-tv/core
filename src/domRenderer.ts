@@ -304,7 +304,6 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
       style += `font-stretch: ${textProps.fontStretch};`;
     if (textProps.lineHeight != null)
       style += `line-height: ${textProps.lineHeight}px;`;
-    else style += `line-height: 1;`; // same as font-size
     if (textProps.letterSpacing)
       style += `letter-spacing: ${textProps.letterSpacing}px;`;
     if (textProps.textAlign !== 'left')
