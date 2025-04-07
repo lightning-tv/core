@@ -240,15 +240,17 @@ function updateNodeParent(node: DOMNode | DOMText) {
 }
 
 function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
-  let style = `position: absolute; z-index: ${node.zIndex};`;
+  let { props } = node;
 
-  if (node.alpha !== 1) style += `opacity: ${node.alpha};`;
+  let style = `position: absolute; z-index: ${props.zIndex};`;
 
-  if (node.width !== 0) style += `width: ${node.width}px;`;
+  if (props.alpha !== 1) style += `opacity: ${props.alpha};`;
 
-  if (node.height !== 0) style += `height: ${node.height}px;`;
+  if (props.width !== 0) style += `width: ${props.width}px;`;
 
-  if (node.clipping) {
+  if (props.height !== 0) style += `height: ${props.height}px;`;
+
+  if (props.clipping) {
     style += `overflow: hidden;`;
   }
 
@@ -256,26 +258,27 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
   {
     let transform = '';
 
-    let { x, y } = node;
+    let { x, y } = props;
 
-    if (node.mountX != null) {
-      x -= (node.width ?? 0) * node.mountX;
+    if (props.mountX != null) {
+      x -= (props.width ?? 0) * props.mountX;
     }
 
-    if (node.mountY != null) {
-      y -= (node.height ?? 0) * node.mountY;
+    if (props.mountY != null) {
+      y -= (props.height ?? 0) * props.mountY;
     }
 
     if (x !== 0) transform += `translateX(${x}px)`;
 
     if (y !== 0) transform += `translateY(${y}px)`;
 
-    if (node.rotation !== 0) transform += `rotate(${node.rotation}rad)`;
+    if (props.rotation !== 0) transform += `rotate(${props.rotation}rad)`;
 
-    if (node.scale !== 1) transform += `scale(${node.scale})`;
+    if (props.scale !== 1 && props.scale != null)
+      transform += `scale(${props.scale})`;
     else {
-      if (node.scaleX !== 1) transform += `scaleX(${node.scaleX})`;
-      if (node.scaleY !== 1) transform += `scaleY(${node.scaleY})`;
+      if (props.scaleX !== 1) transform += `scaleX(${props.scaleX})`;
+      if (props.scaleY !== 1) transform += `scaleY(${props.scaleY})`;
     }
 
     if (transform.length > 0) {
@@ -285,30 +288,37 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
 
   // <Text>
   if (node instanceof DOMText) {
-    if (node.color != null && node.color !== 0) {
-      style += `color: ${colorToRgba(node.color)};`;
+    let textProps = node.props;
+
+    if (textProps.color != null && textProps.color !== 0) {
+      style += `color: ${colorToRgba(textProps.color)};`;
     }
 
-    if (node.fontFamily) style += `font-family: ${node.fontFamily};`;
-    if (node.fontSize) style += `font-size: ${node.fontSize}px;`;
-    if (node.fontStyle !== 'normal') style += `font-style: ${node.fontStyle};`;
-    if (node.fontWeight !== 'normal')
-      style += `font-weight: ${node.fontWeight};`;
-    if (node.fontStretch !== 'normal')
-      style += `font-stretch: ${node.fontStretch};`;
-    if (node.lineHeight != null) style += `line-height: ${node.lineHeight}px;`;
-    if (node.letterSpacing) style += `letter-spacing: ${node.letterSpacing}px;`;
-    if (node.textAlign !== 'left') style += `text-align: ${node.textAlign};`;
+    if (textProps.fontFamily) style += `font-family: ${textProps.fontFamily};`;
+    if (textProps.fontSize) style += `font-size: ${textProps.fontSize}px;`;
+    if (textProps.fontStyle !== 'normal')
+      style += `font-style: ${textProps.fontStyle};`;
+    if (textProps.fontWeight !== 'normal')
+      style += `font-weight: ${textProps.fontWeight};`;
+    if (textProps.fontStretch !== 'normal')
+      style += `font-stretch: ${textProps.fontStretch};`;
+    if (textProps.lineHeight != null)
+      style += `line-height: ${textProps.lineHeight}px;`;
+    else style += `line-height: 1;`; // same as font-size
+    if (textProps.letterSpacing)
+      style += `letter-spacing: ${textProps.letterSpacing}px;`;
+    if (textProps.textAlign !== 'left')
+      style += `text-align: ${textProps.textAlign};`;
     // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
-    if (node.maxLines > 0) {
+    if (textProps.maxLines > 0) {
       // https://stackoverflow.com/a/13924997
       style += `display: -webkit-box;
         overflow: hidden;
-        -webkit-line-clamp: ${node.maxLines};
-        line-clamp: ${node.maxLines};
+        -webkit-line-clamp: ${textProps.maxLines};
+        line-clamp: ${textProps.maxLines};
         -webkit-box-orient: vertical;`;
     }
-    if (node.contain !== 'none') {
+    if (textProps.contain !== 'none') {
       style += `overflow: hidden;`;
     }
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
@@ -318,25 +328,25 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
     let bgImg: string[] = [];
     let bgPos: null | { x: number; y: number } = null;
 
-    if (node.colorBottom !== node.colorTop) {
+    if (props.colorBottom !== props.colorTop) {
       bgImg.push(
-        `linear-gradient(${colorToRgba(node.colorTop)}, ${colorToRgba(node.colorBottom)})`,
+        `linear-gradient(${colorToRgba(props.colorTop)}, ${colorToRgba(props.colorBottom)})`,
       );
     }
-    if (node.colorLeft !== node.colorRight) {
+    if (props.colorLeft !== props.colorRight) {
       bgImg.push(
-        `linear-gradient(to right, ${colorToRgba(node.colorLeft)}, ${colorToRgba(node.colorRight)})`,
+        `linear-gradient(to right, ${colorToRgba(props.colorLeft)}, ${colorToRgba(props.colorRight)})`,
       );
     }
 
     if (
-      node.texture != null &&
-      node.texture.type === lng.TextureType.subTexture
+      props.texture != null &&
+      props.texture.type === lng.TextureType.subTexture
     ) {
-      bgPos = (node.texture as any).props;
-      bgImg.push(`url(${(node.texture as any).props.texture.props.src})`);
-    } else if (node.src) {
-      bgImg.push(`url(${node.src})`);
+      bgPos = (props.texture as any).props;
+      bgImg.push(`url(${(props.texture as any).props.texture.props.src})`);
+    } else if (props.src) {
+      bgImg.push(`url(${props.src})`);
     }
 
     if (bgImg.length > 0) {
@@ -347,8 +357,8 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
         style += 'background-size: 100% 100%;';
       }
 
-      if (node.color !== 0xffffffff && node.color !== 0) {
-        style += `background-color: ${colorToRgba(node.color)};`;
+      if (props.color !== 0xffffffff && props.color !== 0) {
+        style += `background-color: ${colorToRgba(props.color)};`;
         style += `mask-image: ${bgImg.join(',')};`;
         if (bgPos !== null) {
           style += `mask-position: -${bgPos.x}px -${bgPos.y}px;`;
@@ -356,12 +366,12 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
           style += `mask-size: 100% 100%;`;
         }
       }
-    } else if (node.color !== 0) {
-      style += `background-color: ${colorToRgba(node.color)};`;
+    } else if (props.color !== 0) {
+      style += `background-color: ${colorToRgba(props.color)};`;
     }
 
-    if (node.shader != null) {
-      let shader = node.shader.props;
+    if (props.shader != null) {
+      let shader = props.shader.props;
       if (shader != null) {
         // Border
         if (
@@ -1054,7 +1064,6 @@ function updateRootPosition(this: DOMRendererMain) {
   this.root.el.style.transformOrigin = '0 0 0';
   this.root.el.style.transform = `scale(${dpr}, ${dpr})`;
   this.root.el.style.overflow = 'hidden';
-  this.root.el.style.zIndex = '65534';
 }
 
 export class DOMRendererMain implements IRendererMain {
@@ -1089,66 +1098,19 @@ export class DOMRendererMain implements IRendererMain {
       },
     };
 
-    this.root = new DOMNode(this.stage, {
-      x: 0,
-      y: 0,
-      width: settings.appWidth ?? 1920,
-      height: settings.appHeight ?? 1080,
-      alpha: 1,
-      autosize: false,
-      boundsMargin: null,
-      clipping: false,
-      color: 0x00000000,
-      colorTop: 0x00000000,
-      colorBottom: 0x00000000,
-      colorLeft: 0x00000000,
-      colorRight: 0x00000000,
-      colorTl: 0x00000000,
-      colorTr: 0x00000000,
-      colorBl: 0x00000000,
-      colorBr: 0x00000000,
-      zIndex: 0,
-      zIndexLocked: 0,
-      scaleX: 1,
-      scaleY: 1,
-      mountX: 0,
-      mountY: 0,
-      mount: 0,
-      pivot: 0.5,
-      pivotX: 0.5,
-      pivotY: 0.5,
-      rotation: 0,
-      parent: null,
-      texture: null,
-      textureOptions: {},
-      shader: defaultShader,
-      rtt: false,
-      src: null,
-      scale: 1,
-      preventCleanup: false,
-      strictBounds: false,
-    });
-    this.stage.root = this.root;
-
-    if (Config.fontSettings.fontFamily != null) {
-      this.root.el.style.setProperty(
-        'font-family',
-        Config.fontSettings.fontFamily,
-      );
-    }
-    if (Config.fontSettings.fontSize != null) {
-      this.root.el.style.setProperty(
-        'font-size',
-        Config.fontSettings.fontSize + 'px',
-      );
-    }
-
-    this.root.el.style.setProperty(
-      'line-height',
-      Config.fontSettings.lineHeight
-        ? Config.fontSettings.lineHeight + 'px'
-        : '1', // 1 = same as font size
+    this.root = new DOMNode(
+      this.stage,
+      resolveTextNodeDefaults({
+        width: settings.appWidth ?? 1920,
+        height: settings.appHeight ?? 1080,
+        fontFamily: Config.fontSettings.fontFamily,
+        fontSize: Config.fontSettings.fontSize,
+        lineHeight: Config.fontSettings.lineHeight,
+        shader: defaultShader,
+        zIndex: 65534,
+      }),
     );
+    this.stage.root = this.root;
 
     updateRootPosition.call(this);
 
