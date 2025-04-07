@@ -419,6 +419,7 @@ function updateTextNodeMeasurements() {
           node.props.height = size.height;
           node.emit('loaded');
         }
+        break;
       case 'none':
         size = getElSize(node.el);
         if (
@@ -429,6 +430,7 @@ function updateTextNodeMeasurements() {
           node.props.height = size.height;
           node.emit('loaded');
         }
+        break;
     }
   }
   textNodesToMeasure.clear();
