@@ -240,17 +240,13 @@ function updateNodeParent(node: DOMNode | DOMText) {
 }
 
 function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
-  let style = 'position: absolute;';
+  let style = `position: absolute; z-index: ${node.zIndex};`;
 
   if (node.alpha !== 1) style += `opacity: ${node.alpha};`;
 
   if (node.width !== 0) style += `width: ${node.width}px;`;
 
   if (node.height !== 0) style += `height: ${node.height}px;`;
-
-  if (node.zIndex !== 0) {
-    style += `z-index: ${node.zIndex};`;
-  }
 
   if (node.clipping) {
     style += `overflow: hidden;`;
