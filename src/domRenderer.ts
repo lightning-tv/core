@@ -414,8 +414,8 @@ type Size = { width: number; height: number };
 function getElSize(node: DOMNode): Size {
   let rect = node.el.getBoundingClientRect();
   let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
-  rect.height = Math.ceil(rect.height / dpr);
-  rect.width = Math.ceil(rect.width / dpr);
+  rect.height = rect.height / dpr;
+  rect.width = rect.width / dpr;
   return rect;
 }
 
