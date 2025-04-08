@@ -513,7 +513,6 @@ function resolveNodeDefaults(
     rotation: props.rotation ?? 0,
     rtt: props.rtt ?? false,
     data: {},
-    preventCleanup: props.preventCleanup ?? false,
     imageType: props.imageType,
     strictBounds: props.strictBounds ?? false,
   };
@@ -715,13 +714,6 @@ class DOMNode extends EventEmitter implements IRendererNode {
   }
   set texture(v) {
     this.props.texture = v;
-    updateNodeStyles(this);
-  }
-  get preventCleanup() {
-    return this.props.preventCleanup;
-  }
-  set preventCleanup(v) {
-    this.props.preventCleanup = v;
     updateNodeStyles(this);
   }
   get textureOptions(): IRendererNode['textureOptions'] {
