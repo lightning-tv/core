@@ -32,6 +32,7 @@ import {
   isElementText,
   logRenderTree,
   isFunction,
+  spliceItem,
 } from './utils.js';
 import { Config, isDev, SHADERS_ENABLED } from './config.js';
 import type {
@@ -372,26 +373,27 @@ export class ElementNode extends Object {
     node: ElementNode | ElementText | TextNode,
     beforeNode?: ElementNode | ElementText | TextNode | null,
   ) {
+    if (node.parent && node.parent !== this) {
+      node.parent.removeChild(node);
+    }
+
     node.parent = this;
 
     if (beforeNode) {
       // SolidJS can move nodes around in the children array.
       // We need to insert following DOM insertBefore which moves elements.
-      this.removeChild(node);
-      const index = this.children.indexOf(beforeNode as ElementNode);
-      if (index >= 0) {
-        this.children.splice(index, 0, node as ElementNode);
+      spliceItem(this.children, node as ElementNode, 1);
+      if (spliceItem(this.children, beforeNode as ElementNode, 0, node) > -1) {
         return;
       }
     }
+
     this.children.push(node as ElementNode);
   }
 
   removeChild(node: ElementNode | ElementText | TextNode) {
-    const nodeIndexToRemove = this.children.indexOf(node as ElementNode);
-    if (nodeIndexToRemove >= 0) {
-      this.children.splice(nodeIndexToRemove, 1);
-    }
+    spliceItem(this.children, node as ElementNode, 1);
+    this.updateLayout();
   }
 
   get selectedNode(): ElementNode | undefined {
@@ -579,9 +581,6 @@ export class ElementNode extends Object {
   _destroy() {
     if (isINode(this.lng)) {
       this.lng.destroy();
-      if (this.parent?.requiresLayout()) {
-        this.parent.updateLayout();
-      }
     }
   }
 

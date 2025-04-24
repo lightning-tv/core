@@ -80,6 +80,19 @@ export function keyExists(
   return false;
 }
 
+export function spliceItem<T>(
+  arr: T[],
+  item: T,
+  deleteCount: number,
+  ...insert: T[]
+): number {
+  const index = arr.indexOf(item);
+  if (index > -1) {
+    arr.splice(index, deleteCount, ...insert);
+  }
+  return index;
+}
+
 export function flattenStyles(
   obj: Styles | undefined | (Styles | undefined)[],
   result: Styles = {},
