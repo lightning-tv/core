@@ -234,8 +234,6 @@ let elMap = new WeakMap<DOMNode, HTMLElement>();
 function updateNodeParent(node: DOMNode | DOMText) {
   if (node.parent != null) {
     elMap.get(node.parent as DOMNode)!.appendChild(node.el);
-  } else {
-    document.body.appendChild(node.el);
   }
 }
 
@@ -372,19 +370,28 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
     if (props.shader != null) {
       let shader = props.shader.props;
       if (shader != null) {
+        const borderWidth = shader['border-width'] as number | undefined;
+        const borderColor = shader['border-color'] as number | undefined;
+        const radius = shader['radius'] as
+          | number
+          | [number, number, number, number]
+          | undefined;
+
         // Border
         if (
-          typeof shader['border-width'] === 'number' &&
-          shader['border-width'] > 0 &&
-          typeof shader['border-color'] === 'number' &&
-          shader['border-color'] > 0
+          typeof borderWidth === 'number' &&
+          borderWidth !== 0 &&
+          typeof borderColor === 'number' &&
+          borderColor !== 0
         ) {
           // css border impacts the element's box size when box-shadow doesn't
-          style += `box-shadow: inset 0px 0px 0px ${shader['border-width']}px ${colorToRgba(shader['border-color'])};`;
+          style += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
         }
         // Rounded
-        if (typeof shader['radius'] === 'number' && shader['radius'] > 0) {
-          style += `border-radius: ${shader['radius']}px;`;
+        if (typeof radius === 'number' && radius > 0) {
+          style += `border-radius: ${radius}px;`;
+        } else if (Array.isArray(radius) && radius.length === 4) {
+          style += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
         }
       }
     }
@@ -1102,6 +1109,24 @@ export class DOMRendererMain implements IRendererMain {
       }),
     );
     this.stage.root = this.root;
+    document.body.appendChild(this.root.el);
+
+    if (Config.fontSettings.fontFamily) {
+      this.root.el.style.fontFamily = Config.fontSettings.fontFamily;
+    }
+    if (Config.fontSettings.fontSize) {
+      this.root.el.style.fontSize = Config.fontSettings.fontSize + 'px';
+    }
+    if (Config.fontSettings.lineHeight) {
+      this.root.el.style.lineHeight = Config.fontSettings.lineHeight + 'px';
+    }
+    if (Config.fontSettings.fontWeight) {
+      if (typeof Config.fontSettings.fontWeight === 'number') {
+        this.root.el.style.fontWeight = Config.fontSettings.fontWeight + 'px';
+      } else {
+        this.root.el.style.fontWeight = Config.fontSettings.fontWeight;
+      }
+    }
 
     updateRootPosition.call(this);
 
