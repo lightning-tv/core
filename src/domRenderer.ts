@@ -406,7 +406,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   node.el.setAttribute('style', getNodeStyles(node));
 
   if (node instanceof DOMText) {
-    scheduleUpdateTextNodeMeasurement(node);
+    scheduleUpdateDOMTextMeasurement(node);
   }
 }
 
@@ -429,34 +429,38 @@ function getElSize(node: DOMNode): Size {
   need to have their height or width calculated.
   And then cause the flex layout to be recalculated.
 */
-function updateTextNodeMeasurements() {
-  for (let node of textNodesToMeasure) {
-    let size: Size;
-    switch (node.contain) {
-      case 'width':
-        size = getElSize(node);
-        if (node.props.height !== size.height) {
-          node.props.height = size.height;
-          node.emit('loaded');
-        }
-        break;
-      case 'none':
-        size = getElSize(node);
-        if (
-          node.props.height !== size.height ||
-          node.props.width !== size.width
-        ) {
-          node.props.width = size.width;
-          node.props.height = size.height;
-          node.emit('loaded');
-        }
-        break;
-    }
+function updateDOMTextSize(node: DOMText): void {
+  let size: Size;
+  switch (node.contain) {
+    case 'width':
+      size = getElSize(node);
+      if (node.props.height !== size.height) {
+        node.props.height = size.height;
+        updateNodeStyles(node);
+        node.emit('loaded');
+      }
+      break;
+    case 'none':
+      size = getElSize(node);
+      if (
+        node.props.height !== size.height ||
+        node.props.width !== size.width
+      ) {
+        node.props.width = size.width;
+        node.props.height = size.height;
+        updateNodeStyles(node);
+        node.emit('loaded');
+      }
+      break;
   }
+}
+
+function updateDOMTextMeasurements() {
+  textNodesToMeasure.forEach(updateDOMTextSize);
   textNodesToMeasure.clear();
 }
 
-function scheduleUpdateTextNodeMeasurement(node: DOMText) {
+function scheduleUpdateDOMTextMeasurement(node: DOMText) {
   /*
     Make sure the font is loaded before measuring
   */
@@ -467,9 +471,9 @@ function scheduleUpdateTextNodeMeasurement(node: DOMText) {
 
   if (textNodesToMeasure.size === 0) {
     if (document.fonts.status === 'loaded') {
-      setTimeout(updateTextNodeMeasurements);
+      setTimeout(updateDOMTextMeasurements);
     } else {
-      document.fonts.ready.then(updateTextNodeMeasurements);
+      document.fonts.ready.then(updateDOMTextMeasurements);
     }
   }
 
@@ -920,7 +924,7 @@ class DOMText extends DOMNode {
   set text(v) {
     this.props.text = v;
     this.el.innerText = v;
-    scheduleUpdateTextNodeMeasurement(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontFamily() {
     return this.props.fontFamily;
