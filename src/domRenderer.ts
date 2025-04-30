@@ -408,11 +408,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   }
 }
 
-/*
-  Text nodes with contain 'width' or 'none'
-  need to have their height or width calculated.
-  And then cause the flex layout to be recalculated.
-*/
+const fontFamiliesToLoad = new Set<string>();
 
 const textNodesToMeasure = new Set<DOMText>();
 
@@ -426,6 +422,11 @@ function getElSize(node: DOMNode): Size {
   return rect;
 }
 
+/*
+  Text nodes with contain 'width' or 'none'
+  need to have their height or width calculated.
+  And then cause the flex layout to be recalculated.
+*/
 function updateTextNodeMeasurements() {
   for (let node of textNodesToMeasure) {
     let size: Size;
@@ -454,8 +455,20 @@ function updateTextNodeMeasurements() {
 }
 
 function scheduleUpdateTextNodeMeasurement(node: DOMText) {
+  /*
+    Make sure the font is loaded before measuring
+  */
+  if (node.fontFamily && !fontFamiliesToLoad.has(node.fontFamily)) {
+    fontFamiliesToLoad.add(node.fontFamily);
+    document.fonts.load(`16px ${node.fontFamily}`);
+  }
+
   if (textNodesToMeasure.size === 0) {
-    setTimeout(updateTextNodeMeasurements);
+    if (document.fonts.status === 'loaded') {
+      setTimeout(updateTextNodeMeasurements);
+    } else {
+      document.fonts.ready.then(updateTextNodeMeasurements);
+    }
   }
 
   textNodesToMeasure.add(node);
