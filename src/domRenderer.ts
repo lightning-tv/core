@@ -244,10 +244,6 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
 
   if (props.alpha !== 1) style += `opacity: ${props.alpha};`;
 
-  if (props.width !== 0) style += `width: ${props.width}px;`;
-
-  if (props.height !== 0) style += `height: ${props.height}px;`;
-
   if (props.clipping) {
     style += `overflow: hidden;`;
   }
@@ -272,12 +268,8 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
 
     if (props.rotation !== 0) transform += `rotate(${props.rotation}rad)`;
 
-    if (props.scale !== 1 && props.scale != null)
-      transform += `scale(${props.scale})`;
-    else {
-      if (props.scaleX !== 1) transform += `scaleX(${props.scaleX})`;
-      if (props.scaleY !== 1) transform += `scaleY(${props.scaleY})`;
-    }
+    if (props.scaleX !== 1) transform += `scaleX(${props.scaleX})`;
+    if (props.scaleY !== 1) transform += `scaleY(${props.scaleY})`;
 
     if (transform.length > 0) {
       style += `transform: ${transform};`;
@@ -315,13 +307,23 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
         line-clamp: ${textProps.maxLines};
         -webkit-box-orient: vertical;`;
     }
-    if (textProps.contain !== 'none') {
-      style += `overflow: hidden;`;
+    switch (textProps.contain) {
+      case 'width':
+        style += `width: ${textProps.width}px; overflow: hidden;`;
+        break;
+      case 'both':
+        style += `width: ${textProps.width}px; height: ${textProps.height}px; overflow: hidden;`;
+        break;
+      case 'none':
+        break;
     }
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
   }
   // <Node>
   else {
+    if (props.width !== 0) style += `width: ${props.width}px;`;
+    if (props.height !== 0) style += `height: ${props.height}px;`;
+
     let bgImg: string[] = [];
     let bgPos: null | { x: number; y: number } = null;
 
@@ -417,8 +419,8 @@ type Size = { width: number; height: number };
 function getElSize(node: DOMNode): Size {
   let rect = node.el.getBoundingClientRect();
   let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
-  rect.height = rect.height / dpr;
-  rect.width = rect.width / dpr;
+  rect.height = rect.height / node.scaleY / dpr;
+  rect.width = rect.width / node.scaleX / dpr;
   return rect;
 }
 
