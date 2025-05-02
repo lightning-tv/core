@@ -233,22 +233,16 @@ let elMap = new WeakMap<DOMNode, HTMLElement>();
 
 function updateNodeParent(node: DOMNode | DOMText) {
   if (node.parent != null) {
-    elMap.get(node.parent as DOMNode)!.appendChild(node.el);
-  } else {
-    document.body.appendChild(node.el);
+    elMap.get(node.parent as DOMNode)!.appendChild(node.div);
   }
 }
 
-function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
+function updateNodeStyles(node: DOMNode | DOMText) {
   let { props } = node;
 
   let style = `position: absolute; z-index: ${props.zIndex};`;
 
   if (props.alpha !== 1) style += `opacity: ${props.alpha};`;
-
-  if (props.width !== 0) style += `width: ${props.width}px;`;
-
-  if (props.height !== 0) style += `height: ${props.height}px;`;
 
   if (props.clipping) {
     style += `overflow: hidden;`;
@@ -274,12 +268,8 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
 
     if (props.rotation !== 0) transform += `rotate(${props.rotation}rad)`;
 
-    if (props.scale !== 1 && props.scale != null)
-      transform += `scale(${props.scale})`;
-    else {
-      if (props.scaleX !== 1) transform += `scaleX(${props.scaleX})`;
-      if (props.scaleY !== 1) transform += `scaleY(${props.scaleY})`;
-    }
+    if (props.scaleX !== 1) transform += `scaleX(${props.scaleX})`;
+    if (props.scaleY !== 1) transform += `scaleY(${props.scaleY})`;
 
     if (transform.length > 0) {
       style += `transform: ${transform};`;
@@ -317,88 +307,146 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
         line-clamp: ${textProps.maxLines};
         -webkit-box-orient: vertical;`;
     }
-    if (textProps.contain !== 'none') {
-      style += `overflow: hidden;`;
+    switch (textProps.contain) {
+      case 'width':
+        style += `width: ${textProps.width}px; overflow: hidden;`;
+        break;
+      case 'both':
+        style += `width: ${textProps.width}px; height: ${textProps.height}px; overflow: hidden;`;
+        break;
+      case 'none':
+        break;
     }
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
+
+    scheduleUpdateDOMTextMeasurement(node);
   }
   // <Node>
   else {
-    let bgImg: string[] = [];
-    let bgPos: null | { x: number; y: number } = null;
+    if (props.width !== 0) style += `width: ${props.width}px;`;
+    if (props.height !== 0) style += `height: ${props.height}px;`;
 
-    if (props.colorBottom !== props.colorTop) {
-      bgImg.push(
-        `linear-gradient(${colorToRgba(props.colorTop)}, ${colorToRgba(props.colorBottom)})`,
-      );
-    }
-    if (props.colorLeft !== props.colorRight) {
-      bgImg.push(
-        `linear-gradient(to right, ${colorToRgba(props.colorLeft)}, ${colorToRgba(props.colorRight)})`,
-      );
-    }
+    let vGradient =
+      props.colorBottom !== props.colorTop
+        ? `linear-gradient(to bottom, ${colorToRgba(props.colorTop)}, ${colorToRgba(props.colorBottom)})`
+        : null;
+
+    let hGradient =
+      props.colorLeft !== props.colorRight
+        ? `linear-gradient(to right, ${colorToRgba(props.colorLeft)}, ${colorToRgba(props.colorRight)})`
+        : null;
+
+    let gradient =
+      vGradient && hGradient
+        ? `${vGradient}, ${hGradient}`
+        : vGradient || hGradient;
+
+    let srcImg: string | null = null;
+    let srcPos: null | { x: number; y: number } = null;
 
     if (
       props.texture != null &&
       props.texture.type === lng.TextureType.subTexture
     ) {
-      bgPos = (props.texture as any).props;
-      bgImg.push(`url(${(props.texture as any).props.texture.props.src})`);
+      srcPos = (props.texture as any).props;
+      srcImg = `url(${(props.texture as any).props.texture.props.src})`;
     } else if (props.src) {
-      bgImg.push(`url(${props.src})`);
+      srcImg = `url(${props.src})`;
     }
 
-    if (bgImg.length > 0) {
-      style += `background-image: ${bgImg.join(',')}; background-blend-mode: multiply;`;
-      if (bgPos !== null) {
-        style += `background-position: -${bgPos.x}px -${bgPos.y}px;`;
+    let bgStyle = '';
+    let borderStyle = '';
+
+    if (srcImg) {
+      bgStyle += `background-image: ${srcImg};`;
+      bgStyle += `background-repeat: no-repeat;`;
+
+      if (props.textureOptions.resizeMode?.type === 'contain') {
+        bgStyle += `background-size: contain; background-position: center;`;
+      } else if (srcPos !== null) {
+        bgStyle += `background-position: -${srcPos.x}px -${srcPos.y}px;`;
       } else {
-        style += 'background-size: 100% 100%;';
+        bgStyle += 'background-size: 100% 100%;';
       }
 
-      if (props.color !== 0xffffffff && props.color !== 0) {
-        style += `background-color: ${colorToRgba(props.color)};`;
-        style += `mask-image: ${bgImg.join(',')};`;
-        if (bgPos !== null) {
-          style += `mask-position: -${bgPos.x}px -${bgPos.y}px;`;
-        } else {
-          style += `mask-size: 100% 100%;`;
+      if (gradient) {
+        // use gradient as a mask
+        bgStyle += `mask-image: ${gradient};`;
+        // separate layers are needed for the mask
+        if (node.divBg == null) {
+          node.div.appendChild((node.divBg = document.createElement('div')));
+          node.div.appendChild(
+            (node.divBorder = document.createElement('div')),
+          );
         }
       }
+    } else if (gradient) {
+      bgStyle += `background-image: ${gradient};`;
+      bgStyle += `background-repeat: no-repeat;`;
+      bgStyle += `background-size: 100% 100%;`;
     } else if (props.color !== 0) {
-      style += `background-color: ${colorToRgba(props.color)};`;
+      bgStyle += `background-color: ${colorToRgba(props.color)};`;
     }
 
     if (props.shader != null) {
       let shader = props.shader.props;
       if (shader != null) {
+        const borderWidth = shader['border-width'] as number | undefined;
+        const borderColor = shader['border-color'] as number | undefined;
+        const radius = shader['radius'] as
+          | number
+          | [number, number, number, number]
+          | undefined;
+
         // Border
         if (
-          typeof shader['border-width'] === 'number' &&
-          shader['border-width'] > 0 &&
-          typeof shader['border-color'] === 'number' &&
-          shader['border-color'] > 0
+          typeof borderWidth === 'number' &&
+          borderWidth !== 0 &&
+          typeof borderColor === 'number' &&
+          borderColor !== 0
         ) {
           // css border impacts the element's box size when box-shadow doesn't
-          style += `box-shadow: inset 0px 0px 0px ${shader['border-width']}px ${colorToRgba(shader['border-color'])};`;
+          borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
         }
         // Rounded
-        if (typeof shader['radius'] === 'number' && shader['radius'] > 0) {
-          style += `border-radius: ${shader['radius']}px;`;
+        if (typeof radius === 'number' && radius > 0) {
+          borderStyle += `border-radius: ${radius}px;`;
+        } else if (Array.isArray(radius) && radius.length === 4) {
+          borderStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
         }
       }
     }
+
+    style += borderStyle;
+    bgStyle += borderStyle;
+
+    if (node.divBg == null) {
+      style += bgStyle;
+    } else {
+      bgStyle += 'position: absolute; inset: 0; z-index: -1;';
+      node.divBg.setAttribute('style', bgStyle);
+    }
+    if (node.divBorder != null) {
+      borderStyle += 'position: absolute; inset: 0; z-index: -1;';
+      node.divBorder.setAttribute('style', borderStyle);
+    }
   }
 
-  return style;
+  node.div.setAttribute('style', style);
 }
 
-function updateNodeStyles(node: DOMNode | DOMText) {
-  node.el.setAttribute('style', getNodeStyles(node));
+const fontFamiliesToLoad = new Set<string>();
 
-  if (node instanceof DOMText) {
-    scheduleUpdateTextNodeMeasurement(node);
-  }
+const textNodesToMeasure = new Set<DOMText>();
+
+type Size = { width: number; height: number };
+
+function getElSize(node: DOMNode): Size {
+  let rect = node.div.getBoundingClientRect();
+  let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
+  rect.height = rect.height / node.scaleY / dpr;
+  rect.width = rect.width / node.scaleX / dpr;
+  return rect;
 }
 
 /*
@@ -406,49 +454,52 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   need to have their height or width calculated.
   And then cause the flex layout to be recalculated.
 */
-
-const textNodesToMeasure = new Set<DOMText>();
-
-type Size = { width: number; height: number };
-
-function getElSize(node: DOMNode): Size {
-  let rect = node.el.getBoundingClientRect();
-  let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
-  rect.height = rect.height / dpr;
-  rect.width = rect.width / dpr;
-  return rect;
+function updateDOMTextSize(node: DOMText): void {
+  let size: Size;
+  switch (node.contain) {
+    case 'width':
+      size = getElSize(node);
+      if (node.props.height !== size.height) {
+        node.props.height = size.height;
+        updateNodeStyles(node);
+        node.emit('loaded');
+      }
+      break;
+    case 'none':
+      size = getElSize(node);
+      if (
+        node.props.height !== size.height ||
+        node.props.width !== size.width
+      ) {
+        node.props.width = size.width;
+        node.props.height = size.height;
+        updateNodeStyles(node);
+        node.emit('loaded');
+      }
+      break;
+  }
 }
 
-function updateTextNodeMeasurements() {
-  for (let node of textNodesToMeasure) {
-    let size: Size;
-    switch (node.contain) {
-      case 'width':
-        size = getElSize(node);
-        if (node.props.height !== size.height) {
-          node.props.height = size.height;
-          node.emit('loaded');
-        }
-        break;
-      case 'none':
-        size = getElSize(node);
-        if (
-          node.props.height !== size.height ||
-          node.props.width !== size.width
-        ) {
-          node.props.width = size.width;
-          node.props.height = size.height;
-          node.emit('loaded');
-        }
-        break;
-    }
-  }
+function updateDOMTextMeasurements() {
+  textNodesToMeasure.forEach(updateDOMTextSize);
   textNodesToMeasure.clear();
 }
 
-function scheduleUpdateTextNodeMeasurement(node: DOMText) {
+function scheduleUpdateDOMTextMeasurement(node: DOMText) {
+  /*
+    Make sure the font is loaded before measuring
+  */
+  if (node.fontFamily && !fontFamiliesToLoad.has(node.fontFamily)) {
+    fontFamiliesToLoad.add(node.fontFamily);
+    document.fonts.load(`16px ${node.fontFamily}`);
+  }
+
   if (textNodesToMeasure.size === 0) {
-    setTimeout(updateTextNodeMeasurements);
+    if (document.fonts.status === 'loaded') {
+      setTimeout(updateDOMTextMeasurements);
+    } else {
+      document.fonts.ready.then(updateDOMTextMeasurements);
+    }
   }
 
   textNodesToMeasure.add(node);
@@ -458,9 +509,9 @@ function updateNodeData(node: DOMNode | DOMText) {
   for (let key in node.data) {
     let keyValue: unknown = node.data[key];
     if (keyValue === undefined) {
-      node.el.removeAttribute('data-' + key);
+      node.div.removeAttribute('data-' + key);
     } else {
-      node.el.setAttribute('data-' + key, String(keyValue));
+      node.div.setAttribute('data-' + key, String(keyValue));
     }
   }
 }
@@ -554,7 +605,10 @@ const defaultShader: IRendererShader = {
 let lastNodeId = 0;
 
 class DOMNode extends EventEmitter implements IRendererNode {
-  el = document.createElement('div');
+  div = document.createElement('div');
+  divBg: HTMLElement | undefined;
+  divBorder: HTMLElement | undefined;
+
   id = ++lastNodeId;
 
   renderState: lng.CoreNodeRenderState = 0 /* Init */;
@@ -566,9 +620,9 @@ class DOMNode extends EventEmitter implements IRendererNode {
     super();
 
     // @ts-ignore
-    this.el._node = this;
-    this.el.setAttribute('data-id', String(this.id));
-    elMap.set(this, this.el);
+    this.div._node = this;
+    this.div.setAttribute('data-id', String(this.id));
+    elMap.set(this, this.div);
 
     updateNodeParent(this);
     updateNodeStyles(this);
@@ -577,7 +631,7 @@ class DOMNode extends EventEmitter implements IRendererNode {
 
   destroy(): void {
     elMap.delete(this);
-    this.el.parentNode!.removeChild(this.el);
+    this.div.parentNode!.removeChild(this.div);
   }
 
   get parent() {
@@ -889,7 +943,7 @@ class DOMText extends DOMNode {
     public override props: IRendererTextNodeProps,
   ) {
     super(stage, props);
-    this.el.innerText = props.text;
+    this.div.innerText = props.text;
   }
 
   get text() {
@@ -897,8 +951,8 @@ class DOMText extends DOMNode {
   }
   set text(v) {
     this.props.text = v;
-    this.el.innerText = v;
-    scheduleUpdateTextNodeMeasurement(this);
+    this.div.innerText = v;
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontFamily() {
     return this.props.fontFamily;
@@ -1047,14 +1101,14 @@ function updateRootPosition(this: DOMRendererMain) {
   let height = Math.ceil(settings.appHeight ?? 1080 / dpr);
   let width = Math.ceil(settings.appWidth ?? 1920 / dpr);
 
-  this.root.el.style.left = `${left}px`;
-  this.root.el.style.top = `${top}px`;
-  this.root.el.style.width = `${width}px`;
-  this.root.el.style.height = `${height}px`;
-  this.root.el.style.position = 'absolute';
-  this.root.el.style.transformOrigin = '0 0 0';
-  this.root.el.style.transform = `scale(${dpr}, ${dpr})`;
-  this.root.el.style.overflow = 'hidden';
+  this.root.div.style.left = `${left}px`;
+  this.root.div.style.top = `${top}px`;
+  this.root.div.style.width = `${width}px`;
+  this.root.div.style.height = `${height}px`;
+  this.root.div.style.position = 'absolute';
+  this.root.div.style.transformOrigin = '0 0 0';
+  this.root.div.style.transform = `scale(${dpr}, ${dpr})`;
+  this.root.div.style.overflow = 'hidden';
 }
 
 export class DOMRendererMain implements IRendererMain {
@@ -1102,6 +1156,24 @@ export class DOMRendererMain implements IRendererMain {
       }),
     );
     this.stage.root = this.root;
+    document.body.appendChild(this.root.div);
+
+    if (Config.fontSettings.fontFamily) {
+      this.root.div.style.fontFamily = Config.fontSettings.fontFamily;
+    }
+    if (Config.fontSettings.fontSize) {
+      this.root.div.style.fontSize = Config.fontSettings.fontSize + 'px';
+    }
+    if (Config.fontSettings.lineHeight) {
+      this.root.div.style.lineHeight = Config.fontSettings.lineHeight + 'px';
+    }
+    if (Config.fontSettings.fontWeight) {
+      if (typeof Config.fontSettings.fontWeight === 'number') {
+        this.root.div.style.fontWeight = Config.fontSettings.fontWeight + 'px';
+      } else {
+        this.root.div.style.fontWeight = Config.fontSettings.fontWeight;
+      }
+    }
 
     updateRootPosition.call(this);
 

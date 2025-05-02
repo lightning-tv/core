@@ -64,6 +64,7 @@ export interface IRendererNodeProps
 }
 /** Based on {@link lng.INode} */
 export interface IRendererNode extends IRendererNodeShaded, IRendererNodeProps {
+  div?: HTMLElement;
   props: IRendererNodeProps;
   renderState: lng.CoreNodeRenderState;
 }
@@ -78,6 +79,7 @@ export interface IRendererTextNodeProps
 export interface IRendererTextNode
   extends IRendererNodeShaded,
     IRendererTextNodeProps {
+  div?: HTMLElement;
   props: IRendererTextNodeProps;
   renderState: lng.CoreNodeRenderState;
 }

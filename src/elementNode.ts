@@ -195,6 +195,13 @@ const LightningRendererNonAnimatingProps = [
   'wordWrap',
 ];
 
+declare global {
+  interface HTMLElement {
+    /** Assigned for development, to quickly get ElementNode from selected HTMLElement */
+    element?: ElementNode;
+  }
+}
+
 export type RendererNode = AddColorString<
   Partial<NewOmit<INode, 'parent' | 'shader' | 'src' | 'children' | 'id'>>
 >;
@@ -953,9 +960,7 @@ export class ElementNode extends Object {
     }
 
     // L3 Inspector adds div to the lng object
-    //@ts-expect-error - div is not in the typings
     if (node.lng?.div) {
-      //@ts-expect-error - div is not in the typings
       node.lng.div.element = node;
     }
 
