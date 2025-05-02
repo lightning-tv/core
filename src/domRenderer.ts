@@ -237,7 +237,7 @@ function updateNodeParent(node: DOMNode | DOMText) {
   }
 }
 
-function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
+function updateNodeStyles(node: DOMNode | DOMText) {
   let { props } = node;
 
   let style = `position: absolute; z-index: ${props.zIndex};`;
@@ -318,58 +318,72 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
         break;
     }
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
+
+    scheduleUpdateDOMTextMeasurement(node);
   }
   // <Node>
   else {
     if (props.width !== 0) style += `width: ${props.width}px;`;
     if (props.height !== 0) style += `height: ${props.height}px;`;
 
-    let bgImg: string[] = [];
-    let bgPos: null | { x: number; y: number } = null;
+    let vGradient =
+      props.colorBottom !== props.colorTop
+        ? `linear-gradient(to bottom, ${colorToRgba(props.colorTop)}, ${colorToRgba(props.colorBottom)})`
+        : null;
 
-    if (props.colorBottom !== props.colorTop) {
-      bgImg.push(
-        `linear-gradient(${colorToRgba(props.colorTop)}, ${colorToRgba(props.colorBottom)})`,
-      );
-    }
-    if (props.colorLeft !== props.colorRight) {
-      bgImg.push(
-        `linear-gradient(to right, ${colorToRgba(props.colorLeft)}, ${colorToRgba(props.colorRight)})`,
-      );
-    }
+    let hGradient =
+      props.colorLeft !== props.colorRight
+        ? `linear-gradient(to right, ${colorToRgba(props.colorLeft)}, ${colorToRgba(props.colorRight)})`
+        : null;
+
+    let gradient =
+      vGradient && hGradient
+        ? `${vGradient}, ${hGradient}`
+        : vGradient || hGradient;
+
+    let srcImg: string | null = null;
+    let srcPos: null | { x: number; y: number } = null;
 
     if (
       props.texture != null &&
       props.texture.type === lng.TextureType.subTexture
     ) {
-      bgPos = (props.texture as any).props;
-      bgImg.push(`url(${(props.texture as any).props.texture.props.src})`);
+      srcPos = (props.texture as any).props;
+      srcImg = `url(${(props.texture as any).props.texture.props.src})`;
     } else if (props.src) {
-      bgImg.push(`url(${props.src})`);
+      srcImg = `url(${props.src})`;
     }
 
-    if (bgImg.length > 0) {
-      style += `background-image: ${bgImg.join(',')}; background-blend-mode: multiply; background-repeat: no-repeat;`;
+    let bgStyle = '';
+    let borderStyle = '';
+
+    if (srcImg) {
+      bgStyle += `background-image: ${srcImg};`;
+      bgStyle += `background-repeat: no-repeat;`;
 
       if (props.textureOptions.resizeMode?.type === 'contain') {
-        style += `background-size: contain; background-position: center;`;
-      } else if (bgPos !== null) {
-        style += `background-position: -${bgPos.x}px -${bgPos.y}px;`;
+        bgStyle += `background-size: contain; background-position: center;`;
+      } else if (srcPos !== null) {
+        bgStyle += `background-position: -${srcPos.x}px -${srcPos.y}px;`;
       } else {
-        style += 'background-size: 100% 100%;';
+        bgStyle += 'background-size: 100% 100%;';
       }
 
-      if (props.color !== 0xffffffff && props.color !== 0) {
-        style += `background-color: ${colorToRgba(props.color)};`;
-        style += `mask-image: ${bgImg.join(',')};`;
-        if (bgPos !== null) {
-          style += `mask-position: -${bgPos.x}px -${bgPos.y}px;`;
-        } else {
-          style += `mask-size: 100% 100%;`;
+      if (gradient) {
+        // use gradient as a mask
+        bgStyle += `mask-image: ${gradient};`;
+        // separate layers are needed for the mask
+        if (node.bgEl == null) {
+          node.el.appendChild((node.bgEl = document.createElement('div')));
+          node.el.appendChild((node.borderEl = document.createElement('div')));
         }
       }
+    } else if (gradient) {
+      bgStyle += `background-image: ${gradient};`;
+      bgStyle += `background-repeat: no-repeat;`;
+      bgStyle += `background-size: 100% 100%;`;
     } else if (props.color !== 0) {
-      style += `background-color: ${colorToRgba(props.color)};`;
+      bgStyle += `background-color: ${colorToRgba(props.color)};`;
     }
 
     if (props.shader != null) {
@@ -390,27 +404,33 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
           borderColor !== 0
         ) {
           // css border impacts the element's box size when box-shadow doesn't
-          style += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
+          borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
         }
         // Rounded
         if (typeof radius === 'number' && radius > 0) {
-          style += `border-radius: ${radius}px;`;
+          borderStyle += `border-radius: ${radius}px;`;
         } else if (Array.isArray(radius) && radius.length === 4) {
-          style += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
+          borderStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
         }
       }
     }
+
+    style += borderStyle;
+    bgStyle += borderStyle;
+
+    if (node.bgEl == null) {
+      style += bgStyle;
+    } else {
+      bgStyle += 'position: absolute; inset: 0; z-index: -1;';
+      node.bgEl.setAttribute('style', bgStyle);
+    }
+    if (node.borderEl != null) {
+      borderStyle += 'position: absolute; inset: 0; z-index: -1;';
+      node.borderEl.setAttribute('style', borderStyle);
+    }
   }
 
-  return style;
-}
-
-function updateNodeStyles(node: DOMNode | DOMText) {
-  node.el.setAttribute('style', getNodeStyles(node));
-
-  if (node instanceof DOMText) {
-    scheduleUpdateDOMTextMeasurement(node);
-  }
+  node.el.setAttribute('style', style);
 }
 
 const fontFamiliesToLoad = new Set<string>();
@@ -584,6 +604,9 @@ let lastNodeId = 0;
 
 class DOMNode extends EventEmitter implements IRendererNode {
   el = document.createElement('div');
+  bgEl: HTMLElement | undefined;
+  borderEl: HTMLElement | undefined;
+
   id = ++lastNodeId;
 
   renderState: lng.CoreNodeRenderState = 0 /* Init */;
