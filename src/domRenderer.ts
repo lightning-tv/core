@@ -233,7 +233,7 @@ let elMap = new WeakMap<DOMNode, HTMLElement>();
 
 function updateNodeParent(node: DOMNode | DOMText) {
   if (node.parent != null) {
-    elMap.get(node.parent as DOMNode)!.appendChild(node.el);
+    elMap.get(node.parent as DOMNode)!.appendChild(node.div);
   }
 }
 
@@ -373,9 +373,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         // use gradient as a mask
         bgStyle += `mask-image: ${gradient};`;
         // separate layers are needed for the mask
-        if (node.bgEl == null) {
-          node.el.appendChild((node.bgEl = document.createElement('div')));
-          node.el.appendChild((node.borderEl = document.createElement('div')));
+        if (node.divBg == null) {
+          node.div.appendChild((node.divBg = document.createElement('div')));
+          node.div.appendChild(
+            (node.divBorder = document.createElement('div')),
+          );
         }
       }
     } else if (gradient) {
@@ -418,19 +420,19 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     style += borderStyle;
     bgStyle += borderStyle;
 
-    if (node.bgEl == null) {
+    if (node.divBg == null) {
       style += bgStyle;
     } else {
       bgStyle += 'position: absolute; inset: 0; z-index: -1;';
-      node.bgEl.setAttribute('style', bgStyle);
+      node.divBg.setAttribute('style', bgStyle);
     }
-    if (node.borderEl != null) {
+    if (node.divBorder != null) {
       borderStyle += 'position: absolute; inset: 0; z-index: -1;';
-      node.borderEl.setAttribute('style', borderStyle);
+      node.divBorder.setAttribute('style', borderStyle);
     }
   }
 
-  node.el.setAttribute('style', style);
+  node.div.setAttribute('style', style);
 }
 
 const fontFamiliesToLoad = new Set<string>();
@@ -440,7 +442,7 @@ const textNodesToMeasure = new Set<DOMText>();
 type Size = { width: number; height: number };
 
 function getElSize(node: DOMNode): Size {
-  let rect = node.el.getBoundingClientRect();
+  let rect = node.div.getBoundingClientRect();
   let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
   rect.height = rect.height / node.scaleY / dpr;
   rect.width = rect.width / node.scaleX / dpr;
@@ -507,9 +509,9 @@ function updateNodeData(node: DOMNode | DOMText) {
   for (let key in node.data) {
     let keyValue: unknown = node.data[key];
     if (keyValue === undefined) {
-      node.el.removeAttribute('data-' + key);
+      node.div.removeAttribute('data-' + key);
     } else {
-      node.el.setAttribute('data-' + key, String(keyValue));
+      node.div.setAttribute('data-' + key, String(keyValue));
     }
   }
 }
@@ -603,9 +605,9 @@ const defaultShader: IRendererShader = {
 let lastNodeId = 0;
 
 class DOMNode extends EventEmitter implements IRendererNode {
-  el = document.createElement('div');
-  bgEl: HTMLElement | undefined;
-  borderEl: HTMLElement | undefined;
+  div = document.createElement('div');
+  divBg: HTMLElement | undefined;
+  divBorder: HTMLElement | undefined;
 
   id = ++lastNodeId;
 
@@ -618,9 +620,9 @@ class DOMNode extends EventEmitter implements IRendererNode {
     super();
 
     // @ts-ignore
-    this.el._node = this;
-    this.el.setAttribute('data-id', String(this.id));
-    elMap.set(this, this.el);
+    this.div._node = this;
+    this.div.setAttribute('data-id', String(this.id));
+    elMap.set(this, this.div);
 
     updateNodeParent(this);
     updateNodeStyles(this);
@@ -629,7 +631,7 @@ class DOMNode extends EventEmitter implements IRendererNode {
 
   destroy(): void {
     elMap.delete(this);
-    this.el.parentNode!.removeChild(this.el);
+    this.div.parentNode!.removeChild(this.div);
   }
 
   get parent() {
@@ -941,7 +943,7 @@ class DOMText extends DOMNode {
     public override props: IRendererTextNodeProps,
   ) {
     super(stage, props);
-    this.el.innerText = props.text;
+    this.div.innerText = props.text;
   }
 
   get text() {
@@ -949,7 +951,7 @@ class DOMText extends DOMNode {
   }
   set text(v) {
     this.props.text = v;
-    this.el.innerText = v;
+    this.div.innerText = v;
     scheduleUpdateDOMTextMeasurement(this);
   }
   get fontFamily() {
@@ -1099,14 +1101,14 @@ function updateRootPosition(this: DOMRendererMain) {
   let height = Math.ceil(settings.appHeight ?? 1080 / dpr);
   let width = Math.ceil(settings.appWidth ?? 1920 / dpr);
 
-  this.root.el.style.left = `${left}px`;
-  this.root.el.style.top = `${top}px`;
-  this.root.el.style.width = `${width}px`;
-  this.root.el.style.height = `${height}px`;
-  this.root.el.style.position = 'absolute';
-  this.root.el.style.transformOrigin = '0 0 0';
-  this.root.el.style.transform = `scale(${dpr}, ${dpr})`;
-  this.root.el.style.overflow = 'hidden';
+  this.root.div.style.left = `${left}px`;
+  this.root.div.style.top = `${top}px`;
+  this.root.div.style.width = `${width}px`;
+  this.root.div.style.height = `${height}px`;
+  this.root.div.style.position = 'absolute';
+  this.root.div.style.transformOrigin = '0 0 0';
+  this.root.div.style.transform = `scale(${dpr}, ${dpr})`;
+  this.root.div.style.overflow = 'hidden';
 }
 
 export class DOMRendererMain implements IRendererMain {
@@ -1154,22 +1156,22 @@ export class DOMRendererMain implements IRendererMain {
       }),
     );
     this.stage.root = this.root;
-    document.body.appendChild(this.root.el);
+    document.body.appendChild(this.root.div);
 
     if (Config.fontSettings.fontFamily) {
-      this.root.el.style.fontFamily = Config.fontSettings.fontFamily;
+      this.root.div.style.fontFamily = Config.fontSettings.fontFamily;
     }
     if (Config.fontSettings.fontSize) {
-      this.root.el.style.fontSize = Config.fontSettings.fontSize + 'px';
+      this.root.div.style.fontSize = Config.fontSettings.fontSize + 'px';
     }
     if (Config.fontSettings.lineHeight) {
-      this.root.el.style.lineHeight = Config.fontSettings.lineHeight + 'px';
+      this.root.div.style.lineHeight = Config.fontSettings.lineHeight + 'px';
     }
     if (Config.fontSettings.fontWeight) {
       if (typeof Config.fontSettings.fontWeight === 'number') {
-        this.root.el.style.fontWeight = Config.fontSettings.fontWeight + 'px';
+        this.root.div.style.fontWeight = Config.fontSettings.fontWeight + 'px';
       } else {
-        this.root.el.style.fontWeight = Config.fontSettings.fontWeight;
+        this.root.div.style.fontWeight = Config.fontSettings.fontWeight;
       }
     }
 
