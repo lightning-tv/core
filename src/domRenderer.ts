@@ -349,8 +349,11 @@ function getNodeStyles(node: Readonly<DOMNode | DOMText>): string {
     }
 
     if (bgImg.length > 0) {
-      style += `background-image: ${bgImg.join(',')}; background-blend-mode: multiply;`;
-      if (bgPos !== null) {
+      style += `background-image: ${bgImg.join(',')}; background-blend-mode: multiply; background-repeat: no-repeat;`;
+
+      if (props.textureOptions.resizeMode?.type === 'contain') {
+        style += `background-size: contain; background-position: center;`;
+      } else if (bgPos !== null) {
         style += `background-position: -${bgPos.x}px -${bgPos.y}px;`;
       } else {
         style += 'background-size: 100% 100%;';
