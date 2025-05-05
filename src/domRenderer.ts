@@ -36,6 +36,7 @@ type AnimationTask = {
   settings: Required<lng.AnimationSettings>;
   iteration: number;
   pausedTime: number | null;
+  controller: AnimationController | null;
 };
 
 let animationTasks: AnimationTask[] = [];
@@ -83,7 +84,8 @@ function updateAnimations(time: number) {
       else {
         Object.assign(task.node.props, task.propsEnd);
         updateNodeStyles(task.node);
-        animationTasks.splice(i, 1);
+
+        task.controller!.stop();
         i--;
       }
       continue;
@@ -93,8 +95,8 @@ function updateAnimations(time: number) {
      Update props and styles
     */
     let t = applyEasing(
-      activeTime / task.settings.duration,
       task.settings.easing,
+      activeTime / task.settings.duration,
     );
 
     for (let prop in task.propsEnd) {
@@ -112,7 +114,7 @@ function updateAnimations(time: number) {
   requestAnimationUpdate();
 }
 
-function applyEasing(progress: number, easing: string): number {
+function applyEasing(easing: string, progress: number): number {
   switch (easing) {
     case 'linear':
     default:
@@ -143,6 +145,8 @@ function interpolateColor(start: number, end: number, t: number): number {
 
 class AnimationController implements lng.IAnimationController {
   state: lng.AnimationControllerState = 'paused';
+  _stopPromise: Promise<void> | null = null;
+  _stopResolve: (() => void) | null = null;
 
   constructor(public task: AnimationTask) {}
 
@@ -153,17 +157,25 @@ class AnimationController implements lng.IAnimationController {
     } else {
       this.task.timeStart = performance.now();
     }
+    this.state = 'running';
     requestAnimationUpdate();
     return this;
   }
   pause() {
     this.task.pausedTime = performance.now();
+    this.state = 'paused';
     return this;
   }
   stop() {
     let index = animationTasks.indexOf(this.task);
     if (index !== -1) {
       animationTasks.splice(index, 1);
+    }
+    this.state = 'stopped';
+    if (this._stopResolve) {
+      this._stopResolve();
+      this._stopResolve = null;
+      this._stopPromise = null;
     }
     return this;
   }
@@ -172,7 +184,10 @@ class AnimationController implements lng.IAnimationController {
     return this;
   }
   waitUntilStopped() {
-    return Promise.resolve();
+    this._stopPromise ??= new Promise((resolve) => {
+      this._stopResolve = resolve;
+    });
+    return this._stopPromise;
   }
   on() {
     return this;
@@ -215,6 +230,7 @@ function animate(
     settings: fullSettings,
     iteration: 0,
     pausedTime: null,
+    controller: null, // Will be filled in below
   };
 
   for (let [prop, value] of Object.entries(props)) {
@@ -226,7 +242,10 @@ function animate(
 
   animationTasks.push(task);
 
-  return new AnimationController(task);
+  const controller = new AnimationController(task);
+  task.controller = controller;
+
+  return controller;
 }
 
 let elMap = new WeakMap<DOMNode, HTMLElement>();
