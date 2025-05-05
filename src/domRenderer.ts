@@ -399,8 +399,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       bgStyle += `background-image: ${srcImg};`;
       bgStyle += `background-repeat: no-repeat;`;
 
-      if (props.textureOptions.resizeMode?.type === 'contain') {
-        bgStyle += `background-size: contain; background-position: center;`;
+      if (props.textureOptions.resizeMode?.type) {
+        bgStyle += `background-size: ${props.textureOptions.resizeMode.type}; background-position: center;`;
       } else if (srcPos !== null) {
         bgStyle += `background-position: -${srcPos.x}px -${srcPos.y}px;`;
       } else {
