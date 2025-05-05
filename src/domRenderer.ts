@@ -298,40 +298,57 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     if (textProps.color != null && textProps.color !== 0) {
       style += `color: ${colorToRgba(textProps.color)};`;
     }
-
-    if (textProps.fontFamily) style += `font-family: ${textProps.fontFamily};`;
-    if (textProps.fontSize) style += `font-size: ${textProps.fontSize}px;`;
-    if (textProps.fontStyle !== 'normal')
-      style += `font-style: ${textProps.fontStyle};`;
-    if (textProps.fontWeight !== 'normal')
-      style += `font-weight: ${textProps.fontWeight};`;
-    if (textProps.fontStretch !== 'normal')
-      style += `font-stretch: ${textProps.fontStretch};`;
-    if (textProps.lineHeight != null)
-      style += `line-height: ${textProps.lineHeight}px;`;
-    if (textProps.letterSpacing)
-      style += `letter-spacing: ${textProps.letterSpacing}px;`;
-    if (textProps.textAlign !== 'left')
-      style += `text-align: ${textProps.textAlign};`;
-    // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
-    if (textProps.maxLines > 0) {
-      // https://stackoverflow.com/a/13924997
-      style += `display: -webkit-box;
-        overflow: hidden;
-        -webkit-line-clamp: ${textProps.maxLines};
-        line-clamp: ${textProps.maxLines};
-        -webkit-box-orient: vertical;`;
+    if (textProps.fontFamily) {
+      style += `font-family: ${textProps.fontFamily};`;
     }
+    if (textProps.fontSize) {
+      style += `font-size: ${textProps.fontSize}px;`;
+    }
+    if (textProps.fontStyle !== 'normal') {
+      style += `font-style: ${textProps.fontStyle};`;
+    }
+    if (textProps.fontWeight !== 'normal') {
+      style += `font-weight: ${textProps.fontWeight};`;
+    }
+    if (textProps.fontStretch !== 'normal') {
+      style += `font-stretch: ${textProps.fontStretch};`;
+    }
+    if (textProps.lineHeight != null) {
+      style += `line-height: ${textProps.lineHeight}px;`;
+    }
+    if (textProps.letterSpacing) {
+      style += `letter-spacing: ${textProps.letterSpacing}px;`;
+    }
+    if (textProps.textAlign !== 'left') {
+      style += `text-align: ${textProps.textAlign};`;
+    }
+
+    let maxLines = textProps.maxLines || Infinity;
     switch (textProps.contain) {
       case 'width':
-        style += `width: ${textProps.width}px; overflow: hidden;`;
+        style += `width: ${props.width}px; overflow: hidden;`;
         break;
-      case 'both':
-        style += `width: ${textProps.width}px; height: ${textProps.height}px; overflow: hidden;`;
+      case 'both': {
+        let lineHeight = textProps.lineHeight ?? 1.2 * textProps.fontSize;
+        maxLines = Math.min(maxLines, Math.floor(props.height / lineHeight));
+        let height = maxLines * lineHeight;
+        style += `width: ${props.width}px; height: ${height}px; overflow: hidden;`;
         break;
+      }
       case 'none':
         break;
     }
+
+    if (maxLines !== Infinity) {
+      // https://stackoverflow.com/a/13924997
+      style += `display: -webkit-box;
+        overflow: hidden;
+        -webkit-line-clamp: ${maxLines};
+        line-clamp: ${maxLines};
+        -webkit-box-orient: vertical;`;
+    }
+
+    // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
 
     scheduleUpdateDOMTextMeasurement(node);
@@ -1181,6 +1198,8 @@ export class DOMRendererMain implements IRendererMain {
     }
     if (Config.fontSettings.lineHeight) {
       this.root.div.style.lineHeight = Config.fontSettings.lineHeight + 'px';
+    } else {
+      this.root.div.style.lineHeight = '1.2';
     }
     if (Config.fontSettings.fontWeight) {
       if (typeof Config.fontSettings.fontWeight === 'number') {
