@@ -252,6 +252,12 @@ function updateNodeParent(node: DOMNode | DOMText) {
   }
 }
 
+function getNodeLineHeight(props: IRendererTextNodeProps): number {
+  return (
+    props.lineHeight ?? Config.fontSettings.lineHeight ?? 1.2 * props.fontSize
+  );
+}
+
 function updateNodeStyles(node: DOMNode | DOMText) {
   let { props } = node;
 
@@ -329,7 +335,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         style += `width: ${props.width}px; overflow: hidden;`;
         break;
       case 'both': {
-        let lineHeight = textProps.lineHeight ?? 1.2 * textProps.fontSize;
+        let lineHeight = getNodeLineHeight(textProps);
         maxLines = Math.min(maxLines, Math.floor(props.height / lineHeight));
         let height = maxLines * lineHeight;
         style += `width: ${props.width}px; height: ${height}px; overflow: hidden;`;
@@ -1177,12 +1183,9 @@ export class DOMRendererMain implements IRendererMain {
 
     this.root = new DOMNode(
       this.stage,
-      resolveTextNodeDefaults({
+      resolveNodeDefaults({
         width: settings.appWidth ?? 1920,
         height: settings.appHeight ?? 1080,
-        fontFamily: Config.fontSettings.fontFamily,
-        fontSize: Config.fontSettings.fontSize,
-        lineHeight: Config.fontSettings.lineHeight,
         shader: defaultShader,
         zIndex: 65534,
       }),
