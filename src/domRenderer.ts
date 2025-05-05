@@ -24,22 +24,51 @@ import { EventEmitter } from '@lightningjs/renderer/utils';
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
 
+function applyEasing(easing: string, progress: number): number {
+  switch (easing) {
+    case 'linear':
+    default:
+      return progress;
+    case 'ease-in':
+      return progress * progress;
+    case 'ease-out':
+      return progress * (2 - progress);
+    case 'ease-in-out':
+      return progress < 0.5
+        ? 2 * progress * progress
+        : -1 + (4 - 2 * progress) * progress;
+  }
+}
+
+function interpolate(start: number, end: number, t: number): number {
+  return start + (end - start) * t;
+}
+
+function interpolateColor(start: number, end: number, t: number): number {
+  return (
+    (interpolate((start >> 24) & 0xff, (end >> 24) & 0xff, t) << 24) |
+    (interpolate((start >> 16) & 0xff, (end >> 16) & 0xff, t) << 16) |
+    (interpolate((start >> 8) & 0xff, (end >> 8) & 0xff, t) << 8) |
+    interpolate(start & 0xff, end & 0xff, t)
+  );
+}
+
+function interpolateProp(
+  name: string,
+  start: number,
+  end: number,
+  t: number,
+): number {
+  return name.startsWith('color')
+    ? interpolateColor(start, end, t)
+    : interpolate(start, end, t);
+}
+
 /*
  Animations
 */
-type AnimationTask = {
-  node: DOMNode;
-  propsStart: Record<string, number>;
-  propsEnd: Record<string, number>;
-  timeStart: number;
-  timeEnd: number;
-  settings: Required<lng.AnimationSettings>;
-  iteration: number;
-  pausedTime: number | null;
-  controller: AnimationController | null;
-};
 
-let animationTasks: AnimationTask[] = [];
+let animationTasks: AnimationController[] = [];
 let animationFrameRequested = false;
 
 function requestAnimationUpdate() {
@@ -85,7 +114,7 @@ function updateAnimations(time: number) {
         Object.assign(task.node.props, task.propsEnd);
         updateNodeStyles(task.node);
 
-        task.controller!.stop();
+        task.stop();
         i--;
       }
       continue;
@@ -94,18 +123,13 @@ function updateAnimations(time: number) {
     /*
      Update props and styles
     */
-    let t = applyEasing(
-      task.settings.easing,
-      activeTime / task.settings.duration,
-    );
+    let t = activeTime / task.settings.duration;
+    t = applyEasing(task.settings.easing, t);
 
     for (let prop in task.propsEnd) {
-      let fn = prop.startsWith('color') ? interpolateColor : interpolate;
-      (task.node.props as any)[prop] = fn(
-        task.propsStart[prop]!,
-        task.propsEnd[prop]!,
-        t,
-      );
+      let start = task.propsStart[prop]!;
+      let end = task.propsEnd[prop]!;
+      (task.node.props as any)[prop] = interpolateProp(prop, start, end, t);
     }
 
     updateNodeStyles(task.node);
@@ -114,80 +138,85 @@ function updateAnimations(time: number) {
   requestAnimationUpdate();
 }
 
-function applyEasing(easing: string, progress: number): number {
-  switch (easing) {
-    case 'linear':
-    default:
-      return progress;
-    case 'ease-in':
-      return progress * progress;
-    case 'ease-out':
-      return progress * (2 - progress);
-    case 'ease-in-out':
-      return progress < 0.5
-        ? 2 * progress * progress
-        : -1 + (4 - 2 * progress) * progress;
-  }
-}
-
-function interpolate(start: number, end: number, t: number): number {
-  return start + (end - start) * t;
-}
-
-function interpolateColor(start: number, end: number, t: number): number {
-  return (
-    (interpolate((start >> 24) & 0xff, (end >> 24) & 0xff, t) << 24) |
-    (interpolate((start >> 16) & 0xff, (end >> 16) & 0xff, t) << 16) |
-    (interpolate((start >> 8) & 0xff, (end >> 8) & 0xff, t) << 8) |
-    interpolate(start & 0xff, end & 0xff, t)
-  );
-}
-
 class AnimationController implements lng.IAnimationController {
   state: lng.AnimationControllerState = 'paused';
-  _stopPromise: Promise<void> | null = null;
-  _stopResolve: (() => void) | null = null;
 
-  constructor(public task: AnimationTask) {}
+  stopPromise: Promise<void> | null = null;
+  stopResolve: (() => void) | null = null;
+
+  propsStart: Record<string, number> = {};
+  propsEnd: Record<string, number> = {};
+  timeStart: number = performance.now();
+  timeEnd: number;
+  settings: Required<lng.AnimationSettings>;
+  iteration: number = 0;
+  pausedTime: number | null = null;
+
+  constructor(
+    public node: DOMNode,
+    props: Partial<lng.INodeAnimateProps<any>>,
+    rawSettings: Partial<lng.AnimationSettings>,
+  ) {
+    this.settings = {
+      duration: rawSettings.duration ?? 300,
+      delay: rawSettings.delay ?? 0,
+      easing: rawSettings.easing ?? 'linear',
+      loop: rawSettings.loop ?? false,
+      repeat: rawSettings.repeat ?? 1,
+      repeatDelay: rawSettings.repeatDelay ?? 0,
+      stopMethod: false,
+    };
+
+    this.timeEnd =
+      this.timeStart + this.settings.delay + this.settings.duration;
+
+    for (let [prop, value] of Object.entries(props)) {
+      if (value != null && typeof value === 'number') {
+        this.propsStart[prop] = (node.props as any)[prop];
+        this.propsEnd[prop] = value;
+      }
+    }
+
+    animationTasks.push(this);
+  }
 
   start() {
-    if (this.task.pausedTime != null) {
-      this.task.timeStart += performance.now() - this.task.pausedTime;
-      this.task.pausedTime = null;
+    if (this.pausedTime != null) {
+      this.timeStart += performance.now() - this.pausedTime;
+      this.pausedTime = null;
     } else {
-      this.task.timeStart = performance.now();
+      this.timeStart = performance.now();
     }
     this.state = 'running';
     requestAnimationUpdate();
     return this;
   }
   pause() {
-    this.task.pausedTime = performance.now();
+    this.pausedTime = performance.now();
     this.state = 'paused';
     return this;
   }
   stop() {
-    let index = animationTasks.indexOf(this.task);
+    let index = animationTasks.indexOf(this);
     if (index !== -1) {
       animationTasks.splice(index, 1);
     }
     this.state = 'stopped';
-    if (this._stopResolve) {
-      this._stopResolve();
-      this._stopResolve = null;
-      this._stopPromise = null;
+    if (this.stopResolve) {
+      this.stopResolve();
+      this.stopResolve = null;
+      this.stopPromise = null;
     }
     return this;
   }
-
   restore() {
     return this;
   }
   waitUntilStopped() {
-    this._stopPromise ??= new Promise((resolve) => {
-      this._stopResolve = resolve;
+    this.stopPromise ??= new Promise((resolve) => {
+      this.stopResolve = resolve;
     });
-    return this._stopPromise;
+    return this.stopPromise;
   }
   on() {
     return this;
@@ -208,45 +237,12 @@ function animate(
   props: Partial<lng.INodeAnimateProps<any>>,
   settings: Partial<lng.AnimationSettings>,
 ): lng.IAnimationController {
-  let fullSettings: Required<lng.AnimationSettings> = {
-    duration: settings.duration ?? 300,
-    delay: settings.delay ?? 0,
-    easing: settings.easing ?? 'linear',
-    loop: settings.loop ?? false,
-    repeat: settings.repeat ?? 1,
-    repeatDelay: settings.repeatDelay ?? 0,
-    stopMethod: false,
-  };
-
-  let now = performance.now();
-
-  // Create the animation task
-  let task: AnimationTask = {
-    node: this,
-    propsStart: {},
-    propsEnd: {},
-    timeStart: now,
-    timeEnd: now + fullSettings.delay + fullSettings.duration,
-    settings: fullSettings,
-    iteration: 0,
-    pausedTime: null,
-    controller: null, // Will be filled in below
-  };
-
-  for (let [prop, value] of Object.entries(props)) {
-    if (value != null && typeof value === 'number') {
-      task.propsStart[prop] = (this.props as any)[prop];
-      task.propsEnd[prop] = value;
-    }
-  }
-
-  animationTasks.push(task);
-
-  const controller = new AnimationController(task);
-  task.controller = controller;
-
-  return controller;
+  return new AnimationController(this, props, settings);
 }
+
+/*
+  Node Properties
+*/
 
 let elMap = new WeakMap<DOMNode, HTMLElement>();
 
