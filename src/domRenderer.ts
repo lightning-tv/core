@@ -342,6 +342,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         break;
       }
       case 'none':
+        style += `width: max-content;`;
         break;
     }
 
