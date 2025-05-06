@@ -1158,8 +1158,20 @@ export class DOMRendererMain implements IRendererMain {
 
   constructor(
     public settings: lng.RendererMainSettings,
-    public target: string | HTMLElement,
+    rawTarget: string | HTMLElement,
   ) {
+    let target: HTMLElement;
+    if (typeof rawTarget === 'string') {
+      let result = document.getElementById(rawTarget);
+      if (result instanceof HTMLElement) {
+        target = result;
+      } else {
+        throw new Error(`Target #${rawTarget} not found`);
+      }
+    } else {
+      target = rawTarget;
+    }
+
     let canvas = document.body.appendChild(document.createElement('canvas'));
     canvas.style.position = 'absolute';
     canvas.style.top = '0';
@@ -1192,7 +1204,7 @@ export class DOMRendererMain implements IRendererMain {
       }),
     );
     this.stage.root = this.root;
-    document.body.appendChild(this.root.div);
+    target.appendChild(this.root.div);
 
     if (Config.fontSettings.fontFamily) {
       this.root.div.style.fontFamily = Config.fontSettings.fontFamily;
