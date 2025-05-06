@@ -24,21 +24,51 @@ import { EventEmitter } from '@lightningjs/renderer/utils';
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
 
+function applyEasing(easing: string, progress: number): number {
+  switch (easing) {
+    case 'linear':
+    default:
+      return progress;
+    case 'ease-in':
+      return progress * progress;
+    case 'ease-out':
+      return progress * (2 - progress);
+    case 'ease-in-out':
+      return progress < 0.5
+        ? 2 * progress * progress
+        : -1 + (4 - 2 * progress) * progress;
+  }
+}
+
+function interpolate(start: number, end: number, t: number): number {
+  return start + (end - start) * t;
+}
+
+function interpolateColor(start: number, end: number, t: number): number {
+  return (
+    (interpolate((start >> 24) & 0xff, (end >> 24) & 0xff, t) << 24) |
+    (interpolate((start >> 16) & 0xff, (end >> 16) & 0xff, t) << 16) |
+    (interpolate((start >> 8) & 0xff, (end >> 8) & 0xff, t) << 8) |
+    interpolate(start & 0xff, end & 0xff, t)
+  );
+}
+
+function interpolateProp(
+  name: string,
+  start: number,
+  end: number,
+  t: number,
+): number {
+  return name.startsWith('color')
+    ? interpolateColor(start, end, t)
+    : interpolate(start, end, t);
+}
+
 /*
  Animations
 */
-type AnimationTask = {
-  node: DOMNode;
-  propsStart: Record<string, number>;
-  propsEnd: Record<string, number>;
-  timeStart: number;
-  timeEnd: number;
-  settings: Required<lng.AnimationSettings>;
-  iteration: number;
-  pausedTime: number | null;
-};
 
-let animationTasks: AnimationTask[] = [];
+let animationTasks: AnimationController[] = [];
 let animationFrameRequested = false;
 
 function requestAnimationUpdate() {
@@ -83,7 +113,8 @@ function updateAnimations(time: number) {
       else {
         Object.assign(task.node.props, task.propsEnd);
         updateNodeStyles(task.node);
-        animationTasks.splice(i, 1);
+
+        task.stop();
         i--;
       }
       continue;
@@ -92,18 +123,13 @@ function updateAnimations(time: number) {
     /*
      Update props and styles
     */
-    let t = applyEasing(
-      activeTime / task.settings.duration,
-      task.settings.easing,
-    );
+    let t = activeTime / task.settings.duration;
+    t = applyEasing(task.settings.easing, t);
 
     for (let prop in task.propsEnd) {
-      let fn = prop.startsWith('color') ? interpolateColor : interpolate;
-      (task.node.props as any)[prop] = fn(
-        task.propsStart[prop]!,
-        task.propsEnd[prop]!,
-        t,
-      );
+      let start = task.propsStart[prop]!;
+      let end = task.propsEnd[prop]!;
+      (task.node.props as any)[prop] = interpolateProp(prop, start, end, t);
     }
 
     updateNodeStyles(task.node);
@@ -112,67 +138,85 @@ function updateAnimations(time: number) {
   requestAnimationUpdate();
 }
 
-function applyEasing(progress: number, easing: string): number {
-  switch (easing) {
-    case 'linear':
-    default:
-      return progress;
-    case 'ease-in':
-      return progress * progress;
-    case 'ease-out':
-      return progress * (2 - progress);
-    case 'ease-in-out':
-      return progress < 0.5
-        ? 2 * progress * progress
-        : -1 + (4 - 2 * progress) * progress;
-  }
-}
-
-function interpolate(start: number, end: number, t: number): number {
-  return start + (end - start) * t;
-}
-
-function interpolateColor(start: number, end: number, t: number): number {
-  return (
-    (interpolate((start >> 24) & 0xff, (end >> 24) & 0xff, t) << 24) |
-    (interpolate((start >> 16) & 0xff, (end >> 16) & 0xff, t) << 16) |
-    (interpolate((start >> 8) & 0xff, (end >> 8) & 0xff, t) << 8) |
-    interpolate(start & 0xff, end & 0xff, t)
-  );
-}
-
 class AnimationController implements lng.IAnimationController {
   state: lng.AnimationControllerState = 'paused';
 
-  constructor(public task: AnimationTask) {}
+  stopPromise: Promise<void> | null = null;
+  stopResolve: (() => void) | null = null;
+
+  propsStart: Record<string, number> = {};
+  propsEnd: Record<string, number> = {};
+  timeStart: number = performance.now();
+  timeEnd: number;
+  settings: Required<lng.AnimationSettings>;
+  iteration: number = 0;
+  pausedTime: number | null = null;
+
+  constructor(
+    public node: DOMNode,
+    props: Partial<lng.INodeAnimateProps<any>>,
+    rawSettings: Partial<lng.AnimationSettings>,
+  ) {
+    this.settings = {
+      duration: rawSettings.duration ?? 300,
+      delay: rawSettings.delay ?? 0,
+      easing: rawSettings.easing ?? 'linear',
+      loop: rawSettings.loop ?? false,
+      repeat: rawSettings.repeat ?? 1,
+      repeatDelay: rawSettings.repeatDelay ?? 0,
+      stopMethod: false,
+    };
+
+    this.timeEnd =
+      this.timeStart + this.settings.delay + this.settings.duration;
+
+    for (let [prop, value] of Object.entries(props)) {
+      if (value != null && typeof value === 'number') {
+        this.propsStart[prop] = (node.props as any)[prop];
+        this.propsEnd[prop] = value;
+      }
+    }
+
+    animationTasks.push(this);
+  }
 
   start() {
-    if (this.task.pausedTime != null) {
-      this.task.timeStart += performance.now() - this.task.pausedTime;
-      this.task.pausedTime = null;
+    if (this.pausedTime != null) {
+      this.timeStart += performance.now() - this.pausedTime;
+      this.pausedTime = null;
     } else {
-      this.task.timeStart = performance.now();
+      this.timeStart = performance.now();
     }
+    this.state = 'running';
     requestAnimationUpdate();
     return this;
   }
   pause() {
-    this.task.pausedTime = performance.now();
+    this.pausedTime = performance.now();
+    this.state = 'paused';
     return this;
   }
   stop() {
-    let index = animationTasks.indexOf(this.task);
+    let index = animationTasks.indexOf(this);
     if (index !== -1) {
       animationTasks.splice(index, 1);
     }
+    this.state = 'stopped';
+    if (this.stopResolve) {
+      this.stopResolve();
+      this.stopResolve = null;
+      this.stopPromise = null;
+    }
     return this;
   }
-
   restore() {
     return this;
   }
   waitUntilStopped() {
-    return Promise.resolve();
+    this.stopPromise ??= new Promise((resolve) => {
+      this.stopResolve = resolve;
+    });
+    return this.stopPromise;
   }
   on() {
     return this;
@@ -193,41 +237,12 @@ function animate(
   props: Partial<lng.INodeAnimateProps<any>>,
   settings: Partial<lng.AnimationSettings>,
 ): lng.IAnimationController {
-  let fullSettings: Required<lng.AnimationSettings> = {
-    duration: settings.duration ?? 300,
-    delay: settings.delay ?? 0,
-    easing: settings.easing ?? 'linear',
-    loop: settings.loop ?? false,
-    repeat: settings.repeat ?? 1,
-    repeatDelay: settings.repeatDelay ?? 0,
-    stopMethod: false,
-  };
-
-  let now = performance.now();
-
-  // Create the animation task
-  let task: AnimationTask = {
-    node: this,
-    propsStart: {},
-    propsEnd: {},
-    timeStart: now,
-    timeEnd: now + fullSettings.delay + fullSettings.duration,
-    settings: fullSettings,
-    iteration: 0,
-    pausedTime: null,
-  };
-
-  for (let [prop, value] of Object.entries(props)) {
-    if (value != null && typeof value === 'number') {
-      task.propsStart[prop] = (this.props as any)[prop];
-      task.propsEnd[prop] = value;
-    }
-  }
-
-  animationTasks.push(task);
-
-  return new AnimationController(task);
+  return new AnimationController(this, props, settings);
 }
+
+/*
+  Node Properties
+*/
 
 let elMap = new WeakMap<DOMNode, HTMLElement>();
 
@@ -235,6 +250,12 @@ function updateNodeParent(node: DOMNode | DOMText) {
   if (node.parent != null) {
     elMap.get(node.parent as DOMNode)!.appendChild(node.div);
   }
+}
+
+function getNodeLineHeight(props: IRendererTextNodeProps): number {
+  return (
+    props.lineHeight ?? Config.fontSettings.lineHeight ?? 1.2 * props.fontSize
+  );
 }
 
 function updateNodeStyles(node: DOMNode | DOMText) {
@@ -283,40 +304,58 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     if (textProps.color != null && textProps.color !== 0) {
       style += `color: ${colorToRgba(textProps.color)};`;
     }
-
-    if (textProps.fontFamily) style += `font-family: ${textProps.fontFamily};`;
-    if (textProps.fontSize) style += `font-size: ${textProps.fontSize}px;`;
-    if (textProps.fontStyle !== 'normal')
+    if (textProps.fontFamily) {
+      style += `font-family: ${textProps.fontFamily};`;
+    }
+    if (textProps.fontSize) {
+      style += `font-size: ${textProps.fontSize}px;`;
+    }
+    if (textProps.fontStyle !== 'normal') {
       style += `font-style: ${textProps.fontStyle};`;
-    if (textProps.fontWeight !== 'normal')
+    }
+    if (textProps.fontWeight !== 'normal') {
       style += `font-weight: ${textProps.fontWeight};`;
-    if (textProps.fontStretch !== 'normal')
+    }
+    if (textProps.fontStretch !== 'normal') {
       style += `font-stretch: ${textProps.fontStretch};`;
-    if (textProps.lineHeight != null)
+    }
+    if (textProps.lineHeight != null) {
       style += `line-height: ${textProps.lineHeight}px;`;
-    if (textProps.letterSpacing)
+    }
+    if (textProps.letterSpacing) {
       style += `letter-spacing: ${textProps.letterSpacing}px;`;
-    if (textProps.textAlign !== 'left')
+    }
+    if (textProps.textAlign !== 'left') {
       style += `text-align: ${textProps.textAlign};`;
-    // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
-    if (textProps.maxLines > 0) {
+    }
+
+    let maxLines = textProps.maxLines || Infinity;
+    switch (textProps.contain) {
+      case 'width':
+        style += `width: ${props.width}px; overflow: hidden;`;
+        break;
+      case 'both': {
+        let lineHeight = getNodeLineHeight(textProps);
+        maxLines = Math.min(maxLines, Math.floor(props.height / lineHeight));
+        let height = maxLines * lineHeight;
+        style += `width: ${props.width}px; height: ${height}px; overflow: hidden;`;
+        break;
+      }
+      case 'none':
+        style += `width: max-content;`;
+        break;
+    }
+
+    if (maxLines !== Infinity) {
       // https://stackoverflow.com/a/13924997
       style += `display: -webkit-box;
         overflow: hidden;
-        -webkit-line-clamp: ${textProps.maxLines};
-        line-clamp: ${textProps.maxLines};
+        -webkit-line-clamp: ${maxLines};
+        line-clamp: ${maxLines};
         -webkit-box-orient: vertical;`;
     }
-    switch (textProps.contain) {
-      case 'width':
-        style += `width: ${textProps.width}px; overflow: hidden;`;
-        break;
-      case 'both':
-        style += `width: ${textProps.width}px; height: ${textProps.height}px; overflow: hidden;`;
-        break;
-      case 'none':
-        break;
-    }
+
+    // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
 
     scheduleUpdateDOMTextMeasurement(node);
@@ -361,8 +400,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       bgStyle += `background-image: ${srcImg};`;
       bgStyle += `background-repeat: no-repeat;`;
 
-      if (props.textureOptions.resizeMode?.type === 'contain') {
-        bgStyle += `background-size: contain; background-position: center;`;
+      if (props.textureOptions.resizeMode?.type) {
+        bgStyle += `background-size: ${props.textureOptions.resizeMode.type}; background-position: center;`;
       } else if (srcPos !== null) {
         bgStyle += `background-position: -${srcPos.x}px -${srcPos.y}px;`;
       } else {
@@ -1119,8 +1158,20 @@ export class DOMRendererMain implements IRendererMain {
 
   constructor(
     public settings: lng.RendererMainSettings,
-    public target: string | HTMLElement,
+    rawTarget: string | HTMLElement,
   ) {
+    let target: HTMLElement;
+    if (typeof rawTarget === 'string') {
+      let result = document.getElementById(rawTarget);
+      if (result instanceof HTMLElement) {
+        target = result;
+      } else {
+        throw new Error(`Target #${rawTarget} not found`);
+      }
+    } else {
+      target = rawTarget;
+    }
+
     let canvas = document.body.appendChild(document.createElement('canvas'));
     canvas.style.position = 'absolute';
     canvas.style.top = '0';
@@ -1145,18 +1196,15 @@ export class DOMRendererMain implements IRendererMain {
 
     this.root = new DOMNode(
       this.stage,
-      resolveTextNodeDefaults({
+      resolveNodeDefaults({
         width: settings.appWidth ?? 1920,
         height: settings.appHeight ?? 1080,
-        fontFamily: Config.fontSettings.fontFamily,
-        fontSize: Config.fontSettings.fontSize,
-        lineHeight: Config.fontSettings.lineHeight,
         shader: defaultShader,
         zIndex: 65534,
       }),
     );
     this.stage.root = this.root;
-    document.body.appendChild(this.root.div);
+    target.appendChild(this.root.div);
 
     if (Config.fontSettings.fontFamily) {
       this.root.div.style.fontFamily = Config.fontSettings.fontFamily;
@@ -1166,6 +1214,8 @@ export class DOMRendererMain implements IRendererMain {
     }
     if (Config.fontSettings.lineHeight) {
       this.root.div.style.lineHeight = Config.fontSettings.lineHeight + 'px';
+    } else {
+      this.root.div.style.lineHeight = '1.2';
     }
     if (Config.fontSettings.fontWeight) {
       if (typeof Config.fontSettings.fontWeight === 'number') {
