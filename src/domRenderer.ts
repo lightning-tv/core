@@ -289,8 +289,12 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
     if (props.rotation !== 0) transform += `rotate(${props.rotation}rad)`;
 
-    if (props.scaleX !== 1) transform += `scaleX(${props.scaleX})`;
-    if (props.scaleY !== 1) transform += `scaleY(${props.scaleY})`;
+    if (props.scale !== 1 && props.scale != null) {
+      transform += `scale(${props.scale})`;
+    } else {
+      if (props.scaleX !== 1) transform += `scaleX(${props.scaleX})`;
+      if (props.scaleY !== 1) transform += `scaleY(${props.scaleY})`;
+    }
 
     if (transform.length > 0) {
       style += `transform: ${transform};`;
@@ -395,8 +399,24 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
     let bgStyle = '';
     let borderStyle = '';
+    let radiusStyle = '';
+    let maskStyle = '';
 
     if (srcImg) {
+      if (props.color !== 0xffffffff && props.color !== 0x00000000) {
+        // use image as a mask
+        bgStyle += `background-color: ${colorToRgba(props.color)}; background-blend-mode: multiply;`;
+        maskStyle += `mask-image: ${srcImg};`;
+        if (srcPos !== null) {
+          maskStyle += `mask-position: -${srcPos.x}px -${srcPos.y}px;`;
+        } else {
+          maskStyle += `mask-size: 100% 100%;`;
+        }
+      } else if (gradient) {
+        // use gradient as a mask
+        maskStyle += `mask-image: ${gradient};`;
+      }
+
       bgStyle += `background-image: ${srcImg};`;
       bgStyle += `background-repeat: no-repeat;`;
 
@@ -408,16 +428,13 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         bgStyle += 'background-size: 100% 100%;';
       }
 
-      if (gradient) {
-        // use gradient as a mask
-        bgStyle += `mask-image: ${gradient};`;
-        // separate layers are needed for the mask
-        if (node.divBg == null) {
-          node.div.appendChild((node.divBg = document.createElement('div')));
-          node.div.appendChild(
-            (node.divBorder = document.createElement('div')),
-          );
-        }
+      if (maskStyle !== '') {
+        bgStyle += maskStyle;
+      }
+      // separate layers are needed for the mask
+      if (maskStyle !== '' && node.divBg == null) {
+        node.div.appendChild((node.divBg = document.createElement('div')));
+        node.div.appendChild((node.divBorder = document.createElement('div')));
       }
     } else if (gradient) {
       bgStyle += `background-image: ${gradient};`;
@@ -449,15 +466,16 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         }
         // Rounded
         if (typeof radius === 'number' && radius > 0) {
-          borderStyle += `border-radius: ${radius}px;`;
+          radiusStyle += `border-radius: ${radius}px;`;
         } else if (Array.isArray(radius) && radius.length === 4) {
-          borderStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
+          radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
         }
       }
     }
 
-    style += borderStyle;
-    bgStyle += borderStyle;
+    style += radiusStyle;
+    bgStyle += radiusStyle;
+    borderStyle += radiusStyle;
 
     if (node.divBg == null) {
       style += bgStyle;
@@ -465,7 +483,9 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       bgStyle += 'position: absolute; inset: 0; z-index: -1;';
       node.divBg.setAttribute('style', bgStyle);
     }
-    if (node.divBorder != null) {
+    if (node.divBorder == null) {
+      style += borderStyle;
+    } else {
       borderStyle += 'position: absolute; inset: 0; z-index: -1;';
       node.divBorder.setAttribute('style', borderStyle);
     }
@@ -483,8 +503,15 @@ type Size = { width: number; height: number };
 function getElSize(node: DOMNode): Size {
   let rect = node.div.getBoundingClientRect();
   let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
-  rect.height = rect.height / node.scaleY / dpr;
-  rect.width = rect.width / node.scaleX / dpr;
+  rect.height /= dpr;
+  rect.width /= dpr;
+  if (node.props.scale != null && node.props.scale !== 1) {
+    rect.height /= node.props.scale;
+    rect.width /= node.props.scale;
+  } else {
+    rect.height /= node.props.scaleY;
+    rect.width /= node.props.scaleX;
+  }
   return rect;
 }
 
