@@ -24,7 +24,7 @@ export interface BorderStyleObject {
 }
 
 export type DollarString = `$${string}`;
-export type BorderStyle = number | BorderStyleObject;
+export type BorderStyle = BorderStyleObject;
 export type BorderRadius = number | number[];
 
 export interface Effects {
@@ -32,18 +32,11 @@ export interface Effects {
   radialGradient?: RadialGradientProps;
   holePunch?: HolePunchProps;
   shadow?: ShadowProps;
-}
-
-export interface BorderEffects {
   rounded?: { radius: BorderRadius };
   border?: BorderStyleObject;
-  borderTop?: BorderStyle;
-  borderRight?: BorderStyle;
-  borderBottom?: BorderStyle;
-  borderLeft?: BorderStyle;
 }
 
-export type StyleEffects = Effects & BorderEffects;
+export type StyleEffects = Effects;
 
 // Renderer should export EffectDesc
 export type ShaderEffectDesc = {
@@ -174,8 +167,6 @@ export interface IntrinsicTextNodeStyleProps extends TextStyles {}
 export type AnimationEvents = 'animating' | 'tick' | 'stopped';
 export type AnimationEventHandler = (
   controller: IAnimationController,
-  name: string,
-  endValue: number,
   props?: any,
 ) => void;
 
