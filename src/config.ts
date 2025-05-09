@@ -46,4 +46,5 @@ export const Config: Config = {
   setActiveElement: () => {},
   focusStateKey: '$focus',
   domRendering: false,
+  lockStyles: true,
 };
