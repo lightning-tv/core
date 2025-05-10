@@ -1,14 +1,11 @@
 import {
-  type FadeOutEffectProps,
-  type GlitchEffectProps,
-  type GrayscaleEffectProps,
   type AnimationSettings as RendererAnimationSettings,
-  type LinearGradientEffectProps,
-  type RadialGradientEffectProps,
-  type RadialProgressEffectProps,
+  type LinearGradientProps,
+  type RadialGradientProps,
   type ITextNodeProps,
-  type HolePunchEffectProps,
+  type HolePunchProps,
   type IAnimationController,
+  type ShadowProps,
   NodeLoadedPayload,
   NodeFailedPayload,
 } from '@lightningjs/renderer';
@@ -27,30 +24,19 @@ export interface BorderStyleObject {
 }
 
 export type DollarString = `$${string}`;
-export type BorderStyle = number | BorderStyleObject;
+export type BorderStyle = BorderStyleObject;
 export type BorderRadius = number | number[];
 
 export interface Effects {
-  fadeOut?: FadeOutEffectProps;
-  linearGradient?: LinearGradientEffectProps;
-  radialGradient?: RadialGradientEffectProps;
-  radialProgressGradient?: RadialProgressEffectProps;
-  grayscale?: GrayscaleEffectProps;
-  glitch?: GlitchEffectProps;
-  radialProgress?: RadialProgressEffectProps;
-  holePunch?: HolePunchEffectProps;
+  linearGradient?: LinearGradientProps;
+  radialGradient?: RadialGradientProps;
+  holePunch?: HolePunchProps;
+  shadow?: ShadowProps;
+  rounded?: { radius: BorderRadius };
+  border?: BorderStyleObject;
 }
 
-export interface BorderEffects {
-  radius?: { radius: BorderRadius };
-  border?: BorderStyle;
-  borderTop?: BorderStyle;
-  borderRight?: BorderStyle;
-  borderBottom?: BorderStyle;
-  borderLeft?: BorderStyle;
-}
-
-export type StyleEffects = Effects & BorderEffects;
+export type StyleEffects = Effects;
 
 // Renderer should export EffectDesc
 export type ShaderEffectDesc = {
@@ -181,8 +167,6 @@ export interface IntrinsicTextNodeStyleProps extends TextStyles {}
 export type AnimationEvents = 'animating' | 'tick' | 'stopped';
 export type AnimationEventHandler = (
   controller: IAnimationController,
-  name: string,
-  endValue: number,
   props?: any,
 ) => void;
 
