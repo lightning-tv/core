@@ -804,17 +804,20 @@ export class ElementNode extends Object {
     }
 
     const props = node.lng;
+    const parentWidth = parent.width || 0;
+    const parentHeight = parent.height || 0;
+
     props.x = props.x || 0;
     props.y = props.y || 0;
     props.parent = parent.lng as INode;
 
     if (this.right || this.right === 0) {
-      props.x = (parent.width || 0) - this.right;
+      props.x = parentWidth - this.right;
       props.mountX = 1;
     }
 
     if (this.bottom || this.bottom === 0) {
-      props.y = (parent.height || 0) - this.bottom;
+      props.y = parentHeight - this.bottom;
       props.mountY = 1;
     }
 
@@ -823,12 +826,12 @@ export class ElementNode extends Object {
     }
 
     if (this.centerX) {
-      props.x += (parent.width || 0) / 2;
+      props.x += parentWidth / 2;
       props.mountX = 0.5;
     }
 
     if (this.centerY) {
-      props.y += (parent.height || 0) / 2;
+      props.y += parentHeight / 2;
       props.mountY = 0.5;
     }
 
@@ -851,7 +854,7 @@ export class ElementNode extends Object {
       if (textProps.contain) {
         if (!textProps.width) {
           textProps.width =
-            (parent.width || 0) - textProps.x! - (textProps.marginRight || 0);
+            parentWidth - textProps.x! - (textProps.marginRight || 0);
         }
 
         if (
@@ -860,7 +863,7 @@ export class ElementNode extends Object {
           !textProps.maxLines
         ) {
           textProps.height =
-            (parent.height || 0) - textProps.y! - (textProps.marginBottom || 0);
+            parentHeight - textProps.y! - (textProps.marginBottom || 0);
         } else if (textProps.maxLines === 1) {
           textProps.height = (textProps.height ||
             textProps.lineHeight ||
@@ -885,12 +888,12 @@ export class ElementNode extends Object {
       if (!props.texture) {
         // Set width and height to parent less offset
         if (isNaN(props.width as number)) {
-          props.width = (parent.width || 0) - props.x;
+          props.width = parentWidth - props.x;
           node._calcWidth = true;
         }
 
         if (isNaN(props.height as number)) {
-          props.height = (parent.height || 0) - props.y;
+          props.height = parentHeight - props.y;
           node._calcHeight = true;
         }
 
