@@ -18,7 +18,7 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "composite": true,
-    "types": ["vite/client"]
+    "types": ["vite/client", "vitest/globals"]
   },
   "include": ["src/*"],
   "exclude": ["node_modules", "dist"]
