@@ -932,10 +932,8 @@ export class ElementNode extends Object {
       const numChildren = node.children.length;
       for (let i = 0; i < numChildren; i++) {
         const c = node.children[i];
-        isDev && assertTruthy(c, 'Child is undefined');
-        if (isElementNode(c)) {
-          c.render();
-        }
+        isDev && assertTruthy(isElementNode(c), 'Child is an elementNode');
+        c!.render();
       }
     }
     if (topNode) {

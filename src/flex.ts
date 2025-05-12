@@ -89,7 +89,7 @@ export default function (node: ElementNode): boolean {
   const justify = node.justifyContent || 'flexStart';
   let containerUpdated = false;
 
-  if (totalFlexGrow > 0) {
+  if (totalFlexGrow > 0 && numProcessedChildren > 1) {
     // When flex-grow is used, the container's size is considered fixed for this calculation pass,
     // unless flexBoundary is explicitly set to allow container resizing based on content.
     node.flexBoundary = node.flexBoundary || 'fixed';

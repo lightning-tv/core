@@ -331,6 +331,7 @@ describe('Flexbox Layout (calculateFlex)', () => {
     });
 
     it('should not apply flexGrow if only one child', () => {
+      // If you want this to be 300, dont specify a width for one child
       const child1 = createTestElement({
         width: 50,
         height: 50,
@@ -344,9 +345,7 @@ describe('Flexbox Layout (calculateFlex)', () => {
       }) as ElementNode;
 
       calculateFlex(parent);
-      // With CSS-compliant flex-grow, a single item should grow.
-      // Available space = 300 - 50 = 250. Child grows by 250.
-      expect(child1.width).toBe(300);
+      expect(child1.width).toBe(50);
     });
   });
 
