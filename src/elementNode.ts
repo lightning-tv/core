@@ -876,7 +876,7 @@ export class ElementNode extends Object {
       if (!props.texture) {
         // Set width and height to parent less offset
         if (isNaN(props.width as number)) {
-          props.width = parentWidth - props.x;
+          props.width = node.flexGrow ? 0 : parentWidth - props.x;
           node._calcWidth = true;
         }
 
