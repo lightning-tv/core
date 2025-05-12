@@ -876,7 +876,7 @@ export class ElementNode extends Object {
       if (!props.texture) {
         // Set width and height to parent less offset
         if (isNaN(props.width as number)) {
-          props.width = parentWidth - props.x;
+          props.width = node.flexGrow ? 0 : parentWidth - props.x;
           node._calcWidth = true;
         }
 
@@ -932,10 +932,8 @@ export class ElementNode extends Object {
       const numChildren = node.children.length;
       for (let i = 0; i < numChildren; i++) {
         const c = node.children[i];
-        isDev && assertTruthy(c, 'Child is undefined');
-        if (isElementNode(c)) {
-          c.render();
-        }
+        isDev && assertTruthy(isElementNode(c), 'Child is an elementNode');
+        c!.render();
       }
     }
     if (topNode) {
