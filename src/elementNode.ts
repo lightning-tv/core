@@ -931,6 +931,7 @@ export class ElementNode extends Object {
       for (let i = 0; i < numChildren; i++) {
         const c = node.children[i];
         isDev && assertTruthy(c, 'Child is undefined');
+        // Text elements sneak in from Solid creating tracked nodes
         if (isElementNode(c)) {
           c.render();
         }
