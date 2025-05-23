@@ -300,14 +300,12 @@ export class ElementNode extends Object {
 
   set effects(v: StyleEffects) {
     if (!SHADERS_ENABLED) return;
-    console.warn(
-      '`effects` is deprecated. Use shortcuts like `border`, `shadow`, `borderRadius` instead.',
-    );
     this.lng.shader = this.lng.shader || {};
     const target = this.lng.shader?.program
       ? this.lng.shader.props
       : this.lng.shader;
-    if (v.rounded) target.radius = v.rounded;
+    if (v.rounded) target.radius = v.rounded.radius;
+    if (v.borderRadius) target.radius = v.borderRadius;
     if (v.border) parseAndAssignShaderProps('border', v.border, target);
     if (v.shadow) parseAndAssignShaderProps('shadow', v.shadow, target);
   }
@@ -876,7 +874,7 @@ export class ElementNode extends Object {
       if (!props.texture) {
         // Set width and height to parent less offset
         if (isNaN(props.width as number)) {
-          props.width = parentWidth - props.x;
+          props.width = node.flexGrow ? 0 : parentWidth - props.x;
           node._calcWidth = true;
         }
 
@@ -932,10 +930,8 @@ export class ElementNode extends Object {
       const numChildren = node.children.length;
       for (let i = 0; i < numChildren; i++) {
         const c = node.children[i];
-        isDev && assertTruthy(c, 'Child is undefined');
-        if (isElementNode(c)) {
-          c.render();
-        }
+        isDev && assertTruthy(isElementNode(c), 'Child is an elementNode');
+        c!.render();
       }
     }
     if (topNode) {
@@ -1030,6 +1026,8 @@ if (isDev) {
 Object.defineProperties(ElementNode.prototype, {
   border: shaderAccessor<BorderStyle>('border'),
   shadow: shaderAccessor<ShadowProps>('shadow'),
+  rounded: shaderAccessor<BorderRadius>('rounded'),
+  // Alias for rounded
   borderRadius: shaderAccessor<BorderRadius>('rounded'),
   linearGradient:
     createRawShaderAccessor<LinearGradientProps>('linearGradient'),

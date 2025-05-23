@@ -33,6 +33,7 @@ export interface Effects {
   holePunch?: HolePunchProps;
   shadow?: ShadowProps;
   rounded?: { radius: BorderRadius };
+  borderRadius?: { radius: BorderRadius };
   border?: BorderStyleObject;
 }
 
