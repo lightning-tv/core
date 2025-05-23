@@ -300,14 +300,12 @@ export class ElementNode extends Object {
 
   set effects(v: StyleEffects) {
     if (!SHADERS_ENABLED) return;
-    console.warn(
-      '`effects` is deprecated. Use shortcuts like `border`, `shadow`, `borderRadius` instead.',
-    );
     this.lng.shader = this.lng.shader || {};
     const target = this.lng.shader?.program
       ? this.lng.shader.props
       : this.lng.shader;
-    if (v.rounded) target.radius = v.rounded;
+    if (v.rounded) target.radius = v.rounded.radius;
+    if (v.borderRadius) target.radius = v.borderRadius;
     if (v.border) parseAndAssignShaderProps('border', v.border, target);
     if (v.shadow) parseAndAssignShaderProps('shadow', v.shadow, target);
   }
@@ -1028,6 +1026,8 @@ if (isDev) {
 Object.defineProperties(ElementNode.prototype, {
   border: shaderAccessor<BorderStyle>('border'),
   shadow: shaderAccessor<ShadowProps>('shadow'),
+  rounded: shaderAccessor<BorderRadius>('rounded'),
+  // Alias for rounded
   borderRadius: shaderAccessor<BorderRadius>('rounded'),
   linearGradient:
     createRawShaderAccessor<LinearGradientProps>('linearGradient'),
