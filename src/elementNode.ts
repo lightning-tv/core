@@ -858,7 +858,7 @@ export class ElementNode extends Object {
       }
 
       // Can you put effects on Text nodes? Need to confirm...
-      if (SHADERS_ENABLED && props.shader) {
+      if (SHADERS_ENABLED && props.shader && !props.shader.program) {
         props.shader = convertToShader(node, props.shader);
       }
 
@@ -894,7 +894,7 @@ export class ElementNode extends Object {
         }
       }
 
-      if (SHADERS_ENABLED && props.shader) {
+      if (SHADERS_ENABLED && props.shader && !props.shader.program) {
         props.shader = convertToShader(node, props.shader);
       }
 
@@ -984,10 +984,10 @@ function shaderAccessor<T extends Record<string, any> | number>(
 ) {
   return {
     set(this: ElementNode, value: T) {
-      this.lng.shader = this.lng.shader || {};
-      let target = this.lng.shader;
+      let target = this.lng.shader || {};
+
       let animationSettings: AnimationSettings | undefined;
-      if (this.lng.shader.program) {
+      if (this.lng.shader?.program) {
         target = this.lng.shader.props;
         const transitionKey = key === 'rounded' ? 'borderRadius' : key;
         if (
@@ -1008,6 +1008,14 @@ function shaderAccessor<T extends Record<string, any> | number>(
         target.radius = value;
       } else {
         parseAndAssignShaderProps(key, value, target);
+      }
+
+      if (this.rendered) {
+        if (!this.lng.shader) {
+          this.lng.shader = convertToShader(this, target);
+        }
+      } else {
+        this.lng.shader = target;
       }
 
       if (animationSettings) {
