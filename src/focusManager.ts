@@ -157,7 +157,9 @@ const propagateKeyPress = (
     const captureHandler = elm[captureEvent] || elm[captureKey];
     if (isFunction(captureHandler)) {
       handlerAvailable = elm;
-      if (captureHandler.call(elm, e, elm, finalFocusElm) === true) {
+      if (
+        captureHandler.call(elm, e, elm, finalFocusElm, mappedEvent) === true
+      ) {
         return true;
       }
     }
