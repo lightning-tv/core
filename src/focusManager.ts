@@ -151,11 +151,13 @@ const propagateKeyPress = (
 
   for (let i = numItems - 1; i >= 0; i--) {
     const elm = focusPath[i]!;
-    const captureKey = `capture${e.key}`;
+    const captureKey = `capture${mappedEvent || e.key}`;
     const captureHandler = elm[captureKey] || elm.captureKey;
     if (isFunction(captureHandler)) {
       handlerAvailable = elm;
-      if (captureHandler.call(elm, e, elm, finalFocusElm) === true) {
+      if (
+        captureHandler.call(elm, e, elm, finalFocusElm, mappedEvent) === true
+      ) {
         return true;
       }
     }
