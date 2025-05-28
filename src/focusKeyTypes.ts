@@ -72,6 +72,7 @@ export type KeyHandler = (
   e: KeyboardEvent,
   target: ElementNode,
   handlerElm: ElementNode,
+  mappedEvent?: string,
 ) => KeyHandlerReturn;
 
 export type KeyHoldOptions = {
