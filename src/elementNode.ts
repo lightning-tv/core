@@ -300,14 +300,22 @@ export class ElementNode extends Object {
 
   set effects(v: StyleEffects) {
     if (!SHADERS_ENABLED) return;
-    this.lng.shader = this.lng.shader || {};
-    const target = this.lng.shader?.program
-      ? this.lng.shader.props
-      : this.lng.shader;
+    let target = this.lng.shader || {};
+    if (this.lng.shader?.program) {
+      target = this.lng.shader.props;
+    }
     if (v.rounded) target.radius = v.rounded.radius;
     if (v.borderRadius) target.radius = v.borderRadius;
     if (v.border) parseAndAssignShaderProps('border', v.border, target);
     if (v.shadow) parseAndAssignShaderProps('shadow', v.shadow, target);
+
+    if (this.rendered) {
+      if (!this.lng.shader) {
+        this.lng.shader = convertToShader(this, target);
+      }
+    } else {
+      this.lng.shader = target;
+    }
   }
 
   set id(id: string) {
