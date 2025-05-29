@@ -148,11 +148,13 @@ const propagateKeyPress = (
   let finalFocusElm: ElementNode | undefined;
   let handlerAvailable: ElementNode | undefined;
   const numItems = focusPath.length;
+  const captureEvent =
+    `onCapture${mappedEvent || e.key}` + isUp ? 'Release' : '';
+  const captureKey = isUp ? 'onCaptureKeyRelease' : 'onCaptureKey';
 
   for (let i = numItems - 1; i >= 0; i--) {
     const elm = focusPath[i]!;
-    const captureKey = `capture${e.key}`;
-    const captureHandler = elm[captureKey] || elm.captureKey;
+    const captureHandler = elm[captureEvent] || elm[captureKey];
     if (isFunction(captureHandler)) {
       handlerAvailable = elm;
       if (captureHandler.call(elm, e, elm, finalFocusElm) === true) {
@@ -161,15 +163,37 @@ const propagateKeyPress = (
     }
   }
 
+  let eventHandlerKey: string | undefined;
+  let releaseEventHandlerKey: string | undefined;
+  let fallbackHandlerKey: 'onKeyHold' | 'onKeyPress' | undefined;
+
+  if (mappedEvent) {
+    eventHandlerKey = `on${mappedEvent}`;
+    releaseEventHandlerKey = `on${mappedEvent}Release`;
+  }
+
+  if (!isUp) {
+    fallbackHandlerKey = isHold ? 'onKeyHold' : 'onKeyPress';
+  }
+
   for (let i = 0; i < numItems; i++) {
     const elm = focusPath[i]!;
-    if (!finalFocusElm) finalFocusElm = elm;
+    if (!finalFocusElm) {
+      finalFocusElm = elm;
+    }
 
-    if (mappedEvent) {
-      const eventHandler = isUp
-        ? elm[`on${mappedEvent}Release`]
-        : elm[`on${mappedEvent}`];
-
+    // Check for the release event handler if isUp is true and the key is defined
+    if (isUp && releaseEventHandlerKey) {
+      const eventHandler = elm[releaseEventHandlerKey];
+      if (isFunction(eventHandler)) {
+        handlerAvailable = elm;
+        if (eventHandler.call(elm, e, elm, finalFocusElm) === true) {
+          return true;
+        }
+      }
+    } else if (!isUp && eventHandlerKey) {
+      // Check for the regular event handler if isUp is false and the key is defined
+      const eventHandler = elm[eventHandlerKey];
       if (isFunction(eventHandler)) {
         handlerAvailable = elm;
         if (eventHandler.call(elm, e, elm, finalFocusElm) === true) {
@@ -178,8 +202,9 @@ const propagateKeyPress = (
       }
     }
 
-    if (!isUp) {
-      const fallbackHandler = isHold ? elm.onKeyHold : elm.onKeyPress;
+    // Check for the fallback handler if its key is defined
+    if (fallbackHandlerKey) {
+      const fallbackHandler = elm[fallbackHandlerKey];
       if (isFunction(fallbackHandler)) {
         handlerAvailable = elm;
         if (
