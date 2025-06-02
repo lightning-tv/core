@@ -341,6 +341,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       case 'both': {
         let lineHeight = getNodeLineHeight(textProps);
         maxLines = Math.min(maxLines, Math.floor(props.height / lineHeight));
+        maxLines = Math.max(1, maxLines);
         let height = maxLines * lineHeight;
         style += `width: ${props.width}px; height: ${height}px; overflow: hidden;`;
         break;
