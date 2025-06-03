@@ -503,16 +503,27 @@ type Size = { width: number; height: number };
 
 function getElSize(node: DOMNode): Size {
   let rect = node.div.getBoundingClientRect();
+
   let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
   rect.height /= dpr;
   rect.width /= dpr;
-  if (node.props.scale != null && node.props.scale !== 1) {
-    rect.height /= node.props.scale;
-    rect.width /= node.props.scale;
-  } else {
-    rect.height /= node.props.scaleY;
-    rect.width /= node.props.scaleX;
+
+  for (;;) {
+    if (node.props.scale != null && node.props.scale !== 1) {
+      rect.height /= node.props.scale;
+      rect.width /= node.props.scale;
+    } else {
+      rect.height /= node.props.scaleY;
+      rect.width /= node.props.scaleX;
+    }
+
+    if (node.parent instanceof DOMNode) {
+      node = node.parent;
+    } else {
+      break;
+    }
   }
+
   return rect;
 }
 
