@@ -336,9 +336,7 @@ export class ElementNode extends Object {
 
   set parent(p) {
     this._parent = p;
-    if (this.rendered && p?.rendered) {
-      this.lng.parent = (p?.lng as IRendererNode) ?? null;
-    }
+    this.lng.parent = p && isINode(p.lng) ? p.lng : null;
   }
 
   insertChild(
@@ -909,6 +907,12 @@ export class ElementNode extends Object {
 
       isDev && log('Rendering: ', this, props);
       node.lng = renderer.createNode(props as IRendererNodeProps);
+    }
+
+    for (const child of node.children) {
+      if (isElementNode(child) && isINode(child.lng)) {
+        child.lng.parent = node.lng as any;
+      }
     }
 
     node.rendered = true;
