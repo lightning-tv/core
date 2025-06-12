@@ -188,7 +188,6 @@ export interface ElementNode extends RendererNode {
   _animationSettings?: AnimationSettings;
   _effects?: StyleEffects;
   _id: string | undefined;
-  _queueDelete?: boolean;
   _parent: ElementNode | undefined;
   _rendererProps?: any;
   _states?: States;
@@ -555,7 +554,7 @@ export class ElementNode extends Object {
   }
 
   _destroy() {
-    if (this._queueDelete && isINode(this.lng)) {
+    if (isINode(this.lng)) {
       this.lng.destroy();
       if (this.parent?.requiresLayout()) {
         this.parent.updateLayout();
