@@ -326,11 +326,12 @@ describe('Flexbox Layout (calculateFlex)', () => {
       expect(child1.width).toBe(150); // Unchanged
       expect(child2.width).toBe(150); // Unchanged
       expect(console.warn).toHaveBeenCalledWith(
-        'Negative growFactor, flexGrow not applied',
+        'No available space for flex-grow items to expand, or items overflow.',
       );
     });
 
     it('should not apply flexGrow if only one child', () => {
+      // If you want this to be 300, dont specify a width for one child
       const child1 = createTestElement({
         width: 50,
         height: 50,
@@ -344,7 +345,7 @@ describe('Flexbox Layout (calculateFlex)', () => {
       }) as ElementNode;
 
       calculateFlex(parent);
-      expect(child1.width).toBe(50); // Unchanged
+      expect(child1.width).toBe(50);
     });
   });
 
@@ -477,8 +478,8 @@ describe('Flexbox Layout (calculateFlex)', () => {
         height: 30,
       }) as ElementNode;
       const parent = createTestElement({
-        width: 150, // child1 and child2 fit, child3 wraps
-        height: 200,
+        width: 150, // child1 (80) fits. child2 (80) wraps. child3 (80) wraps.
+        height: 30, // Initial height, will be overridden by content if flexCrossBoundary is not 'fixed'
         flexDirection: 'row',
         flexWrap: 'wrap',
         columnGap: 10, // Gap between columns (horizontal)
@@ -486,18 +487,22 @@ describe('Flexbox Layout (calculateFlex)', () => {
         alignItems: 'flexStart', // To make cross axis predictable
         children: [child1, child2, child3],
       }) as ElementNode;
-      parent.containerCrossSize = 30; // Simulate a known cross size for wrapping calculations
 
       calculateFlex(parent);
 
       expect(child1.x).toBe(0);
       expect(child1.y).toBe(0);
 
-      expect(child2.x).toBe(80 + 10); // child1.width + columnGap
-      expect(child2.y).toBe(0); // Still on the first row
+      // child2 wraps to the next line
+      expect(child2.x).toBe(0);
+      expect(child2.y).toBe(30 + 10); // line1_height (30) + columnGap (10)
 
-      expect(child3.x).toBe(0); // Wrapped to new line
-      expect(child3.y).toBe(30 + 5); // parent.containerCrossSize (height of first row items) + rowGap
+      // child3 wraps to the line after child2
+      expect(child3.x).toBe(0);
+      expect(child3.y).toBe(30 + 10 + 30 + 10); // line1_height + columnGap + line2_height + columnGap
+
+      // Final parent height: line1(30) + columnGap(10) + line2(30) + columnGap(10) + line3(30) = 110
+      expect(parent.height).toBe(110);
     });
   });
 
@@ -580,17 +585,14 @@ describe('Flexbox Layout (calculateFlex)', () => {
         height: 50,
       }) as ElementNode;
       const parent = createTestElement({
-        width: 250, // Can fit two children per row
-        height: 200,
+        width: 250, // Can fit two children (100 + 10 + 100 = 210)
+        height: 50, // This will be used as the containerCrossSize for line calculations
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 10,
         alignItems: 'flexStart', // for predictable cross-axis
         children: [child1, child2, child3],
       }) as ElementNode;
-      // Manually set containerCrossSize as it's normally determined by children or explicit parent height
-      // For this test, assume children determine the row height.
-      parent.containerCrossSize = 50;
 
       const updated = calculateFlex(parent);
 
@@ -600,7 +602,8 @@ describe('Flexbox Layout (calculateFlex)', () => {
       expect(child2.y).toBe(0);
       expect(child3.x).toBe(0); // Wrapped
       expect(child3.y).toBe(50 + 10); // parent.containerCrossSize + gap (acting as rowGap)
-      expect(updated).toBe(true); // Container cross size should have been updated
+      expect(updated).toBe(true); // Container cross size (height) should have been updated
+      // Expected height: line1_height (50) + gap (10) + line2_height (50) = 110
       expect(parent.height).toBe(50 + 10 + 50); // row1_height + gap + row2_height
     });
   });
@@ -817,32 +820,29 @@ describe('Flexbox Layout (calculateFlex)', () => {
       }) as ElementNode;
       const parent = createTestElement({
         width: 150, // Forces child2 and child3 to wrap
-        height: 50, // Initial height, might be overridden by content
+        height: 40, // Set initial height to what's intended as containerCrossSize for lines
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 5,
         alignItems: 'flexStart',
         children: [child1, child2, child3],
       }) as ElementNode;
-      parent.containerCrossSize = 40; // Tallest item in first "virtual" row before actual layout
 
       const containerUpdated = calculateFlex(parent);
 
       expect(containerUpdated).toBe(true);
       // Expected height:
-      // Row 1 height is determined by tallest item: child1 (30) -> so 30 (or parent.containerCrossSize if set)
-      // For this test, let's assume the first row's effective height is based on its content.
-      // If child1 is alone on first row, its height is 30.
-      // child2 and child3 wrap. child2 is 40, child3 is 35. Second row height is 40.
-      // Total height = height_row1 (30) + gap (5) + height_row2 (40) = 75
-      // However, the logic uses parent.containerCrossSize for each row's height before summing.
-      // So, if parent.containerCrossSize is 40 (from child2, the tallest overall before this specific layout pass):
-      // Row 1 uses 40. Row 2 uses 40.
-      // Total height = 40 (row1) + 5 (gap) + 40 (row2) = 85
-      expect(parent.height).toBe(
-        parent.containerCrossSize + 5 + parent.containerCrossSize,
-      ); // 40 + 5 + 40 = 85
-      expect(parent.preFlexheight).toBe(50); // Original height
+      // Each child (100w) wraps onto a new line in a 150w container. 3 lines.
+      // Line height for calculation is initial parent.height = 40.
+      // Gap = 5.
+      // Line 1: child1 (height 40 for calc)
+      // Gap: 5
+      // Line 2: child2 (height 40 for calc)
+      // Gap: 5
+      // Line 3: child3 (height 40 for calc)
+      // Total height = 40 + 5 + 40 + 5 + 40 = 130.
+      expect(parent.height).toBe(130);
+      expect(parent.preFlexheight).toBe(40); // Original height
     });
   });
 });

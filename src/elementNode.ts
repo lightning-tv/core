@@ -341,8 +341,8 @@ export class ElementNode extends Object {
 
   set parent(p) {
     this._parent = p;
-    if (this.rendered) {
-      this.lng.parent = (p?.lng as INode) ?? null;
+    if (this.rendered && p?.rendered) {
+      this.lng.parent = (p.lng as INode) ?? null;
     }
   }
 
@@ -888,7 +888,7 @@ export class ElementNode extends Object {
       if (!props.texture) {
         // Set width and height to parent less offset
         if (isNaN(props.width as number)) {
-          props.width = parentWidth - props.x;
+          props.width = node.flexGrow ? 0 : parentWidth - props.x;
           node._calcWidth = true;
         }
 
