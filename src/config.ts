@@ -19,15 +19,11 @@ export interface Config {
   lockStyles?: boolean;
 }
 
-function isDevEnv(): boolean {
-  return !!(import.meta.env && import.meta.env.DEV);
-}
-export const isDev = isDevEnv() || false;
+export const isDev = !!(import.meta.env && import.meta.env.DEV);
 
-function shadersEnabled(): boolean {
-  return !(import.meta.env && import.meta.env.VITE_DISABLE_SHADERS === 'true');
-}
-export const SHADERS_ENABLED = shadersEnabled();
+export const SHADERS_ENABLED = !(
+  import.meta.env && import.meta.env.VITE_DISABLE_SHADERS === 'true'
+);
 
 export const Config: Config = {
   debug: false,

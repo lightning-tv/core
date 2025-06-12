@@ -1285,7 +1285,7 @@ export class DOMRendererMain implements IRendererMain {
     shaderType: string,
     props?: IRendererShaderProps,
   ): IRendererShader {
-    return { shaderType, props };
+    return { shaderType, props, program: {} };
   }
 
   createTexture(

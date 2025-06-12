@@ -1,6 +1,7 @@
 import {
   IRendererNode,
   IRendererNodeProps,
+  IRendererShader,
   IRendererShaderProps,
   IRendererTextNode,
   renderer,
@@ -198,7 +199,7 @@ export interface ElementNode extends RendererNode {
   lng:
     | Partial<ElementNode>
     | IRendererNode
-    | (IRendererTextNode & { shader: any });
+    | (IRendererTextNode & { shader?: any });
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   rendered: boolean;
   renderer?: RendererMain;
@@ -383,15 +384,11 @@ export class ElementNode extends Object {
   }
 
   set shader(
-    shaderProps:
-      | Parameters<typeof renderer.createShader>
-      | ReturnType<typeof renderer.createShader>,
+    shaderProps: IRendererShader | [kind: string, props: IRendererShaderProps],
   ) {
-    let shProps = shaderProps;
-    if (isArray(shaderProps)) {
-      shProps = renderer.createShader(...shaderProps);
-    }
-    this.lng.shader = shProps;
+    this.lng.shader = isArray(shaderProps)
+      ? renderer.createShader(...shaderProps)
+      : shaderProps;
   }
 
   _sendToLightningAnimatable(name: string, value: number) {
