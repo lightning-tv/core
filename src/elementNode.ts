@@ -337,7 +337,7 @@ export class ElementNode extends Object {
   set parent(p) {
     this._parent = p;
     if (this.rendered && p?.rendered) {
-      this.lng.parent = (p?.lng as IRendererNode) ?? null;
+      this.lng.parent = (p.lng as IRendererNode) ?? null;
     }
   }
 
