@@ -28,7 +28,8 @@ export interface IRendererShaderManager {
 /** Based on {@link lng.CoreShaderNode} */
 export interface IRendererShader {
   shaderType: IRendererShaderType;
-  props: IRendererShaderProps | undefined;
+  props?: IRendererShaderProps;
+  program?: {};
 }
 /** Based on {@link lng.CoreShaderType} */
 export interface IRendererShaderType {}
