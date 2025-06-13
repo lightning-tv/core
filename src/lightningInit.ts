@@ -1,6 +1,6 @@
 import * as lng from '@lightningjs/renderer';
 import { DOMRendererMain } from './domRenderer.js';
-import { Config } from './config.js';
+import { DOM_RENDERING } from './config.js';
 
 export type SdfFontType = 'ssdf' | 'msdf';
 
@@ -106,7 +106,7 @@ export function startLightningRenderer(
   options: lng.RendererMainSettings,
   rootId: string | HTMLElement = 'app',
 ) {
-  renderer = Config.domRendering
+  renderer = DOM_RENDERING
     ? new DOMRendererMain(options, rootId)
     : (new lng.RendererMain(options, rootId) as any as IRendererMain);
   return renderer;
