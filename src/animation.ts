@@ -148,7 +148,7 @@ export class SimpleAnimation {
             startValue + (targetValue - startValue) * easedProgress;
         }
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // @typescript-eslint/no-explicit-any
       (node.lng as any)[propName] = interpolatedValue; // Cast to any because the properties on CoreNode might have broader types.
 
       // 5. Remove Node if Progress is 1
