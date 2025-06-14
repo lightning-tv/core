@@ -45,10 +45,7 @@ import type {
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
 import { setActiveElement } from './focusManager.js';
-import simpleAnimation, {
-  SimpleAnimation,
-  SimpleAnimationSettings,
-} from './animation.js';
+import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 
 const layoutQueue = new Set<ElementNode>();
 
@@ -418,9 +415,11 @@ export class ElementNode extends Object {
           this,
           name,
           value,
-          animationSettings as SimpleAnimationSettings,
+          animationSettings ||
+            (this.animationSettings as SimpleAnimationSettings),
         );
         simpleAnimation.register(renderer.stage);
+        return;
       } else {
         const animationController = this.animate(
           { [name]: value },
