@@ -10,6 +10,7 @@ export interface Config {
   debug: boolean;
   focusDebug: boolean;
   keyDebug: boolean;
+  simpleAnimationsEnabled?: boolean;
   animationSettings?: AnimationSettings;
   animationsEnabled: boolean;
   fontSettings: Partial<TextProps>;

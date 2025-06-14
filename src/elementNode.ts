@@ -45,6 +45,10 @@ import type {
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
 import { setActiveElement } from './focusManager.js';
+import simpleAnimation, {
+  SimpleAnimation,
+  SimpleAnimationSettings,
+} from './animation.js';
 
 const layoutQueue = new Set<ElementNode>();
 
@@ -102,7 +106,7 @@ function borderAccessor(
   };
 }
 
-const LightningRendererNumberProps = [
+export const LightningRendererNumberProps = [
   'alpha',
   'color',
   'colorTop',
@@ -409,27 +413,37 @@ export class ElementNode extends Object {
           ? undefined
           : (this.transition[name] as undefined | AnimationSettings);
 
-      const animationController = this.animate(
-        { [name]: value },
-        animationSettings,
-      );
+      if (Config.simpleAnimationsEnabled) {
+        simpleAnimation.add(
+          this,
+          name,
+          value,
+          animationSettings as SimpleAnimationSettings,
+        );
+        simpleAnimation.register(renderer.stage);
+      } else {
+        const animationController = this.animate(
+          { [name]: value },
+          animationSettings,
+        );
 
-      if (this.onAnimation) {
-        const animationEvents = Object.keys(
-          this.onAnimation,
-        ) as AnimationEvents[];
-        for (const event of animationEvents) {
-          const handler = this.onAnimation[event];
-          animationController.on(
-            event,
-            (controller: IAnimationController, props?: any) => {
-              handler!.call(this, controller, name, value, props);
-            },
-          );
+        if (this.onAnimation) {
+          const animationEvents = Object.keys(
+            this.onAnimation,
+          ) as AnimationEvents[];
+          for (const event of animationEvents) {
+            const handler = this.onAnimation[event];
+            animationController.on(
+              event,
+              (controller: IAnimationController, props?: any) => {
+                handler!.call(this, controller, name, value, props);
+              },
+            );
+          }
         }
-      }
 
-      return animationController.start();
+        return animationController.start();
+      }
     }
 
     (this.lng[name as keyof INode] as number | string) = value;
