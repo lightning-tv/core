@@ -158,6 +158,7 @@ export class SimpleAnimation {
       if (this.nodeConfigs.length === 0) {
         // @ts-ignore no CoreAnimation export
         this.stage?.animationManager.unregisterAnimation(this);
+        this.isRegistered = false;
       }
     }
   }
