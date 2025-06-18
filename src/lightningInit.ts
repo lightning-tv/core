@@ -137,7 +137,7 @@ export function loadFonts(
       renderer.stage.fontManager.addFontFace(
         new lng.SdfTrFontFace(font.type, {
           ...font,
-          stage: renderer.stage as lng.Stage,
+          stage: renderer.stage as any,
         } as lng.SdfTrFontFaceOptions),
       );
     }
