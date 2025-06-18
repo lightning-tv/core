@@ -446,30 +446,37 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     }
 
     if (props.shader != null) {
-      let shader = props.shader.props;
-      if (shader != null) {
-        const borderWidth = shader['border-width'] as number | undefined;
-        const borderColor = shader['border-color'] as number | undefined;
-        const radius = shader['radius'] as
-          | number
-          | [number, number, number, number]
-          | undefined;
-
-        // Border
-        if (
-          typeof borderWidth === 'number' &&
-          borderWidth !== 0 &&
-          typeof borderColor === 'number' &&
-          borderColor !== 0
-        ) {
-          // css border impacts the element's box size when box-shadow doesn't
-          borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
-        }
-        // Rounded
-        if (typeof radius === 'number' && radius > 0) {
-          radiusStyle += `border-radius: ${radius}px;`;
-        } else if (Array.isArray(radius) && radius.length === 4) {
-          radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
+      let effects = props.shader.props?.effects;
+      if (Array.isArray(effects)) {
+        for (let effect of effects) {
+          switch (effect.type) {
+            case 'radius': {
+              let radius = effect.props?.radius;
+              if (typeof radius === 'number' && radius > 0) {
+                radiusStyle += `border-radius: ${radius}px;`;
+              } else if (Array.isArray(radius) && radius.length === 4) {
+                radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
+              }
+              break;
+            }
+            case 'border': {
+              let borderWidth = effect.props?.width;
+              let borderColor = effect.props?.color;
+              if (
+                typeof borderWidth === 'number' &&
+                borderWidth !== 0 &&
+                typeof borderColor === 'number' &&
+                borderColor !== 0
+              ) {
+                // css border impacts the element's box size when box-shadow doesn't
+                borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
+              }
+              break;
+            }
+            default:
+              console.warn(`Unknown shader effect type: ${effect.type}`);
+              break;
+          }
         }
       }
     }
