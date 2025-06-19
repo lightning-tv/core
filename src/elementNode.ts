@@ -1,4 +1,12 @@
-import { renderer } from './lightningInit.js';
+import {
+  IRendererNode,
+  IRendererNodeProps,
+  IRendererShader,
+  IRendererShaderProps,
+  IRendererTextNode,
+  IRendererTextNodeProps,
+  renderer,
+} from './lightningInit.js';
 import {
   type BorderRadius,
   type BorderStyle,
@@ -33,12 +41,9 @@ import type {
   RendererMain,
   INode,
   INodeAnimateProps,
-  INodeProps,
   LinearGradientEffectProps,
-  ITextNodeProps,
   IAnimationController,
   EffectDescUnion,
-  ShaderController,
   RadialGradientEffectProps,
   RadialProgressEffectProps,
 } from '@lightningjs/renderer';
@@ -61,24 +66,15 @@ function runLayout() {
 function convertEffectsToShader(
   node: ElementNode,
   styleEffects: StyleEffects,
-): ShaderController<'DynamicShader'> {
+): IRendererShader {
   const effects: EffectDescUnion[] = [];
   for (const type in styleEffects) {
-    // @ts-ignore getting the right type info is hard
-    effects.push(renderer.createEffect(type, styleEffects[type], type));
+    let props = styleEffects[type as keyof StyleEffects];
+    if (typeof props === 'object') {
+      effects.push(renderer.createEffect(type as any, props, type));
+    }
   }
   return renderer.createShader('DynamicShader', { effects });
-}
-
-function updateShaderEffects(
-  node: ElementNode,
-  styleEffects: StyleEffects,
-): void {
-  const shader = node.lng.shader;
-  for (const type in styleEffects) {
-    // @ts-ignore getting the right type info is hard
-    Object.assign(shader.props[type], styleEffects[type]);
-  }
 }
 
 function borderAccessor(
@@ -171,6 +167,13 @@ const LightningRendererNonAnimatingProps = [
   'wordWrap',
 ];
 
+declare global {
+  interface HTMLElement {
+    /** Assigned for development, to quickly get ElementNode from selected HTMLElement */
+    element?: ElementNode;
+  }
+}
+
 export type RendererNode = AddColorString<
   Partial<NewOmit<INode, 'parent' | 'shader' | 'src' | 'children' | 'id'>>
 >;
@@ -207,7 +210,10 @@ export interface ElementNode extends RendererNode {
     | number
     | ((this: ElementNode, elm: ElementNode) => boolean | void);
   forwardStates?: boolean;
-  lng: INode | Partial<ElementNode>;
+  lng:
+    | Partial<ElementNode>
+    | IRendererNode
+    | (IRendererTextNode & { shader?: any });
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   rendered: boolean;
   renderer?: RendererMain;
@@ -342,7 +348,7 @@ export class ElementNode extends Object {
   set parent(p) {
     this._parent = p;
     if (this.rendered && p?.rendered) {
-      this.lng.parent = (p.lng as INode) ?? null;
+      this.lng.parent = (p.lng as IRendererNode) ?? null;
     }
   }
 
@@ -387,15 +393,11 @@ export class ElementNode extends Object {
   }
 
   set shader(
-    shaderProps:
-      | Parameters<typeof renderer.createShader>
-      | ReturnType<RendererMain['createShader']>,
+    shaderProps: IRendererShader | [kind: string, props: IRendererShaderProps],
   ) {
-    let shProps = shaderProps;
-    if (isArray(shaderProps)) {
-      shProps = renderer.createShader(...shaderProps);
-    }
-    this.lng.shader = shProps;
+    this.lng.shader = isArray(shaderProps)
+      ? renderer.createShader(...shaderProps)
+      : shaderProps;
   }
 
   _sendToLightningAnimatable(name: string, value: number) {
@@ -445,7 +447,7 @@ export class ElementNode extends Object {
       }
     }
 
-    (this.lng[name as keyof INode] as number | string) = value;
+    (this.lng[name as keyof IRendererNode] as number | string) = value;
   }
 
   animate(
@@ -454,7 +456,7 @@ export class ElementNode extends Object {
   ): IAnimationController {
     isDev &&
       assertTruthy(this.rendered, 'Node must be rendered before animating');
-    return (this.lng as INode).animate(
+    return (this.lng as IRendererNode).animate(
       props,
       animationSettings || this.animationSettings || {},
     );
@@ -537,7 +539,7 @@ export class ElementNode extends Object {
   }
 
   _layoutOnLoad() {
-    (this.lng as INode).on('loaded', () => {
+    (this.lng as IRendererNode).on('loaded', () => {
       this.parent!.updateLayout();
     });
   }
@@ -787,7 +789,7 @@ export class ElementNode extends Object {
 
   render(topNode?: boolean) {
     // Elements are inserted from the inside out, then rendered from the outside in.
-    // Render starts when an element is insertered with a parent that is already renderered.
+    // Render starts when an element is inserted with a parent that is already renderered.
     const node = this;
     const parent = this.parent;
 
@@ -821,7 +823,7 @@ export class ElementNode extends Object {
 
     props.x = props.x || 0;
     props.y = props.y || 0;
-    props.parent = parent.lng as INode;
+    props.parent = parent.lng as IRendererNode;
 
     if (this.right || this.right === 0) {
       props.x = parentWidth - this.right;
@@ -889,7 +891,9 @@ export class ElementNode extends Object {
       }
 
       isDev && log('Rendering: ', this, props);
-      node.lng = renderer.createTextNode(props as unknown as ITextNodeProps);
+      node.lng = renderer.createTextNode(
+        props as unknown as IRendererTextNodeProps,
+      );
       if (parent.requiresLayout()) {
         if (!props.width || !props.height) {
           node._layoutOnLoad();
@@ -925,7 +929,7 @@ export class ElementNode extends Object {
       }
 
       isDev && log('Rendering: ', this, props);
-      node.lng = renderer.createNode(props as INodeProps);
+      node.lng = renderer.createNode(props as IRendererNodeProps);
     }
 
     node.rendered = true;
@@ -947,9 +951,7 @@ export class ElementNode extends Object {
     }
 
     // L3 Inspector adds div to the lng object
-    //@ts-expect-error - div is not in the typings
     if (node.lng?.div) {
-      //@ts-expect-error - div is not in the typings
       node.lng.div.element = node;
     }
 
@@ -959,6 +961,7 @@ export class ElementNode extends Object {
       for (let i = 0; i < numChildren; i++) {
         const c = node.children[i];
         isDev && assertTruthy(c, 'Child is undefined');
+        // Text elements sneak in from Solid creating tracked nodes
         if (isElementNode(c)) {
           c.render();
         }
