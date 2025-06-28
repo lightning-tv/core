@@ -52,9 +52,11 @@ import { NodeType } from './nodeTypes.js';
 import { setActiveElement } from './focusManager.js';
 import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 
+let layoutRunQueued = false;
 const layoutQueue = new Set<ElementNode>();
 
 function runLayout() {
+  layoutRunQueued = false;
   const queue = [...layoutQueue];
   layoutQueue.clear();
   for (let i = queue.length - 1; i >= 0; i--) {
@@ -967,10 +969,13 @@ export class ElementNode extends Object {
         }
       }
     }
-    if (topNode) {
-      //Do one pass of layout, then another with Text completed
-      runLayout();
+    if (topNode && !layoutRunQueued) {
+      //Do one pass of layout, then another with Text loads
+      layoutRunQueued = true;
+      // We use queue because <For> loop will add children one at a time, causing lots of layout
+      queueMicrotask(runLayout);
     }
+
     node._autofocus && node.setFocus();
   }
 }
