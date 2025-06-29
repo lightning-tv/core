@@ -715,14 +715,17 @@ export class ElementNode extends Object {
     if (this.hasChildren) {
       isDev && log('Layout: ', this);
 
-      if (this.display === 'flex') {
-        if (calculateFlex(this)) {
-          this.parent?.updateLayout();
-        }
-      }
+      const flexChanged = this.display === 'flex' && calculateFlex(this);
+      layoutQueue.delete(this);
+      const onLayoutChanged =
+        isFunc(this.onLayout) && this.onLayout.call(this, this);
 
-      if (isFunc(this.onLayout) && this.onLayout.call(this, this)) {
-        this.parent?.updateLayout();
+      if ((flexChanged || onLayoutChanged) && this.parent) {
+        layoutQueue.add(this.parent);
+        if (!layoutRunQueued) {
+          layoutRunQueued = true;
+          queueMicrotask(runLayout);
+        }
       }
     }
   }
