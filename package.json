@@ -1,6 +1,6 @@
 {
   "name": "@lightningtv/core",
-  "version": "2.9.2",
+  "version": "2.9.3",
   "description": "Lightning TV Core for Universal Renderers",
   "type": "module",
   "exports": {
