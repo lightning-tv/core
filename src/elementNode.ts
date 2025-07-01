@@ -282,8 +282,23 @@ export interface ElementNode extends RendererNode {
    * @see https://lightning-tv.github.io/solid/#/essentials/transitions?id=animation-callbacks
    */
   onAnimation?: Partial<Record<AnimationEvents, AnimationEventHandler>>;
-  onCreate?: (this: ElementNode, target: ElementNode) => void;
-  onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
+  /**
+   * Optional handler for when the element is created and rendered.
+   */
+  onCreate?: (this: ElementNode, el: ElementNode) => void;
+  /**
+   * Optional handler for when the element is destroyed.
+   * It can return a promise to wait for the cleanup to finish before the element is destroyed.
+   */
+  onDestroy?: (this: ElementNode, el: ElementNode) => Promise<any> | void;
+  /**
+   * Optional handlers for when the element is rendered—after creation and when switching parents.
+   */
+  onRender?: (this: ElementNode, el: ElementNode) => void;
+  /**
+   * Optional handlers for when the element is removed from a parent element.
+   */
+  onRemove?: (this: ElementNode, el: ElementNode) => void;
   /**
    * Listen to Events coming from the renderer
    * @param NodeEvents
@@ -377,6 +392,7 @@ export class ElementNode extends Object {
     const nodeIndexToRemove = this.children.indexOf(node as ElementNode);
     if (nodeIndexToRemove >= 0) {
       this.children.splice(nodeIndexToRemove, 1);
+      node.onRemove?.call(node, node);
     }
   }
 
@@ -815,6 +831,7 @@ export class ElementNode extends Object {
     if (this.rendered) {
       // This happens if Array of items is reordered to reuse elements.
       // We return after layout is queued so the change can trigger layout updates.
+      this.onRender?.(this);
       return;
     }
 
@@ -947,7 +964,8 @@ export class ElementNode extends Object {
       node._layoutOnLoad();
     }
 
-    isFunc(this.onCreate) && this.onCreate.call(this, node);
+    this.onCreate?.(this);
+    this.onRender?.(this);
 
     if (node.onEvent) {
       for (const [name, handler] of Object.entries(node.onEvent)) {
