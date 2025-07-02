@@ -168,6 +168,8 @@ export interface IntrinsicTextNodeStyleProps extends TextStyles {}
 export type AnimationEvents = 'animating' | 'tick' | 'stopped';
 export type AnimationEventHandler = (
   controller: IAnimationController,
+  name: string,
+  endValue: number,
   props?: any,
 ) => void;
 
