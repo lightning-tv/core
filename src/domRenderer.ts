@@ -1231,6 +1231,10 @@ export class DOMRendererMain implements IRendererMain {
       shManager: {
         registerShaderType() {},
       },
+      animationManager: {
+        registerAnimation() {},
+        unregisterAnimation() {},
+      },
     };
 
     this.root = new DOMNode(
