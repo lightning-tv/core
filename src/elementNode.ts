@@ -468,27 +468,10 @@ export class ElementNode extends Object {
   ): IAnimationController {
     isDev &&
       assertTruthy(this.rendered, 'Node must be rendered before animating');
-    const animationController = (this.lng as IRendererNode).animate(
+    return (this.lng as IRendererNode).animate(
       props,
       animationSettings || this.animationSettings || {},
     );
-
-    if (this.onAnimation) {
-      const animationEvents = Object.keys(
-        this.onAnimation,
-      ) as AnimationEvents[];
-      for (const event of animationEvents) {
-        const handler = this.onAnimation[event];
-        animationController.on(
-          event,
-          (controller: IAnimationController, props?: any) => {
-            handler!.call(this, controller, props);
-          },
-        );
-      }
-    }
-
-    return animationController;
   }
 
   chain(

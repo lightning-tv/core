@@ -100,11 +100,6 @@ export interface IRendererMain extends IEventEmitter {
     kind: keyof lng.TextureMap,
     props: IRendererTextureProps,
   ): IRendererTexture;
-  createEffect(
-    kind: keyof lng.EffectMap,
-    props: Record<string, any>,
-    name?: string,
-  ): lng.EffectDescUnion;
 }
 
 export let renderer: IRendererMain;
