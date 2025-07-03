@@ -4,6 +4,7 @@ import {
   IRendererShader,
   IRendererShaderProps,
   IRendererTextNode,
+  IRendererTextNodeProps,
   renderer,
 } from './lightningInit.js';
 import {
@@ -41,7 +42,6 @@ import type {
   RendererMain,
   INode,
   INodeAnimateProps,
-  ITextNodeProps,
   IAnimationController,
   LinearGradientProps,
   RadialGradientProps,
@@ -51,10 +51,13 @@ import type {
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
 import { setActiveElement } from './focusManager.js';
+import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 
+let layoutRunQueued = false;
 const layoutQueue = new Set<ElementNode>();
 
 function runLayout() {
+  layoutRunQueued = false;
   const queue = [...layoutQueue];
   layoutQueue.clear();
   for (let i = queue.length - 1; i >= 0; i--) {
@@ -85,7 +88,7 @@ function convertToShader(_node: ElementNode, v: StyleEffects): any {
   return renderer.createShader(typeParts.join(''), v as IRendererShaderProps);
 }
 
-const LightningRendererNumberProps = [
+export const LightningRendererNumberProps = [
   'alpha',
   'color',
   'colorTop',
@@ -261,8 +264,23 @@ export interface ElementNode extends RendererNode {
    * @see https://lightning-tv.github.io/solid/#/essentials/transitions?id=animation-callbacks
    */
   onAnimation?: Partial<Record<AnimationEvents, AnimationEventHandler>>;
-  onCreate?: (this: ElementNode, target: ElementNode) => void;
-  onDestroy?: (this: ElementNode, elm: ElementNode) => Promise<any> | void;
+  /**
+   * Optional handler for when the element is created and rendered.
+   */
+  onCreate?: (this: ElementNode, el: ElementNode) => void;
+  /**
+   * Optional handler for when the element is destroyed.
+   * It can return a promise to wait for the cleanup to finish before the element is destroyed.
+   */
+  onDestroy?: (this: ElementNode, el: ElementNode) => Promise<any> | void;
+  /**
+   * Optional handlers for when the element is rendered—after creation and when switching parents.
+   */
+  onRender?: (this: ElementNode, el: ElementNode) => void;
+  /**
+   * Optional handlers for when the element is removed from a parent element.
+   */
+  onRemove?: (this: ElementNode, el: ElementNode) => void;
   /**
    * Listen to Events coming from the renderer
    * @param NodeEvents
@@ -365,8 +383,11 @@ export class ElementNode extends Object {
   }
 
   removeChild(node: ElementNode | ElementText | TextNode) {
-    spliceItem(this.children, node as ElementNode, 1);
-    this.updateLayout();
+    const nodeIndexToRemove = this.children.indexOf(node as ElementNode);
+    if (nodeIndexToRemove >= 0) {
+      this.children.splice(nodeIndexToRemove, 1);
+      node.onRemove?.call(node, node);
+    }
   }
 
   get selectedNode(): ElementNode | undefined {
@@ -403,15 +424,42 @@ export class ElementNode extends Object {
           ? undefined
           : (this.transition[name] as undefined | AnimationSettings);
 
-      const animationController = this.animate(
-        { [name]: value },
-        animationSettings,
-      );
+      if (Config.simpleAnimationsEnabled) {
+        simpleAnimation.add(
+          this,
+          name,
+          value,
+          animationSettings ||
+            (this.animationSettings as SimpleAnimationSettings),
+        );
+        simpleAnimation.register(renderer.stage);
+        return;
+      } else {
+        const animationController = this.animate(
+          { [name]: value },
+          animationSettings,
+        );
 
-      return animationController.start();
+        if (this.onAnimation) {
+          const animationEvents = Object.keys(
+            this.onAnimation,
+          ) as AnimationEvents[];
+          for (const event of animationEvents) {
+            const handler = this.onAnimation[event];
+            animationController.on(
+              event,
+              (controller: IAnimationController, props?: any) => {
+                handler!.call(this, controller, name, value, props);
+              },
+            );
+          }
+        }
+
+        return animationController.start();
+      }
     }
 
-    (this.lng[name as keyof IRendererNodeProps] as number | string) = value;
+    (this.lng[name as keyof IRendererNode] as number | string) = value;
   }
 
   animate(
@@ -691,14 +739,17 @@ export class ElementNode extends Object {
     if (this.hasChildren) {
       isDev && log('Layout: ', this);
 
-      if (this.display === 'flex') {
-        if (calculateFlex(this)) {
-          this.parent?.updateLayout();
-        }
-      }
+      const flexChanged = this.display === 'flex' && calculateFlex(this);
+      layoutQueue.delete(this);
+      const onLayoutChanged =
+        isFunc(this.onLayout) && this.onLayout.call(this, this);
 
-      if (isFunc(this.onLayout) && this.onLayout.call(this, this)) {
-        this.parent?.updateLayout();
+      if ((flexChanged || onLayoutChanged) && this.parent) {
+        layoutQueue.add(this.parent);
+        if (!layoutRunQueued) {
+          layoutRunQueued = true;
+          queueMicrotask(runLayout);
+        }
       }
     }
   }
@@ -788,6 +839,7 @@ export class ElementNode extends Object {
     if (this.rendered) {
       // This happens if Array of items is reordered to reuse elements.
       // We return after layout is queued so the change can trigger layout updates.
+      this.onRender?.(this);
       return;
     }
 
@@ -869,7 +921,9 @@ export class ElementNode extends Object {
       }
 
       isDev && log('Rendering: ', this, props);
-      node.lng = renderer.createTextNode(props as unknown as ITextNodeProps);
+      node.lng = renderer.createTextNode(
+        props as unknown as IRendererTextNodeProps,
+      );
       if (parent.requiresLayout()) {
         if (!props.width || !props.height) {
           node._layoutOnLoad();
@@ -918,7 +972,8 @@ export class ElementNode extends Object {
       node._layoutOnLoad();
     }
 
-    isFunc(this.onCreate) && this.onCreate.call(this, node);
+    this.onCreate?.(this);
+    this.onRender?.(this);
 
     if (node.onEvent) {
       for (const [name, handler] of Object.entries(node.onEvent)) {
@@ -943,10 +998,13 @@ export class ElementNode extends Object {
         }
       }
     }
-    if (topNode) {
-      //Do one pass of layout, then another with Text completed
-      runLayout();
+    if (topNode && !layoutRunQueued) {
+      //Do one pass of layout, then another with Text loads
+      layoutRunQueued = true;
+      // We use queue because <For> loop will add children one at a time, causing lots of layout
+      queueMicrotask(runLayout);
     }
+
     node._autofocus && node.setFocus();
   }
 }

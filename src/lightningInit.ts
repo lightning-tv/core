@@ -18,6 +18,10 @@ export interface IRendererStage {
   renderer: IRendererCoreRenderer;
   fontManager: IRendererFontManager;
   shManager: IRendererShaderManager;
+  animationManager: {
+    registerAnimation: (anim: any) => void;
+    unregisterAnimation: (anim: any) => void;
+  };
 }
 
 /** Based on {@link lng.CoreShaderManager} */
@@ -89,13 +93,18 @@ export interface IRendererTextNode
 export interface IRendererMain extends IEventEmitter {
   stage: IRendererStage;
   root: IRendererNode;
-  createTextNode: (props: Partial<IRendererTextNodeProps>) => IRendererTextNode;
-  createNode: (props: Partial<IRendererNodeProps>) => IRendererNode;
-  createShader: (kind: string, props: IRendererShaderProps) => IRendererShader;
-  createTexture: (
+  createTextNode(props: Partial<IRendererTextNodeProps>): IRendererTextNode;
+  createNode(props: Partial<IRendererNodeProps>): IRendererNode;
+  createShader(kind: string, props: IRendererShaderProps): IRendererShader;
+  createTexture(
     kind: keyof lng.TextureMap,
     props: IRendererTextureProps,
-  ) => IRendererTexture;
+  ): IRendererTexture;
+  createEffect(
+    kind: keyof lng.EffectMap,
+    props: Record<string, any>,
+    name?: string,
+  ): lng.EffectDescUnion;
 }
 
 export let renderer: IRendererMain;
@@ -128,7 +137,7 @@ export function loadFonts(
       renderer.stage.fontManager.addFontFace(
         new lng.SdfTrFontFace(font.type, {
           ...font,
-          stage: renderer.stage as lng.Stage,
+          stage: renderer.stage as any,
         } as lng.SdfTrFontFaceOptions),
       );
     }

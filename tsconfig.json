@@ -16,6 +16,7 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "allowSyntheticDefaultImports": true,
+    "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true,
     "composite": true,
     "types": ["vite/client", "vitest/globals"]
