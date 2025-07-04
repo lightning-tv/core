@@ -3,6 +3,7 @@ export * from './lightningInit.js';
 export * from './nodeTypes.js';
 export * from './utils.js';
 export * from './intrinsicTypes.js';
+export * from './focusKeyTypes.js';
 export * from './config.js';
 export type * from '@lightningjs/renderer';
 export { type AnimationSettings } from './intrinsicTypes.js';
