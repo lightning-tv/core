@@ -179,6 +179,7 @@ export interface ElementNode extends RendererNode {
   _animationQueueSettings?: AnimationSettings;
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
+  _hasRenderedChildren?: boolean;
   _effects?: StyleEffects;
   _id: string | undefined;
   _parent: ElementNode | undefined;
@@ -366,6 +367,11 @@ export class ElementNode extends Object {
   ) {
     if (node.parent && node.parent !== this) {
       node.parent.removeChild(node);
+
+      // We're inserting a node thats been rendered into a node that hasn't been
+      if (!this.rendered) {
+        this._hasRenderedChildren = true;
+      }
     }
 
     node.parent = this;
@@ -943,6 +949,16 @@ export class ElementNode extends Object {
 
       isDev && log('Rendering: ', this, props);
       node.lng = renderer.createNode(props as IRendererNodeProps);
+
+      if (node._hasRenderedChildren) {
+        node._hasRenderedChildren = false;
+
+        for (const child of node.children) {
+          if (isElementNode(child) && isINode(child.lng)) {
+            child.lng.parent = node.lng as any;
+          }
+        }
+      }
     }
 
     node.rendered = true;
