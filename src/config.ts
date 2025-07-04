@@ -16,6 +16,14 @@ declare global {
   var LIGHTNING_DOM_RENDERING: boolean | undefined;
   /** Whether element shaders should be disabled */
   var LIGHTNING_DISABLE_SHADERS: boolean | undefined;
+
+  /** Could be set by vite or other bundler */
+  interface ImportMetaEnv {
+    DEV?: unknown;
+  }
+  interface ImportMeta {
+    env?: ImportMetaEnv;
+  }
 }
 
 export const isDev = !!(import.meta.env && import.meta.env.DEV);

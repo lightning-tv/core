@@ -1,8 +1,9 @@
-import { ElementNode } from '../elementNode';
-import calculateFlex from '../flex';
+import { ElementNode } from '../src/elementNode.ts';
+import calculateFlex from '../src/flex.ts';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { isElementNode } from '../utils';
-import { NodeType } from '../nodeTypes';
+import { isElementNode } from '../src/utils.ts';
+import { NodeType } from '../src/nodeTypes.ts';
+import type { ElementText, TextNode } from '../src/index.ts';
 
 // Helper to create a basic ElementNode for flex testing
 // (Adapted from flex.performance.spec.ts)

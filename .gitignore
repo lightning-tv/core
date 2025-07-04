@@ -6,5 +6,6 @@ build
 releases
 .tmp
 .env
+*.tsbuildinfo
 # This project uses `pnpm` for package management
 package-lock.json

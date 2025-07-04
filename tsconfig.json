@@ -3,6 +3,7 @@
     "rootDir": ".",
     "lib": ["ESNext", "DOM", "ES5"],
     "outDir": "dist",
+    "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
     "allowJs": true,
     "target": "ESNext",
     "module": "NodeNext",
@@ -19,8 +20,8 @@
     "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true,
     "composite": true,
-    "types": ["vite/client", "vitest/globals"]
+    "types": []
   },
-  "include": ["src/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "tests"]
 }
