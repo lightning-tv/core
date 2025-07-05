@@ -128,6 +128,7 @@ const LightningRendererNonAnimatingProps = [
   'clipping',
   'contain',
   'data',
+  'destroyed',
   'fontFamily',
   'fontStretch',
   'fontStyle',
