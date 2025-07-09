@@ -1,6 +1,6 @@
 {
   "name": "@lightningtv/core",
-  "version": "3.0.0-11",
+  "version": "3.0.0-13",
   "description": "Lightning TV Core for Universal Renderers",
   "type": "module",
   "exports": {
@@ -28,9 +28,8 @@
     "lint:fix:prettier": "prettier --write \"**/*.{ts,js,cjs,md}\"",
     "lint:eslint": "eslint",
     "lint:fix:eslint": "eslint --fix",
-    "build": "npm run tsc",
-    "tsc": "tsc",
-    "watch": "tsc -w",
+    "build": "tsc -b",
+    "watch": "tsc -b -w",
     "test": "vitest",
     "test:perf": "vitest run flex.performance.spec.ts",
     "prepare": "husky",

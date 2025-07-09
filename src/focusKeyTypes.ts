@@ -76,6 +76,11 @@ export type KeyHandler = (
   mappedEvent?: string,
 ) => KeyHandlerReturn;
 
+export type ForwardFocusHandler = (
+  this: ElementNode,
+  elm: ElementNode,
+) => boolean | void;
+
 export type KeyHoldOptions = {
   userKeyHoldMap: Partial<KeyHoldMap>;
   holdThreshold?: number;

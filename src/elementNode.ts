@@ -50,7 +50,7 @@ import type {
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
-import { setActiveElement } from './focusManager.js';
+import { ForwardFocusHandler, setActiveElement } from './focusManager.js';
 import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 
 let layoutRunQueued = false;
@@ -179,6 +179,7 @@ export interface ElementNode extends RendererNode {
   _animationQueueSettings?: AnimationSettings;
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
+  _hasRenderedChildren?: boolean;
   _effects?: StyleEffects;
   _id: string | undefined;
   _parent: ElementNode | undefined;
@@ -195,9 +196,7 @@ export interface ElementNode extends RendererNode {
   flexWrap?: 'nowrap' | 'wrap';
   flexItem?: boolean;
   flexOrder?: number;
-  forwardFocus?:
-    | number
-    | ((this: ElementNode, elm: ElementNode) => boolean | void);
+  forwardFocus?: number | ForwardFocusHandler;
   forwardStates?: boolean;
   lng:
     | Partial<ElementNode>
@@ -244,7 +243,10 @@ export interface ElementNode extends RendererNode {
   width: number;
   height: number;
   zIndex?: number;
-  transition?: Record<string, AnimationSettings | true | false> | true | false;
+  transition?:
+    | Record<string, AnimationSettings | undefined | true | false>
+    | true
+    | false;
   /**
    * Optional handlers for animation events.
    *
@@ -366,6 +368,11 @@ export class ElementNode extends Object {
   ) {
     if (node.parent && node.parent !== this) {
       node.parent.removeChild(node);
+
+      // We're inserting a node thats been rendered into a node that hasn't been
+      if (!this.rendered) {
+        this._hasRenderedChildren = true;
+      }
     }
 
     node.parent = this;
@@ -675,7 +682,7 @@ export class ElementNode extends Object {
     return this._animationSettings || Config.animationSettings;
   }
 
-  set animationSettings(animationSettings: AnimationSettings) {
+  set animationSettings(animationSettings: AnimationSettings | undefined) {
     this._animationSettings = animationSettings;
   }
 
@@ -943,6 +950,16 @@ export class ElementNode extends Object {
 
       isDev && log('Rendering: ', this, props);
       node.lng = renderer.createNode(props as IRendererNodeProps);
+
+      if (node._hasRenderedChildren) {
+        node._hasRenderedChildren = false;
+
+        for (const child of node.children) {
+          if (isElementNode(child) && isINode(child.lng)) {
+            child.lng.parent = node.lng as any;
+          }
+        }
+      }
     }
 
     node.rendered = true;
