@@ -273,7 +273,10 @@ export interface ElementNode extends RendererNode {
   width: number;
   height: number;
   zIndex?: number;
-  transition?: Record<string, AnimationSettings | true | false> | true | false;
+  transition?:
+    | Record<string, AnimationSettings | undefined | true | false>
+    | true
+    | false;
   /**
    * Optional handlers for animation events.
    *
@@ -704,7 +707,7 @@ export class ElementNode extends Object {
     return this._animationSettings || Config.animationSettings;
   }
 
-  set animationSettings(animationSettings: AnimationSettings) {
+  set animationSettings(animationSettings: AnimationSettings | undefined) {
     this._animationSettings = animationSettings;
   }
 
