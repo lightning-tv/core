@@ -1,4 +1,4 @@
-import { INode } from '@lightningjs/renderer';
+import { type INode, type Point } from '@lightningjs/renderer';
 import { Config, isDev } from './config.js';
 import type { Styles, ElementText, TextNode } from './intrinsicTypes.js';
 import { ElementNode } from './elementNode.js';
@@ -155,4 +155,49 @@ const node${i} = renderer.createNode(props${i});
   });
 
   return output;
+}
+
+export interface Rect extends Point {
+  width: number;
+  height: number;
+}
+
+/**
+ * Calculates the rectangle of an element on the screen,
+ * taking into account its position, size, and scaling.
+ */
+export function getElementScreenRect(el: ElementNode): Rect {
+  let { width, height } = el;
+  let x = 0,
+    y = 0;
+
+  if (el.scaleX != null) width *= el.scaleX;
+  if (el.scaleY != null) height *= el.scaleY;
+
+  let curr = el as ElementNode | undefined | null;
+  while (curr != null) {
+    x += curr.x;
+    y += curr.y;
+
+    if (curr.scaleX != null) {
+      x += (curr.width / 2) * (1 - curr.scaleX);
+    }
+    if (curr.scaleY != null) {
+      y += (curr.height / 2) * (1 - curr.scaleY);
+    }
+
+    curr = curr.parent;
+  }
+
+  if (Config.rendererOptions != null) {
+    let dpr = Config.rendererOptions.deviceLogicalPixelRatio;
+    if (dpr != null) {
+      x *= dpr;
+      y *= dpr;
+      width *= dpr;
+      height *= dpr;
+    }
+  }
+
+  return { x, y, width, height };
 }
