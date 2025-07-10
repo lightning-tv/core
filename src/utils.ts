@@ -206,6 +206,6 @@ export function getElementScreenRect(el: ElementNode): Rect {
  * Checks if the element has focus.\
  * ({@link ElementNode.states} contains the {@link Config.focusStateKey} focus state)
  */
-export function hasFocus(el: ElementNode): boolean {
+export function isFocused(el: ElementNode): boolean {
   return el.states.has(Config.focusStateKey);
 }
