@@ -209,3 +209,4 @@ export function getElementScreenRect(el: ElementNode): Rect {
 export function isFocused(el: ElementNode | ElementText): boolean {
   return el.states.has(Config.focusStateKey);
 }
+export const hasFocus = isFocused;
