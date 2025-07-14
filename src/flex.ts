@@ -123,7 +123,6 @@ export default function (node: ElementNode): boolean {
       }
       // prevent infinite loops by only doing this once
       node._containsFlexGrow = node._containsFlexGrow ? null : true;
-      console.log(node._containsFlexGrow);
     } else if (node._containsFlexGrow) {
       node._containsFlexGrow = null;
     } else {
