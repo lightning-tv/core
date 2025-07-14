@@ -121,6 +121,11 @@ export default function (node: ElementNode): boolean {
           pc.totalMainSizeOnAxis = newMainSize + pc.marginStart + pc.marginEnd;
         }
       }
+      // prevent infinite loops by only doing this once
+      node._containsFlexGrow = node._containsFlexGrow ? null : true;
+      console.log(node._containsFlexGrow);
+    } else if (node._containsFlexGrow) {
+      node._containsFlexGrow = null;
     } else {
       // No positive space available for items to grow, or items overflow.
       // flex-grow has no effect in this case.
@@ -134,7 +139,8 @@ export default function (node: ElementNode): boolean {
   if (
     justify === 'center' ||
     justify === 'spaceBetween' ||
-    justify === 'spaceEvenly'
+    justify === 'spaceEvenly' ||
+    justify === 'spaceAround'
   ) {
     for (const pc of processedChildren) {
       totalItemSize += pc.totalMainSizeOnAxis;
@@ -168,8 +174,11 @@ export default function (node: ElementNode): boolean {
       };
 
   if (isRow && node._calcHeight && !node.flexCrossBoundary) {
-    const firstChildNode = processedChildren[0]?.node;
-    const newHeight = firstChildNode?.height || node.height;
+    const maxHeight = processedChildren.reduce(
+      (max, pc) => Math.max(max, pc.crossSize),
+      0,
+    );
+    const newHeight = maxHeight || node.height;
     if (newHeight !== node.height) {
       containerUpdated = true;
       node.height = containerCrossSize = newHeight;
@@ -245,14 +254,26 @@ export default function (node: ElementNode): boolean {
       currentPos += pc.totalMainSizeOnAxis + spaceBetween;
       doCrossAlign(pc);
     }
-  } else if (justify === 'spaceEvenly') {
+  } else if (justify === 'spaceAround') {
     const spaceAround =
-      (containerSize - totalItemSize - (node.padding || 0) * 2) /
-      (numProcessedChildren + 1);
-    currentPos = spaceAround + (node.padding || 0);
+      numProcessedChildren > 0
+        ? (containerSize - totalItemSize - (node.padding || 0) * 2) /
+          numProcessedChildren
+        : 0;
+    currentPos = (node.padding || 0) + spaceAround / 2;
     for (const pc of processedChildren) {
       pc.node[prop] = currentPos + pc.marginStart;
       currentPos += pc.totalMainSizeOnAxis + spaceAround;
+      doCrossAlign(pc);
+    }
+  } else if (justify === 'spaceEvenly') {
+    const spaceEvenly =
+      (containerSize - totalItemSize - (node.padding || 0) * 2) /
+      (numProcessedChildren + 1);
+    currentPos = spaceEvenly + (node.padding || 0);
+    for (const pc of processedChildren) {
+      pc.node[prop] = currentPos + pc.marginStart;
+      currentPos += pc.totalMainSizeOnAxis + spaceEvenly;
       doCrossAlign(pc);
     }
   }

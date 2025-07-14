@@ -56,6 +56,14 @@ import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 let layoutRunQueued = false;
 const layoutQueue = new Set<ElementNode>();
 
+function addToLayoutQueue(node: ElementNode) {
+  layoutQueue.add(node);
+  if (!layoutRunQueued) {
+    layoutRunQueued = true;
+    queueMicrotask(runLayout);
+  }
+}
+
 function runLayout() {
   layoutRunQueued = false;
   const queue = [...layoutQueue];
@@ -180,6 +188,8 @@ export interface ElementNode extends RendererNode {
   _animationQueueSettings?: AnimationSettings;
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
+  _autofocus?: boolean;
+  _containsFlexGrow?: boolean | null;
   _hasRenderedChildren?: boolean;
   _effects?: StyleEffects;
   _id: string | undefined;
@@ -231,6 +241,7 @@ export interface ElementNode extends RendererNode {
     | 'flexEnd'
     | 'center'
     | 'spaceBetween'
+    | 'spaceAround'
     | 'spaceEvenly';
   linearGradient?: LinearGradientProps;
   radialGradient?: RadialGradientProps;
@@ -716,17 +727,29 @@ export class ElementNode extends Object {
     if (this.hasChildren) {
       isDev && log('Layout: ', this);
 
+      if (this.display === 'flex' && this.flexGrow && this.width === 0) {
+        return;
+      }
+
       const flexChanged = this.display === 'flex' && calculateFlex(this);
       layoutQueue.delete(this);
       const onLayoutChanged =
         isFunc(this.onLayout) && this.onLayout.call(this, this);
 
       if ((flexChanged || onLayoutChanged) && this.parent) {
-        layoutQueue.add(this.parent);
-        if (!layoutRunQueued) {
-          layoutRunQueued = true;
-          queueMicrotask(runLayout);
-        }
+        addToLayoutQueue(this.parent);
+      }
+
+      if (this._containsFlexGrow === true) {
+        // Need to reprocess children
+        this.children.forEach((c) => {
+          if (c.display === 'flex' && isElementNode(c)) {
+            // calculating directly to prevent infinite loops recalculating parents
+            calculateFlex(c);
+            isFunc(c.onLayout) && c.onLayout.call(c, c);
+            addToLayoutQueue(this);
+          }
+        });
       }
     }
   }
