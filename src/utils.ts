@@ -176,6 +176,8 @@ export function getElementScreenRect(
   from?: ElementNode,
   out: Rect = { x: 0, y: 0, width: 0, height: 0 },
 ): Rect {
+  out.x = 0;
+  out.y = 0;
   out.width = el.width;
   out.height = el.height;
 
