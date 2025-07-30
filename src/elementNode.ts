@@ -402,9 +402,7 @@ export class ElementNode extends Object {
   }
 
   removeChild(node: ElementNode | ElementText | TextNode) {
-    const nodeIndexToRemove = this.children.indexOf(node as ElementNode);
-    if (nodeIndexToRemove >= 0) {
-      this.children.splice(nodeIndexToRemove, 1);
+    if (spliceItem(this.children, node, 1) > -1) {
       node.onRemove?.call(node, node);
       if (this.requiresLayout()) {
         addToLayoutQueue(this);
