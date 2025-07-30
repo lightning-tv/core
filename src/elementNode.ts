@@ -406,6 +406,9 @@ export class ElementNode extends Object {
     if (nodeIndexToRemove >= 0) {
       this.children.splice(nodeIndexToRemove, 1);
       node.onRemove?.call(node, node);
+      if (this.requiresLayout()) {
+        addToLayoutQueue(this);
+      }
     }
   }
 
