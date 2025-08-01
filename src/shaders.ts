@@ -223,7 +223,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     const origHeight = node.height;
     this.uniform2f('u_dimensions_orig', origWidth, origHeight);
 
-    let finalWidth, finalHeight;
+    let finalWidth: number, finalHeight: number;
     if (inset) {
       // For inset borders, keep original dimensions
       finalWidth = origWidth;
@@ -254,10 +254,8 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
 
     let finalRadius: Vec4;
     if (inset) {
-      // For inset borders, the outer radius is the content radius
       finalRadius = contentRadius;
     } else {
-      // For outside borders, calculate the outer radius of the border
       // For each corner, the total radius is content radius + gap + border thickness.
       // Border thickness at a corner is approximated as the max of the two adjacent border sides.
       const outerRadius: Vec4 = [
@@ -273,7 +271,6 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       );
     }
 
-    // The final radius passed to the shader
     this.uniform4fa('u_radius', finalRadius);
   },
   vertex: /*glsl*/ `
@@ -357,11 +354,11 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       v_halfDimensions = u_dimensions * 0.5;
       if(v_borderZero == 0.0) {
         if (is_inset) {
-          // For inset borders, we flip the meaning:
-          // v_borderEndRadius/Size represents the gap area (outermost after content)
-          // v_innerRadius/Size represents the border area (between gap and content)
+          // For inset borders, flip the meaning:
+          // v_borderEndRadius/Size represents the gap area
+          // v_innerRadius/Size represents the border area
 
-          // Gap area (v_borderEnd represents gap boundary)
+          // Gap area (v_borderEnd represents gap boundary) - uniform gap
           v_borderEndRadius = vec4(
             max(0.0, u_radius.x - gap - 0.5),
             max(0.0, u_radius.y - gap - 0.5),
@@ -373,7 +370,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
             (u_dimensions.y - (gap * 2.0) - 1.0)
           ) * 0.5;
 
-          // Border area (v_inner represents border boundary)
+          // Border area (v_inner represents border boundary) - individual border widths
           v_innerRadius = vec4(
             max(0.0, u_radius.x - gap - max(bTop, bLeft) - 0.5),
             max(0.0, u_radius.y - gap - max(bTop, bRight) - 0.5),
@@ -468,20 +465,31 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       // Adjust boxUv for non-uniform borders
       // This adjusted UV is used for calculating distances to border-end and content shapes
       vec2 adjustedBoxUv = boxUv;
-      adjustedBoxUv.x += (u_borderWidth.y - u_borderWidth.w) * 0.5;
-      adjustedBoxUv.y += (u_borderWidth.z - u_borderWidth.x) * 0.5;
+      vec2 borderAdjustedBoxUv = boxUv;
+
+      if (!is_inset) {
+        // For outside borders, use same adjustment for both calculations
+        adjustedBoxUv.x += (u_borderWidth.y - u_borderWidth.w) * 0.5;
+        adjustedBoxUv.y += (u_borderWidth.z - u_borderWidth.x) * 0.5;
+        borderAdjustedBoxUv = adjustedBoxUv;
+      } else {
+        // For inset borders, gap calculation uses no adjustment (uniform gap)
+        // Border calculation uses adjustment (non-uniform border)
+        borderAdjustedBoxUv.x += (u_borderWidth.y - u_borderWidth.w) * 0.5;
+        borderAdjustedBoxUv.y += (u_borderWidth.z - u_borderWidth.x) * 0.5;
+      }
 
       // Distance to the inner edge of the border (where the gap begins)
       float borderEndDist = roundedBox(adjustedBoxUv, v_borderEndSize, v_borderEndRadius);
       float borderEndAlpha = 1.0 - smoothstep(0.0, 1.0, borderEndDist); // 1 if inside gap or content, 0 if in border or outside
 
       // Distance to the content area (after the gap)
-      float contentDist = roundedBox(adjustedBoxUv, v_innerSize, v_innerRadius);
+      float contentDist = roundedBox(borderAdjustedBoxUv, v_innerSize, v_innerRadius);
       float contentAlpha = 1.0 - smoothstep(0.0, 1.0, contentDist); // 1 if inside content, 0 if in gap, border or outside
 
       vec4 finalColor;
       if (is_inset) { // For inset borders: border <- gap <- element
-        // We need to flip the logic: borderEndAlpha becomes gap, contentAlpha becomes border+content
+        // flip the logic: borderEndAlpha becomes gap, contentAlpha becomes border+content
         if (contentAlpha > 0.0) { // Pixel is inside the content area (innermost)
           finalColor = contentTexColor;
         } else if (borderEndAlpha > 0.0) { // Pixel is inside the border area (middle)
