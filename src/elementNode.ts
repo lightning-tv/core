@@ -86,14 +86,11 @@ const parseAndAssignShaderProps = (
   });
 };
 
-function convertToShader(_node: ElementNode, v: StyleEffects): any {
-  const { border, shadow } = v;
-
-  const typeParts = ['rounded'];
-  if (border) typeParts.push('WithBorder');
-  if (shadow) typeParts.push('WithShadow');
-
-  return renderer.createShader(typeParts.join(''), v as IRendererShaderProps);
+function convertToShader(_node: ElementNode, v: StyleEffects): IRendererShader {
+  let type = 'rounded';
+  if (v.border) type += 'WithBorder';
+  if (v.shadow) type += 'WithShadow';
+  return renderer.createShader(type, v as IRendererShaderProps);
 }
 
 export const LightningRendererNumberProps = [
