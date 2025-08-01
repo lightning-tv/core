@@ -64,7 +64,7 @@ export const defaultShaderRounded: ShaderRounded = lngr_shaders.Rounded;
 export const defaultShaderShadow: ShaderShadow = lngr_shaders.Shadow;
 export const defaultShaderRoundedWithShadow: ShaderRoundedWithShadow =
   lngr_shaders.RoundedWithShadow;
-// TODO: lngr_shaders.RoundedWithBorderAndShadow doesn't support border-gap and border-gapColor
+// TODO: lngr_shaders.RoundedWithBorderAndShadow doesn't support border-gap
 export const defaultShaderRoundedWithBorderAndShadow =
   lngr_shaders.RoundedWithBorderAndShadow as ShaderRoundedWithBorderAndShadow;
 export const defaultShaderHolePunch: ShaderHolePunch = lngr_shaders.HolePunch;
