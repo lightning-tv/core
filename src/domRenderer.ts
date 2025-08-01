@@ -460,8 +460,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         typeof borderColor === 'number' &&
         borderColor !== 0
       ) {
-        // css border impacts the element's box size when box-shadow doesn't
-        borderStyle += `box-shadow: 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
+        borderStyle += `outline: ${borderWidth}px solid ${colorToRgba(borderColor)};`;
+        borderStyle += `outline-offset: ${borderGap}px;`;
       }
       // Rounded
       if (typeof radius === 'number' && radius > 0) {

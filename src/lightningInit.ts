@@ -6,9 +6,7 @@ import {
   ShaderHolePunchProps,
   ShaderLinearGradientProps,
   ShaderRadialGradientProps,
-  ShaderRounded,
   ShaderRoundedProps,
-  ShaderRoundedWithBorderAndShadowProps,
   ShaderShadowPrefixedProps,
 } from './shaders.js';
 
