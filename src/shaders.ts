@@ -121,99 +121,98 @@ function toValidVec4(value: unknown): Vec4 {
   return [0, 0, 0, 0];
 }
 
-const roundedWithBorderPropsDefinition: lngr.ShaderProps<ShaderRoundedWithBorderProps> =
-  {
-    radius: {
-      default: [0, 0, 0, 0],
-      resolve(value) {
-        return toValidVec4(value);
-      },
+const roundedWithBorderProps: lngr.ShaderProps<ShaderRoundedWithBorderProps> = {
+  radius: {
+    default: [0, 0, 0, 0],
+    resolve(value) {
+      return toValidVec4(value);
     },
-    'top-left': {
-      default: 0,
-      set(value, props) {
-        props.radius[0] = value;
-      },
-      get(props) {
-        return props.radius[0];
-      },
+  },
+  'top-left': {
+    default: 0,
+    set(value, props) {
+      (props.radius as Vec4)[0] = value;
     },
-    'top-right': {
-      default: 0,
-      set(value, props) {
-        props.radius[1] = value;
-      },
-      get(props) {
-        return props.radius[1];
-      },
+    get(props) {
+      return (props.radius as Vec4)[0];
     },
-    'bottom-right': {
-      default: 0,
-      set(value, props) {
-        props.radius[2] = value;
-      },
-      get(props) {
-        return props.radius[2];
-      },
+  },
+  'top-right': {
+    default: 0,
+    set(value, props) {
+      (props.radius as Vec4)[1] = value;
     },
-    'bottom-left': {
-      default: 0,
-      set(value, props) {
-        props.radius[3] = value;
-      },
-      get(props) {
-        return props.radius[3];
-      },
+    get(props) {
+      return (props.radius as Vec4)[1];
     },
-    'border-width': {
-      default: [0, 0, 0, 0],
-      resolve(value) {
-        return toValidVec4(value);
-      },
+  },
+  'bottom-right': {
+    default: 0,
+    set(value, props) {
+      (props.radius as Vec4)[2] = value;
     },
-    'border-color': 0xffffffff,
-    'border-gap': 0,
-    'border-gapColor': 0x00000000,
-    'border-top': {
-      default: 0,
-      set(value, props) {
-        props['border-width'][0] = value;
-      },
-      get(props) {
-        return props['border-width'][0];
-      },
+    get(props) {
+      return (props.radius as Vec4)[2];
     },
-    'border-right': {
-      default: 0,
-      set(value, props) {
-        props['border-width'][1] = value;
-      },
-      get(props) {
-        return props['border-width'][1];
-      },
+  },
+  'bottom-left': {
+    default: 0,
+    set(value, props) {
+      (props.radius as Vec4)[3] = value;
     },
-    'border-bottom': {
-      default: 0,
-      set(value, props) {
-        props['border-width'][2] = value;
-      },
-      get(props) {
-        return props['border-width'][2];
-      },
+    get(props) {
+      return (props.radius as Vec4)[3];
     },
-    'border-left': {
-      default: 0,
-      set(value, props) {
-        props['border-width'][3] = value;
-      },
-      get(props) {
-        return props['border-width'][3];
-      },
+  },
+  'border-width': {
+    default: [0, 0, 0, 0],
+    resolve(value) {
+      return toValidVec4(value);
     },
-  };
+  },
+  'border-color': 0xffffffff,
+  'border-gap': 0,
+  'border-gapColor': 0x00000000,
+  'border-top': {
+    default: 0,
+    set(value, props) {
+      (props['border-width'] as Vec4)[0] = value;
+    },
+    get(props) {
+      return (props['border-width'] as Vec4)[0];
+    },
+  },
+  'border-right': {
+    default: 0,
+    set(value, props) {
+      (props['border-width'] as Vec4)[1] = value;
+    },
+    get(props) {
+      return (props['border-width'] as Vec4)[1];
+    },
+  },
+  'border-bottom': {
+    default: 0,
+    set(value, props) {
+      (props['border-width'] as Vec4)[2] = value;
+    },
+    get(props) {
+      return (props['border-width'] as Vec4)[2];
+    },
+  },
+  'border-left': {
+    default: 0,
+    set(value, props) {
+      (props['border-width'] as Vec4)[3] = value;
+    },
+    get(props) {
+      return (props['border-width'] as Vec4)[3];
+    },
+  },
+};
 
 export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
-  props: roundedWithBorderPropsDefinition,
+  props: roundedWithBorderProps,
   canBatch: () => false,
   update(node) {
     const props = this.props!;
