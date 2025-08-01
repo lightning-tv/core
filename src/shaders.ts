@@ -215,27 +215,27 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     let borderGap = props['border-gap'];
     let inset = props['border-inset'];
 
-    let [bTop, bRight, bBottom, bLeft] = borderWidth;
+    let [b_t, b_r, b_b, b_l] = borderWidth;
 
     this.uniformRGBA('u_borderColor', props['border-color']);
-    this.uniform4fa('u_borderWidth', borderWidth);
-    this.uniform1f('u_borderGap', borderGap);
+    this.uniform4fa('u_border', borderWidth);
+    this.uniform1f('u_gap', borderGap);
     this.uniform1i('u_inset', inset ? 1 : 0);
 
     // Check if border is zero (no border widths)
-    let borderZero = bTop === 0 && bRight === 0 && bBottom === 0 && bLeft === 0;
+    let borderZero = b_t === 0 && b_r === 0 && b_b === 0 && b_l === 0;
     this.uniform1i('u_borderZero', borderZero ? 1 : 0);
 
     let origWidth = node.width;
     let origHeight = node.height;
     this.uniform2f('u_dimensions_orig', origWidth, origHeight);
 
-    let finalWidth = origWidth,
-      finalHeight = origHeight;
+    let finalWidth = origWidth;
+    let finalHeight = origHeight;
     if (!inset) {
       // For outside borders, expand dimensions
-      finalWidth = origWidth + bLeft + bRight + borderGap * 2;
-      finalHeight = origHeight + bTop + bBottom + borderGap * 2;
+      finalWidth = origWidth + b_l + b_r + borderGap * 2;
+      finalHeight = origHeight + b_t + b_b + borderGap * 2;
     }
 
     // u_dimensions for the shader's SDF functions
@@ -255,10 +255,10 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       // For each corner, the total radius is content radius + gap + border thickness.
       // Border thickness at a corner is approximated as the max of the two adjacent border sides.
       let outerRadius: Vec4 = [
-        contentRadius[0] + borderGap + Math.max(bTop, bLeft), // top-left
-        contentRadius[1] + borderGap + Math.max(bTop, bRight), // top-right
-        contentRadius[2] + borderGap + Math.max(bBottom, bRight), // bottom-right
-        contentRadius[3] + borderGap + Math.max(bBottom, bLeft), // bottom-left
+        contentRadius[0] + borderGap + Math.max(b_t, b_l), // top-left
+        contentRadius[1] + borderGap + Math.max(b_t, b_r), // top-right
+        contentRadius[2] + borderGap + Math.max(b_b, b_r), // bottom-right
+        contentRadius[3] + borderGap + Math.max(b_b, b_l), // bottom-left
       ];
       calcFactoredRadiusArray(
         outerRadius,
@@ -278,23 +278,23 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     # endif
 
     attribute vec2 a_position;
-    attribute vec2 a_textureCoords;
+    attribute vec2 a_texcoords;
     attribute vec4 a_color;
     attribute vec2 a_nodeCoords;
 
-    uniform vec2 u_resolution;
-    uniform float u_pixelRatio;
+    uniform vec2 u_res;
+    uniform float u_pr;
     uniform vec2 u_dimensions;
     uniform vec2 u_dimensions_orig;
 
     uniform vec4 u_radius;
-    uniform vec4 u_borderWidth;
-    uniform float u_borderGap;
+    uniform vec4 u_border;
+    uniform float u_gap;
     uniform bool u_inset;
     uniform bool u_borderZero;
 
     varying vec4 v_color;
-    varying vec2 v_textureCoords;
+    varying vec2 v_texcoords;
     varying vec2 v_nodeCoords;
     varying vec4 v_borderEndRadius;
     varying vec2 v_borderEndSize;
@@ -304,105 +304,90 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     varying vec2 v_halfDimensions;
 
     void main() {
-      vec2 screenSpace = vec2(2.0 / u_resolution.x, -2.0 / u_resolution.y);
+      vec2 screen_space = vec2(2.0 / u_res.x, -2.0 / u_res.y);
 
       v_color = a_color;
       v_nodeCoords = a_nodeCoords;
 
-      float bTop = u_borderWidth.x;
-      float bRight = u_borderWidth.y;
-      float bBottom = u_borderWidth.z;
-      float bLeft = u_borderWidth.w;
-      float gap = u_borderGap;
+      float b_t = u_border.x;
+      float b_r = u_border.y;
+      float b_b = u_border.z;
+      float b_l = u_border.w;
 
       // Calculate the offset to expand/contract the quad for border and gap
       vec2 expansion_offset = vec2(0.0);
       if (!u_inset) {
         // Outside border: expand the quad
         if (a_nodeCoords.x == 0.0) { // Left edge vertex
-          expansion_offset.x = -(bLeft + gap);
+          expansion_offset.x = -(b_l + u_gap);
         } else { // Right edge vertex (a_nodeCoords.x == 1.0)
-          expansion_offset.x = (bRight + gap);
+          expansion_offset.x =  (b_r + u_gap);
         }
         if (a_nodeCoords.y == 0.0) { // Top edge vertex
-          expansion_offset.y = -(bTop + gap);
+          expansion_offset.y = -(b_t + u_gap);
         } else { // Bottom edge vertex (a_nodeCoords.y == 1.0)
-          expansion_offset.y = (bBottom + gap);
+          expansion_offset.y =  (b_b + u_gap);
         }
       }
       // For inset borders, no expansion needed - use original position
 
-      vec2 final_a_position = a_position + expansion_offset;
-      vec2 normalized = final_a_position * u_pixelRatio;
-
       // Texture coordinate calculation
-      if (u_inset) {
-        // For inset borders, use standard texture coordinates
-        v_textureCoords = a_textureCoords;
-      } else {
-        // For outside borders, adjust texture coordinates for expansion
-        v_textureCoords.x = (a_textureCoords.x * u_dimensions.x - (bLeft + gap)) / u_dimensions_orig.x;
-        v_textureCoords.y = (a_textureCoords.y * u_dimensions.y - (bTop + gap)) / u_dimensions_orig.y;
+      v_texcoords = a_texcoords;
+      if (!u_inset) { // For outside borders, adjust texture coordinates for expansion
+        v_texcoords *= u_dimensions;
+        v_texcoords.x -= b_l + u_gap;
+        v_texcoords.y -= b_t + u_gap;
+        v_texcoords /= u_dimensions_orig;
       }
 
       v_halfDimensions = u_dimensions * 0.5;
       if (!u_borderZero) {
+
+        float gap_x2 = u_gap * 2.0;
+
         if (u_inset) {
           // For inset borders, flip the meaning:
           // v_borderEndRadius/Size represents the gap area
           // v_innerRadius/Size represents the border area
 
           // Gap area (v_borderEnd represents gap boundary) - uniform gap
-          v_borderEndRadius = vec4(
-            max(0.0, u_radius.x - gap - 0.5),
-            max(0.0, u_radius.y - gap - 0.5),
-            max(0.0, u_radius.z - gap - 0.5),
-            max(0.0, u_radius.w - gap - 0.5)
-          );
-          v_borderEndSize = vec2(
-            (u_dimensions.x - (gap * 2.0) - 1.0),
-            (u_dimensions.y - (gap * 2.0) - 1.0)
-          ) * 0.5;
+          v_borderEndRadius = u_radius - u_gap - 0.5;
+          v_borderEndSize = (u_dimensions - gap_x2 - 1.0) * 0.5;
 
           // Border area (v_inner represents border boundary) - individual border widths
-          v_innerRadius = vec4(
-            max(0.0, u_radius.x - gap - max(bTop, bLeft) - 0.5),
-            max(0.0, u_radius.y - gap - max(bTop, bRight) - 0.5),
-            max(0.0, u_radius.z - gap - max(bBottom, bRight) - 0.5),
-            max(0.0, u_radius.w - gap - max(bBottom, bLeft) - 0.5)
-          );
-          v_innerSize = vec2(
-            (u_dimensions.x - (gap * 2.0) - (bLeft + bRight) - 1.0),
-            (u_dimensions.y - (gap * 2.0) - (bTop + bBottom) - 1.0)
-          ) * 0.5;
+          v_innerRadius.x = u_radius.x - u_gap - max(b_t, b_l) - 0.5;
+          v_innerRadius.y = u_radius.y - u_gap - max(b_t, b_r) - 0.5;
+          v_innerRadius.z = u_radius.z - u_gap - max(b_b, b_r) - 0.5;
+          v_innerRadius.w = u_radius.w - u_gap - max(b_b, b_l) - 0.5;
+
+          v_innerSize = (u_dimensions - gap_x2 - vec2(b_l + b_r, b_t + b_b) - 1.0) * 0.5;
         } else {
           // For outside borders, calculate from expanded dimensions inward
-          v_borderEndRadius = vec4(
-            max(0.0, u_radius.x - max(bTop, bLeft) - 0.5),
-            max(0.0, u_radius.y - max(bTop, bRight) - 0.5),
-            max(0.0, u_radius.z - max(bBottom, bRight) - 0.5),
-            max(0.0, u_radius.w - max(bBottom, bLeft) - 0.5)
-          );
-          v_borderEndSize = vec2(
-            (u_dimensions.x - (bLeft + bRight) - 1.0),
-            (u_dimensions.y - (bTop + bBottom) - 1.0)
-          ) * 0.5;
+          v_borderEndRadius.x = u_radius.x - max(b_t, b_l) - 0.5;
+          v_borderEndRadius.y = u_radius.y - max(b_t, b_r) - 0.5;
+          v_borderEndRadius.z = u_radius.z - max(b_b, b_r) - 0.5;
+          v_borderEndRadius.w = u_radius.w - max(b_b, b_l) - 0.5;
 
-          v_innerRadius = vec4(
-            max(0.0, u_radius.x - max(bTop, bLeft) - gap - 0.5),
-            max(0.0, u_radius.y - max(bTop, bRight) - gap - 0.5),
-            max(0.0, u_radius.z - max(bBottom, bRight) - gap - 0.5),
-            max(0.0, u_radius.w - max(bBottom, bLeft) - gap - 0.5)
-          );
-          v_innerSize = vec2(
-            (u_dimensions.x - (bLeft + bRight) - (gap * 2.0) - 1.0),
-            (u_dimensions.y - (bTop + bBottom) - (gap * 2.0) - 1.0)
-          ) * 0.5;
+          v_borderEndSize = (u_dimensions - vec2(b_l + b_r, b_t + b_b) - 1.0) * 0.5;
+
+          v_innerRadius.x = u_radius.x - max(b_t, b_l) - u_gap - 0.5;
+          v_innerRadius.y = u_radius.y - max(b_t, b_r) - u_gap - 0.5;
+          v_innerRadius.z = u_radius.z - max(b_b, b_r) - u_gap - 0.5;
+          v_innerRadius.w = u_radius.w - max(b_b, b_l) - u_gap - 0.5;
+
+          v_innerSize.x = u_dimensions.x - (b_l + b_r) - gap_x2 - 1.0;
+          v_innerSize.y = u_dimensions.y - (b_t + b_b) - gap_x2 - 1.0;
+          v_innerSize *= 0.5;
         }
+
+        v_borderEndRadius = max(v_borderEndRadius, vec4(0.0));
+        v_innerRadius     = max(v_innerRadius, vec4(0.0));
       }
 
-      gl_Position = vec4(normalized.x * screenSpace.x - 1.0, normalized.y * -abs(screenSpace.y) + 1.0, 0.0, 1.0);
-      gl_Position.y = -sign(screenSpace.y) * gl_Position.y;
+      vec2 normalized = (a_position + expansion_offset) * u_pr;
+
+      gl_Position = vec4(normalized.x * screen_space.x - 1.0, normalized.y * -abs(screen_space.y) + 1.0, 0.0, 1.0);
+      gl_Position.y = -sign(screen_space.y) * gl_Position.y;
     }
   `,
   fragment: /*glsl*/ `
@@ -412,15 +397,15 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     precision mediump float;
     # endif
 
-    uniform vec2 u_resolution;
-    uniform float u_pixelRatio;
+    uniform vec2 u_res;
+    uniform float u_pr;
     uniform float u_alpha;
     uniform vec2 u_dimensions;
     uniform sampler2D u_texture;
 
     uniform vec4 u_radius;
 
-    uniform vec4 u_borderWidth;
+    uniform vec4 u_border;
     uniform vec4 u_borderColor;
     uniform bool u_inset;
     uniform bool u_borderZero;
@@ -429,7 +414,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     varying vec2 v_borderEndSize;
 
     varying vec4 v_color;
-    varying vec2 v_textureCoords;
+    varying vec2 v_texcoords;
     varying vec2 v_nodeCoords;
 
     varying vec2 v_halfDimensions;
@@ -444,7 +429,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     }
 
     void main() {
-      vec4 contentTexColor = texture2D(u_texture, v_textureCoords) * v_color;
+      vec4 contentTexColor = texture2D(u_texture, v_texcoords) * v_color;
 
       vec2 boxUv = v_nodeCoords.xy * u_dimensions - v_halfDimensions;
       float outerShapeDist = roundedBox(boxUv, v_halfDimensions, u_radius);
@@ -462,14 +447,14 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
 
       if (!u_inset) {
         // For outside borders, use same adjustment for both calculations
-        adjustedBoxUv.x += (u_borderWidth.y - u_borderWidth.w) * 0.5;
-        adjustedBoxUv.y += (u_borderWidth.z - u_borderWidth.x) * 0.5;
+        adjustedBoxUv.x += (u_border.y - u_border.w) * 0.5;
+        adjustedBoxUv.y += (u_border.z - u_border.x) * 0.5;
         borderAdjustedBoxUv = adjustedBoxUv;
       } else {
         // For inset borders, gap calculation uses no adjustment (uniform gap)
         // Border calculation uses adjustment (non-uniform border)
-        borderAdjustedBoxUv.x += (u_borderWidth.y - u_borderWidth.w) * 0.5;
-        borderAdjustedBoxUv.y += (u_borderWidth.z - u_borderWidth.x) * 0.5;
+        borderAdjustedBoxUv.x += (u_border.y - u_border.w) * 0.5;
+        borderAdjustedBoxUv.y += (u_border.z - u_border.x) * 0.5;
       }
 
       // Distance to the inner edge of the border (where the gap begins)
