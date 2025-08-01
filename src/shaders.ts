@@ -218,7 +218,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     this.uniformRGBA('u_borderColor', props['border-color']);
     this.uniform4fa('u_borderWidth', borderWidth);
     this.uniform1f('u_borderGap', borderGap);
-    this.uniform1f('u_inset', inset ? 1.0 : 0.0);
+    this.uniform1i('u_inset', inset ? 1 : 0);
 
     const origWidth = node.width;
     const origHeight = node.height;
@@ -293,7 +293,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     uniform vec4 u_radius;
     uniform vec4 u_borderWidth;
     uniform float u_borderGap;
-    uniform float u_inset;
+    uniform bool u_inset;
 
     varying vec4 v_color;
     varying vec2 v_textureCoords;
@@ -317,11 +317,10 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       float bBottom = u_borderWidth.z;
       float bLeft = u_borderWidth.w;
       float gap = u_borderGap;
-      bool is_inset = u_inset > 0.5;
 
       // Calculate the offset to expand/contract the quad for border and gap
       vec2 expansion_offset = vec2(0.0);
-      if (!is_inset) {
+      if (!u_inset) {
         // Outside border: expand the quad
         if (a_nodeCoords.x == 0.0) { // Left edge vertex
           expansion_offset.x = -(bLeft + gap);
@@ -340,7 +339,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       vec2 normalized = final_a_position * u_pixelRatio;
 
       // Texture coordinate calculation
-      if (is_inset) {
+      if (u_inset) {
         // For inset borders, use standard texture coordinates
         v_textureCoords = a_textureCoords;
       } else {
@@ -353,7 +352,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
 
       v_halfDimensions = u_dimensions * 0.5;
       if(v_borderZero == 0.0) {
-        if (is_inset) {
+        if (u_inset) {
           // For inset borders, flip the meaning:
           // v_borderEndRadius/Size represents the gap area
           // v_innerRadius/Size represents the border area
@@ -428,7 +427,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
 
     uniform vec4 u_borderWidth;
     uniform vec4 u_borderColor;
-    uniform float u_inset;
+    uniform bool u_inset;
 
     varying vec4 v_borderEndRadius;
     varying vec2 v_borderEndSize;
@@ -451,7 +450,6 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
 
     void main() {
       vec4 contentTexColor = texture2D(u_texture, v_textureCoords) * v_color;
-      bool is_inset = u_inset > 0.5;
 
       vec2 boxUv = v_nodeCoords.xy * u_dimensions - v_halfDimensions;
       float outerShapeDist = roundedBox(boxUv, v_halfDimensions, u_radius);
@@ -467,7 +465,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       vec2 adjustedBoxUv = boxUv;
       vec2 borderAdjustedBoxUv = boxUv;
 
-      if (!is_inset) {
+      if (!u_inset) {
         // For outside borders, use same adjustment for both calculations
         adjustedBoxUv.x += (u_borderWidth.y - u_borderWidth.w) * 0.5;
         adjustedBoxUv.y += (u_borderWidth.z - u_borderWidth.x) * 0.5;
@@ -488,7 +486,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       float contentAlpha = 1.0 - smoothstep(0.0, 1.0, contentDist); // 1 if inside content, 0 if in gap, border or outside
 
       vec4 finalColor;
-      if (is_inset) { // For inset borders: border <- gap <- element
+      if (u_inset) { // For inset borders: border <- gap <- element
         // flip the logic: borderEndAlpha becomes gap, contentAlpha becomes border+content
         if (contentAlpha > 0.0) { // Pixel is inside the content area (innermost)
           finalColor = contentTexColor;
