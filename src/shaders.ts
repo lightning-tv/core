@@ -210,30 +210,32 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
   props: roundedWithBorderProps,
   canBatch: () => false,
   update(node) {
-    const props = this.props!;
-    const borderWidth = props['border-width'] as Vec4;
-    const borderGap = props['border-gap'];
-    const inset = props['border-inset'];
+    let props = this.props!;
+    let borderWidth = props['border-width'] as Vec4;
+    let borderGap = props['border-gap'];
+    let inset = props['border-inset'];
+
+    let [bTop, bRight, bBottom, bLeft] = borderWidth;
 
     this.uniformRGBA('u_borderColor', props['border-color']);
     this.uniform4fa('u_borderWidth', borderWidth);
     this.uniform1f('u_borderGap', borderGap);
     this.uniform1i('u_inset', inset ? 1 : 0);
 
-    const origWidth = node.width;
-    const origHeight = node.height;
+    // Check if border is zero (no border widths)
+    let borderZero = bTop === 0 && bRight === 0 && bBottom === 0 && bLeft === 0;
+    this.uniform1i('u_borderZero', borderZero ? 1 : 0);
+
+    let origWidth = node.width;
+    let origHeight = node.height;
     this.uniform2f('u_dimensions_orig', origWidth, origHeight);
 
-    let finalWidth: number, finalHeight: number;
-    if (inset) {
-      // For inset borders, keep original dimensions
-      finalWidth = origWidth;
+    let finalWidth = origWidth,
       finalHeight = origHeight;
-    } else {
+    if (!inset) {
       // For outside borders, expand dimensions
-      finalWidth = origWidth + borderWidth[3] + borderWidth[1] + borderGap * 2; // original + left + right + 2*gap
-      finalHeight =
-        origHeight + borderWidth[0] + borderWidth[2] + borderGap * 2; // original + top + bottom + 2*gap
+      finalWidth = origWidth + bLeft + bRight + borderGap * 2;
+      finalHeight = origHeight + bTop + bBottom + borderGap * 2;
     }
 
     // u_dimensions for the shader's SDF functions
@@ -241,23 +243,18 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
 
     // The `radius` property is for the content rectangle.
     // Factor it against the appropriate dimensions to prevent self-intersection.
-    const contentRadius = calcFactoredRadiusArray(
-      this.props!.radius as Vec4,
+    let contentRadius = calcFactoredRadiusArray(
+      props.radius as Vec4,
       origWidth,
       origHeight,
     );
 
     // Calculate the appropriate radius for the shader based on inset mode
-    const bTop = borderWidth[0],
-      bRight = borderWidth[1],
-      bBottom = borderWidth[2],
-      bLeft = borderWidth[3];
-
     let finalRadius = contentRadius;
     if (!inset) {
       // For each corner, the total radius is content radius + gap + border thickness.
       // Border thickness at a corner is approximated as the max of the two adjacent border sides.
-      const outerRadius: Vec4 = [
+      let outerRadius: Vec4 = [
         contentRadius[0] + borderGap + Math.max(bTop, bLeft), // top-left
         contentRadius[1] + borderGap + Math.max(bTop, bRight), // top-right
         contentRadius[2] + borderGap + Math.max(bBottom, bRight), // bottom-right
@@ -294,6 +291,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     uniform vec4 u_borderWidth;
     uniform float u_borderGap;
     uniform bool u_inset;
+    uniform bool u_borderZero;
 
     varying vec4 v_color;
     varying vec2 v_textureCoords;
@@ -304,7 +302,6 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     varying vec4 v_innerRadius;
     varying vec2 v_innerSize;
     varying vec2 v_halfDimensions;
-    varying float v_borderZero;
 
     void main() {
       vec2 screenSpace = vec2(2.0 / u_resolution.x, -2.0 / u_resolution.y);
@@ -348,10 +345,8 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
         v_textureCoords.y = (a_textureCoords.y * u_dimensions.y - (bTop + gap)) / u_dimensions_orig.y;
       }
 
-      v_borderZero = (u_borderWidth.x == 0.0 && u_borderWidth.y == 0.0 && u_borderWidth.z == 0.0 && u_borderWidth.w == 0.0) ? 1.0 : 0.0;
-
       v_halfDimensions = u_dimensions * 0.5;
-      if(v_borderZero == 0.0) {
+      if (!u_borderZero) {
         if (u_inset) {
           // For inset borders, flip the meaning:
           // v_borderEndRadius/Size represents the gap area
@@ -428,6 +423,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     uniform vec4 u_borderWidth;
     uniform vec4 u_borderColor;
     uniform bool u_inset;
+    uniform bool u_borderZero;
 
     varying vec4 v_borderEndRadius;
     varying vec2 v_borderEndSize;
@@ -439,7 +435,6 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     varying vec2 v_halfDimensions;
     varying vec4 v_innerRadius;
     varying vec2 v_innerSize;
-    varying float v_borderZero;
 
     float roundedBox(vec2 p, vec2 s, vec4 r) {
       r.xy = (p.x > 0.0) ? r.yz : r.xw;
@@ -455,7 +450,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       float outerShapeDist = roundedBox(boxUv, v_halfDimensions, u_radius);
       float outerShapeAlpha = 1.0 - smoothstep(0.0, 1.0, outerShapeDist); // 1 inside, 0 outside
 
-      if(v_borderZero == 1.0) { // No border, effectively no gap from border logic
+      if (u_borderZero) { // No border, effectively no gap from border logic
         gl_FragColor = mix(vec4(0.0), contentTexColor, outerShapeAlpha) * u_alpha;
         return;
       }
