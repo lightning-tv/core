@@ -25,7 +25,13 @@ import { DOM_RENDERING, SHADERS_ENABLED } from './config.js';
 export type Vec4 = [x: number, y: number, z: number, w: number];
 
 export interface ShaderBorderProps extends lngr.BorderProps {
+  /** Distance between the border and element edges. */
   gap: number;
+  /**
+   * If `false`, the border is drawn outside the element. \
+   * If `true`, the border is drawn inside the element.
+   * @default true
+   */
   inset: boolean;
 }
 
@@ -71,26 +77,21 @@ function calcFactoredRadiusArray(
   radius: Vec4,
   width: number,
   height: number,
+  out: Vec4 = [0, 0, 0, 0],
 ): Vec4 {
-  const result: Vec4 = [radius[0], radius[1], radius[2], radius[3]];
-  const factor = Math.min(
-    Math.min(
-      Math.min(
-        width / Math.max(width, radius[0] + radius[1]),
-        width / Math.max(width, radius[2] + radius[3]),
-      ),
-      Math.min(
-        height / Math.max(height, radius[0] + radius[3]),
-        height / Math.max(height, radius[1] + radius[2]),
-      ),
-    ),
+  [out[0], out[1], out[2], out[3]] = radius;
+  let factor = Math.min(
+    width / Math.max(width, radius[0] + radius[1]),
+    width / Math.max(width, radius[2] + radius[3]),
+    height / Math.max(height, radius[0] + radius[3]),
+    height / Math.max(height, radius[1] + radius[2]),
     1,
   );
-  result[0] *= factor;
-  result[1] *= factor;
-  result[2] *= factor;
-  result[3] *= factor;
-  return result;
+  out[0] *= factor;
+  out[1] *= factor;
+  out[2] *= factor;
+  out[3] *= factor;
+  return out;
 }
 
 function toValidVec4(value: unknown): Vec4 {
@@ -252,10 +253,8 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       bBottom = borderWidth[2],
       bLeft = borderWidth[3];
 
-    let finalRadius: Vec4;
-    if (inset) {
-      finalRadius = contentRadius;
-    } else {
+    let finalRadius = contentRadius;
+    if (!inset) {
       // For each corner, the total radius is content radius + gap + border thickness.
       // Border thickness at a corner is approximated as the max of the two adjacent border sides.
       const outerRadius: Vec4 = [
@@ -264,10 +263,11 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
         contentRadius[2] + borderGap + Math.max(bBottom, bRight), // bottom-right
         contentRadius[3] + borderGap + Math.max(bBottom, bLeft), // bottom-left
       ];
-      finalRadius = calcFactoredRadiusArray(
+      calcFactoredRadiusArray(
         outerRadius,
         finalWidth,
         finalHeight,
+        finalRadius,
       );
     }
 
