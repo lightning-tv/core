@@ -451,6 +451,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       let borderWidth = shader['border-width'];
       let borderColor = shader['border-color'];
       let borderGap = shader['border-gap'] ?? 0;
+      let borderInset = shader['border-inset'] ?? true;
       let radius = shader['radius'];
 
       // Border
@@ -460,8 +461,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         typeof borderColor === 'number' &&
         borderColor !== 0
       ) {
+        // Handle inset borders by making gap negative
+        let gap = borderInset ? -(borderWidth + borderGap) : borderGap;
+
         borderStyle += `outline: ${borderWidth}px solid ${colorToRgba(borderColor)};`;
-        borderStyle += `outline-offset: ${borderGap}px;`;
+        borderStyle += `outline-offset: ${gap}px;`;
       }
       // Rounded
       if (typeof radius === 'number' && radius > 0) {
