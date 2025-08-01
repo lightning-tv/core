@@ -5,6 +5,7 @@ Experimental DOM renderer
 */
 
 import * as lng from '@lightningjs/renderer';
+import { EventEmitter } from '@lightningjs/renderer/utils';
 
 import { Config } from './config.js';
 import {
@@ -19,7 +20,6 @@ import {
   IRendererTextNode,
   IRendererTextNodeProps,
 } from './lightningInit.js';
-import { EventEmitter } from '@lightningjs/renderer/utils';
 
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;

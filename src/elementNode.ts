@@ -37,7 +37,7 @@ import {
   isFunction,
   spliceItem,
 } from './utils.js';
-import { Config, isDev, SHADERS_ENABLED } from './config.js';
+import { Config, DOM_RENDERING, isDev, SHADERS_ENABLED } from './config.js';
 import type {
   RendererMain,
   INode,
@@ -343,6 +343,8 @@ export class ElementNode extends Object {
     if (this.rendered) {
       if (!this.lng.shader) {
         this.lng.shader = convertToShader(this, target);
+      } else if (DOM_RENDERING) {
+        this.lng.shader = this.lng.shader; // lng.shader is a setter, force style update
       }
     } else {
       this.lng.shader = target;
