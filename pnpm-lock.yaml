@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@lightningjs/renderer':
-        specifier: ^2.15.0
-        version: 2.15.0
+        specifier: ^2.16.0
+        version: 2.16.0
     devDependencies:
       '@eslint/js':
         specifier: ^9.15.0
@@ -393,8 +393,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.0':
     resolution: {integrity: sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==}
 
-  '@lightningjs/renderer@2.15.0':
-    resolution: {integrity: sha512-/e4b4XXTCytChfpjyy4hNPwGjPvQCM3Rsj5r5aPbcc3wX3CnpOJVgqdvZryM/9ltW0i4rOUYLV5VGkxv6/awpw==}
+  '@lightningjs/renderer@2.16.0':
+    resolution: {integrity: sha512-TA0litV7/ZMgRjc54GvXavzjBJFSZ8T3z7ohel4dqE3Tw9N3hC3aBmkey6PpF4usQ8JemNBMNgj7/2gR7bINhw==}
     engines: {node: '>= 20.9.0', npm: '>= 10.0.0', pnpm: '>= 8.9.2'}
 
   '@nodelib/fs.scandir@2.1.5':
@@ -2446,7 +2446,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.0': {}
 
-  '@lightningjs/renderer@2.15.0': {}
+  '@lightningjs/renderer@2.16.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
