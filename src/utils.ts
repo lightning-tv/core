@@ -1,4 +1,4 @@
-import { INode } from '@lightningjs/renderer';
+import { type INode, type Point } from '@lightningjs/renderer';
 import { Config, isDev } from './config.js';
 import type { Styles, ElementText, TextNode } from './intrinsicTypes.js';
 import { ElementNode } from './elementNode.js';
@@ -156,3 +156,67 @@ const node${i} = renderer.createNode(props${i});
 
   return output;
 }
+
+export interface Rect extends Point {
+  width: number;
+  height: number;
+}
+
+/**
+ * Calculates the rectangle of an element on the screen,
+ * taking into account its position, size, and scaling.
+ *
+ * @param el   - The element to calculate the rectangle for.
+ * @param from - Optional ancestor element to calculate the rectangle relative to.
+ * @param out  - Optional output rectangle to fill with the result.
+ * @returns The rectangle of the element on the screen.
+ */
+export function getElementScreenRect(
+  el: ElementNode | ElementText,
+  from?: ElementNode,
+  out: Rect = { x: 0, y: 0, width: 0, height: 0 },
+): Rect {
+  out.x = 0;
+  out.y = 0;
+  out.width = el.width;
+  out.height = el.height;
+
+  if (el.scaleX != null) out.width *= el.scaleX;
+  if (el.scaleY != null) out.height *= el.scaleY;
+
+  let curr = el as ElementNode | undefined | null;
+  while (curr != null && curr !== from) {
+    out.x += curr.x;
+    out.y += curr.y;
+
+    if (curr.scaleX != null) {
+      out.x += (curr.width / 2) * (1 - curr.scaleX);
+    }
+    if (curr.scaleY != null) {
+      out.y += (curr.height / 2) * (1 - curr.scaleY);
+    }
+
+    curr = curr.parent;
+  }
+
+  if (Config.rendererOptions != null) {
+    let dpr = Config.rendererOptions.deviceLogicalPixelRatio;
+    if (dpr != null) {
+      out.x *= dpr;
+      out.y *= dpr;
+      out.width *= dpr;
+      out.height *= dpr;
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Checks if the element has focus.\
+ * ({@link ElementNode.states} contains the {@link Config.focusStateKey} focus state)
+ */
+export function isFocused(el: ElementNode | ElementText): boolean {
+  return el.states.has(Config.focusStateKey);
+}
+export const hasFocus = isFocused;

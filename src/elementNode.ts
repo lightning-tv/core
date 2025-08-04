@@ -49,7 +49,7 @@ import type {
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
-import { setActiveElement } from './focusManager.js';
+import { ForwardFocusHandler, setActiveElement } from './focusManager.js';
 import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 
 let layoutRunQueued = false;
@@ -220,9 +220,7 @@ export interface ElementNode extends RendererNode {
   flexWrap?: 'nowrap' | 'wrap';
   flexItem?: boolean;
   flexOrder?: number;
-  forwardFocus?:
-    | number
-    | ((this: ElementNode, elm: ElementNode) => boolean | void);
+  forwardFocus?: number | ForwardFocusHandler;
   forwardStates?: boolean;
   lng:
     | Partial<ElementNode>
@@ -275,7 +273,10 @@ export interface ElementNode extends RendererNode {
   width: number;
   height: number;
   zIndex?: number;
-  transition?: Record<string, AnimationSettings | true | false> | true | false;
+  transition?:
+    | Record<string, AnimationSettings | undefined | true | false>
+    | true
+    | false;
   /**
    * Optional handlers for animation events.
    *
@@ -706,7 +707,7 @@ export class ElementNode extends Object {
     return this._animationSettings || Config.animationSettings;
   }
 
-  set animationSettings(animationSettings: AnimationSettings) {
+  set animationSettings(animationSettings: AnimationSettings | undefined) {
     this._animationSettings = animationSettings;
   }
 
