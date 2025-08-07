@@ -1,6 +1,14 @@
 import * as lng from '@lightningjs/renderer';
 import { DOMRendererMain } from './domRenderer.js';
 import { DOM_RENDERING } from './config.js';
+import {
+  ShaderBorderPrefixedProps,
+  ShaderHolePunchProps,
+  ShaderLinearGradientProps,
+  ShaderRadialGradientProps,
+  ShaderRoundedProps,
+  ShaderShadowPrefixedProps,
+} from './shaders.js';
 
 export type SdfFontType = 'ssdf' | 'msdf';
 
@@ -37,7 +45,12 @@ export interface IRendererShader {
 }
 /** Based on {@link lng.CoreShaderType} */
 export interface IRendererShaderType {}
-export type IRendererShaderProps = Record<string, unknown>;
+export type IRendererShaderProps = Partial<ShaderBorderPrefixedProps> &
+  Partial<ShaderShadowPrefixedProps> &
+  Partial<ShaderRoundedProps> &
+  Partial<ShaderHolePunchProps> &
+  Partial<ShaderRadialGradientProps> &
+  Partial<ShaderLinearGradientProps>;
 
 /** Based on {@link lng.Texture} */
 export interface IRendererTexture {

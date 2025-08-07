@@ -1,18 +1,16 @@
-import {
-  type AnimationSettings as RendererAnimationSettings,
-  type LinearGradientProps,
-  type RadialGradientProps,
-  type ITextNodeProps,
-  type HolePunchProps,
-  type IAnimationController,
-  type ShadowProps,
-  NodeLoadedPayload,
-  NodeFailedPayload,
-} from '@lightningjs/renderer';
+import * as lngr from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
+import {
+  ShaderBorderProps,
+  ShaderHolePunchProps,
+  ShaderLinearGradientProps,
+  ShaderRadialGradientProps,
+  ShaderRoundedProps,
+  ShaderShadowProps,
+} from './shaders.js';
 
-export type AnimationSettings = Partial<RendererAnimationSettings>;
+export type AnimationSettings = Partial<lngr.AnimationSettings>;
 
 export type AddColorString<T> = {
   [K in keyof T]: K extends `color${string}` ? string | number : T[K];
@@ -28,23 +26,16 @@ export type BorderStyle = BorderStyleObject;
 export type BorderRadius = number | number[];
 
 export interface Effects {
-  linearGradient?: LinearGradientProps;
-  radialGradient?: RadialGradientProps;
-  holePunch?: HolePunchProps;
-  shadow?: ShadowProps;
-  rounded?: { radius: BorderRadius };
-  borderRadius?: { radius: BorderRadius };
-  border?: BorderStyleObject;
+  linearGradient?: Partial<ShaderLinearGradientProps>;
+  radialGradient?: Partial<ShaderRadialGradientProps>;
+  holePunch?: Partial<ShaderHolePunchProps>;
+  shadow?: Partial<ShaderShadowProps>;
+  rounded?: Partial<ShaderRoundedProps>;
+  borderRadius?: Partial<BorderRadius>;
+  border?: Partial<ShaderBorderProps>;
 }
 
 export type StyleEffects = Effects;
-
-// Renderer should export EffectDesc
-export type ShaderEffectDesc = {
-  name?: string;
-  type: keyof StyleEffects;
-  props: StyleEffects[keyof StyleEffects];
-};
 
 export type NewOmit<T, K extends PropertyKey> = {
   [P in keyof T as Exclude<P, K>]: T[P];
@@ -55,7 +46,7 @@ export type RemoveUnderscoreProps<T> = {
 };
 
 type RendererText = AddColorString<
-  Partial<Omit<ITextNodeProps, 'debug' | 'shader' | 'parent'>>
+  Partial<Omit<lngr.ITextNodeProps, 'debug' | 'shader' | 'parent'>>
 >;
 
 type CleanElementNode = NewOmit<
@@ -167,15 +158,15 @@ export interface IntrinsicTextNodeStyleProps extends TextStyles {}
 
 export type AnimationEvents = 'animating' | 'tick' | 'stopped';
 export type AnimationEventHandler = (
-  controller: IAnimationController,
+  controller: lngr.IAnimationController,
   name: string,
   endValue: number,
   props?: any,
 ) => void;
 
 type EventPayloadMap = {
-  loaded: NodeLoadedPayload;
-  failed: NodeFailedPayload;
+  loaded: lngr.NodeLoadedPayload;
+  failed: lngr.NodeFailedPayload;
   freed: Event;
   inBounds: Event;
   outOfBounds: Event;

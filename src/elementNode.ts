@@ -37,7 +37,7 @@ import {
   isFunction,
   spliceItem,
 } from './utils.js';
-import { Config, isDev, SHADERS_ENABLED } from './config.js';
+import { Config, DOM_RENDERING, isDev, SHADERS_ENABLED } from './config.js';
 import type {
   RendererMain,
   INode,
@@ -86,14 +86,11 @@ const parseAndAssignShaderProps = (
   });
 };
 
-function convertToShader(_node: ElementNode, v: StyleEffects): any {
-  const { border, shadow } = v;
-
-  const typeParts = ['rounded'];
-  if (border) typeParts.push('WithBorder');
-  if (shadow) typeParts.push('WithShadow');
-
-  return renderer.createShader(typeParts.join(''), v as IRendererShaderProps);
+function convertToShader(_node: ElementNode, v: StyleEffects): IRendererShader {
+  let type = 'rounded';
+  if (v.border) type += 'WithBorder';
+  if (v.shadow) type += 'WithShadow';
+  return renderer.createShader(type, v as IRendererShaderProps);
 }
 
 export const LightningRendererNumberProps = [
@@ -346,6 +343,8 @@ export class ElementNode extends Object {
     if (this.rendered) {
       if (!this.lng.shader) {
         this.lng.shader = convertToShader(this, target);
+      } else if (DOM_RENDERING) {
+        this.lng.shader = this.lng.shader; // lng.shader is a setter, force style update
       }
     } else {
       this.lng.shader = target;

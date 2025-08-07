@@ -5,6 +5,7 @@ Experimental DOM renderer
 */
 
 import * as lng from '@lightningjs/renderer';
+import { EventEmitter } from '@lightningjs/renderer/utils';
 
 import { Config } from './config.js';
 import {
@@ -19,7 +20,6 @@ import {
   IRendererTextNode,
   IRendererTextNodeProps,
 } from './lightningInit.js';
-import { EventEmitter } from '@lightningjs/renderer/utils';
 
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
@@ -445,32 +445,33 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       bgStyle += `background-color: ${colorToRgba(props.color)};`;
     }
 
-    if (props.shader != null) {
+    if (props.shader?.props != null) {
       let shader = props.shader.props;
-      if (shader != null) {
-        const borderWidth = shader['border-width'] as number | undefined;
-        const borderColor = shader['border-color'] as number | undefined;
-        const radius = shader['radius'] as
-          | number
-          | [number, number, number, number]
-          | undefined;
 
-        // Border
-        if (
-          typeof borderWidth === 'number' &&
-          borderWidth !== 0 &&
-          typeof borderColor === 'number' &&
-          borderColor !== 0
-        ) {
-          // css border impacts the element's box size when box-shadow doesn't
-          borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
-        }
-        // Rounded
-        if (typeof radius === 'number' && radius > 0) {
-          radiusStyle += `border-radius: ${radius}px;`;
-        } else if (Array.isArray(radius) && radius.length === 4) {
-          radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
-        }
+      let borderWidth = shader['border-width'];
+      let borderColor = shader['border-color'];
+      let borderGap = shader['border-gap'] ?? 0;
+      let borderInset = shader['border-inset'] ?? true;
+      let radius = shader['radius'];
+
+      // Border
+      if (
+        typeof borderWidth === 'number' &&
+        borderWidth !== 0 &&
+        typeof borderColor === 'number' &&
+        borderColor !== 0
+      ) {
+        // Handle inset borders by making gap negative
+        let gap = borderInset ? -(borderWidth + borderGap) : borderGap;
+
+        borderStyle += `outline: ${borderWidth}px solid ${colorToRgba(borderColor)};`;
+        borderStyle += `outline-offset: ${gap}px;`;
+      }
+      // Rounded
+      if (typeof radius === 'number' && radius > 0) {
+        radiusStyle += `border-radius: ${radius}px;`;
+      } else if (Array.isArray(radius) && radius.length === 4) {
+        radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
       }
     }
 
