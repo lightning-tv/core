@@ -277,16 +277,18 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     precision mediump float;
     # endif
 
+    /* Passed by lightning renderer */
     attribute vec2 a_position;
-    attribute vec2 a_texcoords;
+    attribute vec2 a_textureCoords;
     attribute vec4 a_color;
     attribute vec2 a_nodeCoords;
 
-    uniform vec2 u_res;
-    uniform float u_pr;
+    uniform vec2 u_resolution;
+    uniform float u_pixelRatio;
+    
+    /* Passed by shader setup */
     uniform vec2 u_dimensions;
     uniform vec2 u_dimensions_orig;
-
     uniform vec4 u_radius;
     uniform vec4 u_border;
     uniform float u_gap;
@@ -304,7 +306,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     varying vec2 v_halfDimensions;
 
     void main() {
-      vec2 screen_space = vec2(2.0 / u_res.x, -2.0 / u_res.y);
+      vec2 screen_space = vec2(2.0 / u_resolution.x, -2.0 / u_resolution.y);
 
       v_color = a_color;
       v_nodeCoords = a_nodeCoords;
@@ -332,7 +334,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
       // For inset borders, no expansion needed - use original position
 
       // Texture coordinate calculation
-      v_texcoords = a_texcoords;
+      v_texcoords = a_textureCoords;
       if (!u_inset) { // For outside borders, adjust texture coordinates for expansion
         v_texcoords *= u_dimensions;
         v_texcoords.x -= b_l + u_gap;
@@ -384,7 +386,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
         v_innerRadius     = max(v_innerRadius, vec4(0.0));
       }
 
-      vec2 normalized = (a_position + expansion_offset) * u_pr;
+      vec2 normalized = (a_position + expansion_offset) * u_pixelRatio;
 
       gl_Position = vec4(normalized.x * screen_space.x - 1.0, normalized.y * -abs(screen_space.y) + 1.0, 0.0, 1.0);
       gl_Position.y = -sign(screen_space.y) * gl_Position.y;
@@ -397,12 +399,14 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     precision mediump float;
     # endif
 
-    uniform vec2 u_res;
-    uniform float u_pr;
+    /* Passed by lightning renderer */
+    uniform vec2 u_resolution;
+    uniform float u_pixelRatio;
     uniform float u_alpha;
     uniform vec2 u_dimensions;
     uniform sampler2D u_texture;
 
+    /* Passed by shader setup */
     uniform vec4 u_radius;
 
     uniform vec4 u_border;
