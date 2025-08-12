@@ -78,8 +78,13 @@ function convertEffectsToShader(
   styleEffects: StyleEffects,
 ): IRendererShader {
   const effects: EffectDescUnion[] = [];
-  for (const type in styleEffects) {
-    let props = styleEffects[type as keyof StyleEffects];
+  for (let type in styleEffects) {
+    const props = styleEffects[type as keyof StyleEffects];
+
+    if (type === 'rounded') {
+      type = 'radius';
+    }
+
     if (typeof props === 'object') {
       effects.push(renderer.createEffect(type as any, props, type));
     }
@@ -1105,6 +1110,20 @@ Object.defineProperties(ElementNode.prototype, {
   radialProgress: createEffectAccessor<RadialProgressEffectProps>(
     'radialProgressGradient',
   ),
+  rounded: {
+    set(this: ElementNode, radius: BorderRadius) {
+      this.effects = this.effects
+        ? {
+            ...this.effects,
+            radius: { radius },
+          }
+        : { radius: { radius } };
+    },
+
+    get(this: ElementNode): BorderRadius | undefined {
+      return this.effects?.radius?.radius;
+    },
+  },
   borderRadius: {
     set(this: ElementNode, radius: BorderRadius) {
       this.effects = this.effects

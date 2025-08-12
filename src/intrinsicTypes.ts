@@ -43,6 +43,7 @@ export interface Effects {
 
 export interface BorderEffects {
   radius?: { radius: BorderRadius };
+  rounded?: { radius: BorderRadius };
   border?: BorderStyle;
   borderTop?: BorderStyle;
   borderRight?: BorderStyle;
