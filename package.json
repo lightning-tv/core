@@ -45,8 +45,9 @@
   ],
   "author": "Chris Lorenzo",
   "license": "Apache-2.0",
-  "peerDependencies": {
-    "@lightningjs/renderer": "^2.16.0"
+  "dependencies": {
+    "lngr2": "npm:@lightningjs/renderer@2.16.0",
+    "lngr3": "npm:@lightningjs/renderer@3.0.0-beta7"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

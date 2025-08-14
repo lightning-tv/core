@@ -4,9 +4,8 @@ Experimental DOM renderer
 
 */
 
-import * as lng from '@lightningjs/renderer';
-
-import { Config } from './config.js';
+import * as lngr2 from 'lngr2';
+import { Config, LIGHTNING_RENDERER_V3, RendererOptions } from './config.js';
 import {
   IRendererShader,
   IRendererStage,
@@ -18,8 +17,17 @@ import {
   IRendererNodeProps,
   IRendererTextNode,
   IRendererTextNodeProps,
+  IAnimationController,
+  AnimationControllerState,
+  TextureType,
+  TextureMap,
+  IRendererNodeOnCallback,
 } from './lightningInit.js';
-import { EventEmitter } from '@lightningjs/renderer/utils';
+import {
+  AnimationSettings,
+  CoreNodeAnimateProps,
+  NodeEvents,
+} from './intrinsicTypes.js';
 
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
@@ -138,8 +146,8 @@ function updateAnimations(time: number) {
   requestAnimationUpdate();
 }
 
-class AnimationController implements lng.IAnimationController {
-  state: lng.AnimationControllerState = 'paused';
+class AnimationController implements IAnimationController {
+  state: AnimationControllerState = 'paused';
 
   stopPromise: Promise<void> | null = null;
   stopResolve: (() => void) | null = null;
@@ -148,14 +156,14 @@ class AnimationController implements lng.IAnimationController {
   propsEnd: Record<string, number> = {};
   timeStart: number = performance.now();
   timeEnd: number;
-  settings: Required<lng.AnimationSettings>;
+  settings: Required<AnimationSettings>;
   iteration: number = 0;
   pausedTime: number | null = null;
 
   constructor(
     public node: DOMNode,
-    props: Partial<lng.INodeAnimateProps<any>>,
-    rawSettings: Partial<lng.AnimationSettings>,
+    props: Partial<CoreNodeAnimateProps>,
+    rawSettings: Partial<AnimationSettings>,
   ) {
     this.settings = {
       duration: rawSettings.duration ?? 300,
@@ -234,9 +242,9 @@ class AnimationController implements lng.IAnimationController {
 
 function animate(
   this: DOMNode,
-  props: Partial<lng.INodeAnimateProps<any>>,
-  settings: Partial<lng.AnimationSettings>,
-): lng.IAnimationController {
+  props: Partial<CoreNodeAnimateProps>,
+  settings: Partial<AnimationSettings>,
+): IAnimationController {
   return new AnimationController(this, props, settings);
 }
 
@@ -390,7 +398,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
     if (
       props.texture != null &&
-      props.texture.type === lng.TextureType.subTexture
+      props.texture.type === TextureType.subTexture
     ) {
       srcPos = (props.texture as any).props;
       srcImg = `url(${(props.texture as any).props.texture.props.src})`;
@@ -445,38 +453,77 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       bgStyle += `background-color: ${colorToRgba(props.color)};`;
     }
 
-    if (props.shader != null) {
-      let effects = props.shader.props?.effects;
-      if (Array.isArray(effects)) {
-        for (let effect of effects) {
-          switch (effect.type) {
-            case 'radius': {
-              let radius = effect.props?.radius;
-              if (typeof radius === 'number' && radius > 0) {
-                radiusStyle += `border-radius: ${radius}px;`;
-              } else if (Array.isArray(radius) && radius.length === 4) {
-                radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
-              }
-              break;
+    // V3
+    apply_effects: if (LIGHTNING_RENDERER_V3) {
+      if (props.shader == null) break apply_effects;
+
+      let shader = props.shader.props;
+      if (shader == null) break apply_effects;
+
+      let borderWidth = shader['border-width'];
+      let borderColor = shader['border-color'];
+      let borderGap = shader['border-gap'] ?? 0;
+      let borderOutset = shader['border-outset'] ?? false;
+      let radius = shader['radius'];
+
+      // Border
+      if (
+        typeof borderWidth === 'number' &&
+        borderWidth !== 0 &&
+        typeof borderColor === 'number' &&
+        borderColor !== 0
+      ) {
+        // Handle inset borders by making gap negative
+        let gap = borderOutset ? borderGap : -(borderWidth + borderGap);
+
+        borderStyle += `outline: ${borderWidth}px solid ${colorToRgba(borderColor)};`;
+        borderStyle += `outline-offset: ${gap}px;`;
+      }
+      // Rounded
+      if (typeof radius === 'number' && radius > 0) {
+        radiusStyle += `border-radius: ${radius}px;`;
+      } else if (Array.isArray(radius) && radius.length === 4) {
+        radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
+      }
+    }
+    // V2
+    else {
+      if (props.shader == null) break apply_effects;
+
+      let shader = props.shader.props;
+      if (shader == null) break apply_effects;
+
+      let effects = shader.effects;
+      if (!Array.isArray(effects)) break apply_effects;
+
+      for (let effect of effects) {
+        switch (effect.type) {
+          case 'radius': {
+            let radius = effect.props?.radius;
+            if (typeof radius === 'number' && radius > 0) {
+              radiusStyle += `border-radius: ${radius}px;`;
+            } else if (Array.isArray(radius) && radius.length === 4) {
+              radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
             }
-            case 'border': {
-              let borderWidth = effect.props?.width;
-              let borderColor = effect.props?.color;
-              if (
-                typeof borderWidth === 'number' &&
-                borderWidth !== 0 &&
-                typeof borderColor === 'number' &&
-                borderColor !== 0
-              ) {
-                // css border impacts the element's box size when box-shadow doesn't
-                borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
-              }
-              break;
-            }
-            default:
-              console.warn(`Unknown shader effect type: ${effect.type}`);
-              break;
+            break;
           }
+          case 'border': {
+            let borderWidth = effect.props?.width;
+            let borderColor = effect.props?.color;
+            if (
+              typeof borderWidth === 'number' &&
+              borderWidth !== 0 &&
+              typeof borderColor === 'number' &&
+              borderColor !== 0
+            ) {
+              // css border impacts the element's box size when box-shadow doesn't
+              borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
+            }
+            break;
+          }
+          default:
+            console.warn(`Unknown shader effect type: ${effect.type}`);
+            break;
         }
       }
     }
@@ -547,7 +594,7 @@ function updateDOMTextSize(node: DOMText): void {
       if (node.props.height !== size.height) {
         node.props.height = size.height;
         updateNodeStyles(node);
-        node.emit('loaded');
+        emitLoaded(node);
       }
       break;
     case 'none':
@@ -559,9 +606,17 @@ function updateDOMTextSize(node: DOMText): void {
         node.props.width = size.width;
         node.props.height = size.height;
         updateNodeStyles(node);
-        node.emit('loaded');
+        emitLoaded(node);
       }
       break;
+  }
+}
+
+function emitLoaded(node: DOMNode) {
+  if (node.onLoaded) {
+    for (let cb of node.onLoaded) {
+      cb(node, undefined);
+    }
   }
 }
 
@@ -651,7 +706,6 @@ function resolveNodeDefaults(
     data: {},
     imageType: props.imageType,
     strictBounds: props.strictBounds ?? false,
-    preventCleanup: props.preventCleanup ?? false,
   };
 }
 
@@ -678,6 +732,7 @@ function resolveTextNodeDefaults(
     textBaseline: props.textBaseline ?? 'alphabetic',
     verticalAlign: props.verticalAlign ?? 'middle',
     overflowSuffix: props.overflowSuffix ?? '...',
+    wordBreak: props.wordBreak ?? 'normal',
     debug: props.debug ?? {},
   };
 }
@@ -689,23 +744,17 @@ const defaultShader: IRendererShader = {
 
 let lastNodeId = 0;
 
-class DOMNode extends EventEmitter implements IRendererNode {
+class DOMNode implements IRendererNode {
   div = document.createElement('div');
   divBg: HTMLElement | undefined;
   divBorder: HTMLElement | undefined;
 
   id = ++lastNodeId;
 
-  renderState: lng.CoreNodeRenderState = 0 /* Init */;
-
-  preventCleanup = true;
-
   constructor(
     public stage: IRendererStage,
     public props: IRendererNodeProps,
   ) {
-    super();
-
     // @ts-ignore
     this.div._node = this;
     this.div.setAttribute('data-id', String(this.id));
@@ -730,6 +779,14 @@ class DOMNode extends EventEmitter implements IRendererNode {
   }
 
   animate = animate;
+
+  onLoaded: IRendererNodeOnCallback<'loaded'>[] | undefined;
+  on<E extends NodeEvents>(ev: E, cb: IRendererNodeOnCallback<E>) {
+    if (ev === 'loaded') {
+      this.onLoaded ??= [];
+      this.onLoaded.push(cb as IRendererNodeOnCallback<'loaded'>);
+    }
+  }
 
   get x() {
     return this.props.x;
@@ -1160,6 +1217,13 @@ class DOMText extends DOMNode {
     this.props.offsetY = v;
     updateNodeStyles(this);
   }
+  get wordBreak() {
+    return this.props.wordBreak;
+  }
+  set wordBreak(v) {
+    this.props.wordBreak = v;
+    updateNodeStyles(this);
+  }
   get debug() {
     return this.props.debug;
   }
@@ -1198,7 +1262,7 @@ export class DOMRendererMain implements IRendererMain {
   stage: IRendererStage;
 
   constructor(
-    public settings: lng.RendererMainSettings,
+    public settings: RendererOptions,
     rawTarget: string | HTMLElement,
   ) {
     let target: HTMLElement;
@@ -1234,12 +1298,8 @@ export class DOMRendererMain implements IRendererMain {
         registerShaderType() {},
       },
       animationManager: {
-        registerAnimation(anim) {
-          console.log('registerAnimation', anim);
-        },
-        unregisterAnimation(anim) {
-          console.log('unregisterAnimation', anim);
-        },
+        registerAnimation() {},
+        unregisterAnimation() {},
       },
     };
 
@@ -1299,35 +1359,35 @@ export class DOMRendererMain implements IRendererMain {
   }
 
   createTexture(
-    textureType: keyof lng.TextureMap,
+    textureType: keyof TextureMap,
     props: IRendererTextureProps,
   ): IRendererTexture {
-    let type = lng.TextureType.generic;
+    let type = TextureType.generic;
     switch (textureType) {
       case 'SubTexture':
-        type = lng.TextureType.subTexture;
+        type = TextureType.subTexture;
         break;
       case 'ImageTexture':
-        type = lng.TextureType.image;
+        type = TextureType.image;
         break;
       case 'ColorTexture':
-        type = lng.TextureType.color;
+        type = TextureType.color;
         break;
       case 'NoiseTexture':
-        type = lng.TextureType.noise;
+        type = TextureType.noise;
         break;
       case 'RenderTexture':
-        type = lng.TextureType.renderToTexture;
+        type = TextureType.renderToTexture;
         break;
     }
     return { type, props };
   }
 
   createEffect(
-    type: keyof lng.EffectMap,
+    type: keyof lngr2.EffectMap,
     props: Record<string, any>,
     name?: string,
-  ): lng.EffectDescUnion {
+  ): lngr2.EffectDescUnion {
     return { type, props, name } as any;
   }
 

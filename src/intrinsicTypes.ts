@@ -1,21 +1,31 @@
-import {
-  type FadeOutEffectProps,
-  type GlitchEffectProps,
-  type GrayscaleEffectProps,
-  type AnimationSettings as RendererAnimationSettings,
-  type LinearGradientEffectProps,
-  type RadialGradientEffectProps,
-  type RadialProgressEffectProps,
-  type ITextNodeProps,
-  type HolePunchEffectProps,
-  type IAnimationController,
-  NodeLoadedPayload,
-  NodeFailedPayload,
-} from '@lightningjs/renderer';
+import type * as lngr2 from 'lngr2';
+import type * as lngr3 from 'lngr3';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
+import {
+  ShaderBorderProps,
+  ShaderHolePunchProps,
+  ShaderLinearGradientProps,
+  ShaderRadialGradientProps,
+  ShaderRoundedProps,
+  ShaderShadowProps,
+} from './shaders.js';
+import { IRendererNodeProps, IAnimationController } from './lightningInit.js';
 
-export type AnimationSettings = Partial<RendererAnimationSettings>;
+export type AnimationSettings = Partial<
+  lngr2.AnimationSettings | lngr3.AnimationSettings
+>;
+
+/**
+ * Grab all the number properties of type T
+ */
+export type NumberProps<T> = {
+  [Key in keyof T as NonNullable<T[Key]> extends number ? Key : never]: number;
+};
+/**
+ * Properties of a Node used by the animate() function
+ */
+export type CoreNodeAnimateProps = NumberProps<IRendererNodeProps>;
 
 export type AddColorString<T> = {
   [K in keyof T]: K extends `color${string}` ? string | number : T[K];
@@ -27,38 +37,20 @@ export interface BorderStyleObject {
 }
 
 export type DollarString = `$${string}`;
-export type BorderStyle = number | BorderStyleObject;
+export type BorderStyle = BorderStyleObject;
 export type BorderRadius = number | number[];
 
 export interface Effects {
-  fadeOut?: FadeOutEffectProps;
-  linearGradient?: LinearGradientEffectProps;
-  radialGradient?: RadialGradientEffectProps;
-  radialProgressGradient?: RadialProgressEffectProps;
-  grayscale?: GrayscaleEffectProps;
-  glitch?: GlitchEffectProps;
-  radialProgress?: RadialProgressEffectProps;
-  holePunch?: HolePunchEffectProps;
+  linearGradient?: Partial<ShaderLinearGradientProps>;
+  radialGradient?: Partial<ShaderRadialGradientProps>;
+  holePunch?: Partial<ShaderHolePunchProps>;
+  shadow?: Partial<ShaderShadowProps>;
+  rounded?: Partial<ShaderRoundedProps>;
+  borderRadius?: Partial<BorderRadius>;
+  border?: Partial<ShaderBorderProps>;
 }
 
-export interface BorderEffects {
-  radius?: { radius: BorderRadius };
-  rounded?: { radius: BorderRadius };
-  border?: BorderStyle;
-  borderTop?: BorderStyle;
-  borderRight?: BorderStyle;
-  borderBottom?: BorderStyle;
-  borderLeft?: BorderStyle;
-}
-
-export type StyleEffects = Effects & BorderEffects;
-
-// Renderer should export EffectDesc
-export type ShaderEffectDesc = {
-  name?: string;
-  type: keyof StyleEffects;
-  props: StyleEffects[keyof StyleEffects];
-};
+export type StyleEffects = Effects;
 
 export type NewOmit<T, K extends PropertyKey> = {
   [P in keyof T as Exclude<P, K>]: T[P];
@@ -69,7 +61,12 @@ export type RemoveUnderscoreProps<T> = {
 };
 
 type RendererText = AddColorString<
-  Partial<Omit<ITextNodeProps, 'debug' | 'shader' | 'parent'>>
+  Partial<
+    Omit<
+      lngr2.ITextNodeProps & lngr3.ITextNodeProps,
+      'debug' | 'shader' | 'parent'
+    >
+  >
 >;
 
 type CleanElementNode = NewOmit<
@@ -187,9 +184,9 @@ export type AnimationEventHandler = (
   props?: any,
 ) => void;
 
-type EventPayloadMap = {
-  loaded: NodeLoadedPayload;
-  failed: NodeFailedPayload;
+export type EventPayloadMap = {
+  loaded: lngr2.NodeLoadedPayload | lngr3.NodeLoadedPayload | undefined;
+  failed: lngr2.NodeFailedPayload | lngr3.NodeFailedPayload;
   freed: Event;
   inBounds: Event;
   outOfBounds: Event;
@@ -197,9 +194,9 @@ type EventPayloadMap = {
   outOfViewport: Event;
 };
 
-type NodeEvents = keyof EventPayloadMap;
+export type NodeEvents = keyof EventPayloadMap;
 
-type EventHandler<E extends NodeEvents> = (
+export type EventHandler<E extends NodeEvents> = (
   target: ElementNode,
   event?: EventPayloadMap[E],
 ) => void;
