@@ -1,5 +1,6 @@
-import * as lngr from '@lightningjs/renderer';
-import { ElementNode, type RendererNode } from './elementNode.js';
+import type * as lngr2 from 'lngr2';
+import type * as lngr3 from 'lngr3';
+import { ElementNode } from './elementNode.js';
 import { NodeStates } from './states.js';
 import {
   ShaderBorderProps,
@@ -9,8 +10,28 @@ import {
   ShaderRoundedProps,
   ShaderShadowProps,
 } from './shaders.js';
+import {
+  IRendererNodeProps,
+  IAnimationController,
+  IRendererNode,
+  IRendererTextNode,
+  IRendererTextNodeProps,
+} from './lightningInit.js';
 
-export type AnimationSettings = Partial<lngr.AnimationSettings>;
+export type AnimationSettings = Partial<
+  lngr2.AnimationSettings | lngr3.AnimationSettings
+>;
+
+/**
+ * Grab all the number properties of type T
+ */
+export type NumberProps<T> = {
+  [Key in keyof T as NonNullable<T[Key]> extends number ? Key : never]: number;
+};
+/**
+ * Properties of a Node used by the animate() function
+ */
+export type CoreNodeAnimateProps = NumberProps<IRendererNodeProps>;
 
 export type AddColorString<T> = {
   [K in keyof T]: K extends `color${string}` ? string | number : T[K];
@@ -45,8 +66,22 @@ export type RemoveUnderscoreProps<T> = {
   [K in keyof T as K extends `_${string}` ? never : K]: T[K];
 };
 
-type RendererText = AddColorString<
-  Partial<Omit<lngr.ITextNodeProps, 'debug' | 'shader' | 'parent'>>
+export type RendererText = AddColorString<
+  Partial<
+    Omit<
+      IRendererTextNodeProps,
+      'parent' | 'debug' | 'shader' | 'src' | 'children' | 'id'
+    >
+  >
+>;
+
+export type RendererNode = AddColorString<
+  Partial<
+    NewOmit<
+      IRendererNodeProps,
+      'parent' | 'debug' | 'shader' | 'src' | 'children' | 'id'
+    >
+  >
 >;
 
 type CleanElementNode = NewOmit<
@@ -71,6 +106,7 @@ type CleanElementNode = NewOmit<
   | 'render'
   | 'style'
 >;
+
 /** Node text, children of a ElementNode of type TextNode */
 export interface ElementText
   extends NewOmit<
@@ -158,15 +194,15 @@ export interface IntrinsicTextNodeStyleProps extends TextStyles {}
 
 export type AnimationEvents = 'animating' | 'tick' | 'stopped';
 export type AnimationEventHandler = (
-  controller: lngr.IAnimationController,
+  controller: IAnimationController,
   name: string,
   endValue: number,
   props?: any,
 ) => void;
 
-type EventPayloadMap = {
-  loaded: lngr.NodeLoadedPayload;
-  failed: lngr.NodeFailedPayload;
+export type EventPayloadMap = {
+  loaded: lngr2.NodeLoadedPayload | lngr3.NodeLoadedPayload | undefined;
+  failed: lngr2.NodeFailedPayload | lngr3.NodeFailedPayload;
   freed: Event;
   inBounds: Event;
   outOfBounds: Event;
@@ -174,9 +210,9 @@ type EventPayloadMap = {
   outOfViewport: Event;
 };
 
-type NodeEvents = keyof EventPayloadMap;
+export type NodeEvents = keyof EventPayloadMap;
 
-type EventHandler<E extends NodeEvents> = (
+export type EventHandler<E extends NodeEvents> = (
   target: ElementNode,
   event?: EventPayloadMap[E],
 ) => void;

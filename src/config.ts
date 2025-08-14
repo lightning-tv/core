@@ -1,4 +1,5 @@
-import type { RendererMainSettings } from '@lightningjs/renderer';
+import type * as lngr2 from 'lngr2';
+import type * as lngr3 from 'lngr3';
 import type {
   TextProps,
   AnimationSettings,
@@ -13,9 +14,13 @@ import { type ElementNode } from './elementNode.js';
 */
 declare global {
   /** Whether the DOM renderer should be used instead of `@lightningjs/renderer` */
-  var LIGHTNING_DOM_RENDERING: boolean | undefined;
+  var __LIGHTNING_DOM_RENDERING__: boolean | undefined;
   /** Whether element shaders should be disabled */
-  var LIGHTNING_DISABLE_SHADERS: boolean | undefined;
+  var __LIGHTNING_DISABLE_SHADERS__: boolean | undefined;
+  /** If should use `@lightningjs/renderer` v3 or v2 */
+  var __LIGHTNING_RENDERER_V3__: boolean | undefined;
+  /** Whether is in development environment */
+  var __DEV__: boolean | undefined;
 
   /** Could be set by vite or other bundler */
   interface ImportMetaEnv {
@@ -26,16 +31,27 @@ declare global {
   }
 }
 
-export const isDev = !!(import.meta.env && import.meta.env.DEV);
+export const isDev =
+  !!(import.meta.env && import.meta.env.DEV) ||
+  (typeof __DEV__ === 'boolean' && __DEV__);
+export const DEV = isDev;
 
 /** Whether the DOM renderer is used instead of `@lightningjs/renderer` */
 export const DOM_RENDERING =
-  typeof LIGHTNING_DOM_RENDERING === 'boolean' && LIGHTNING_DOM_RENDERING;
+  typeof __LIGHTNING_DOM_RENDERING__ === 'boolean' &&
+  __LIGHTNING_DOM_RENDERING__;
 
 /** Whether element shaders are enabled */
 export const SHADERS_ENABLED = !(
-  typeof LIGHTNING_DISABLE_SHADERS === 'boolean' && LIGHTNING_DISABLE_SHADERS
+  typeof __LIGHTNING_DISABLE_SHADERS__ === 'boolean' &&
+  __LIGHTNING_DISABLE_SHADERS__
 );
+/** If should use `@lightningjs/renderer` v3 or v2 */
+export const LIGHTNING_RENDERER_V3 =
+  typeof __LIGHTNING_RENDERER_V3__ === 'boolean' && __LIGHTNING_RENDERER_V3__;
+
+export type RendererOptions = lngr2.RendererMainSettings &
+  lngr3.RendererMainSettings;
 
 /**
   RUNTIME LIGHTNING CONFIGURATION \
@@ -50,7 +66,7 @@ export interface Config {
   animationSettings?: AnimationSettings;
   animationsEnabled: boolean;
   fontSettings: Partial<TextProps>;
-  rendererOptions?: Partial<RendererMainSettings>;
+  rendererOptions?: Partial<RendererOptions>;
   setActiveElement: (elm: ElementNode) => void;
   focusStateKey: DollarString;
   lockStyles?: boolean;
