@@ -108,23 +108,30 @@ function convertToShader(_node: ElementNode, v: StyleEffects): IRendererShader {
   return renderer.createShader(type, v as IRendererShaderProps);
 }
 
-function convertEffectsToShader(
-  node: ElementNode,
-  styleEffects: StyleEffects,
-): IRendererShader {
-  const effects: lngr2.EffectDescUnion[] = [];
-  for (let type in styleEffects) {
-    const props = styleEffects[type as keyof StyleEffects];
+function v2_updateShader(node: ElementNode) {
+  if (!SHADERS_ENABLED) return;
+  if (!node._effects) return;
 
-    if (type === 'rounded') {
-      type = 'radius';
+  let effects: lngr2.EffectDescUnion[] = [];
+  for (let [type, props] of entries(node._effects)) {
+    let effectType: keyof lngr2.EffectMap;
+    switch (type) {
+      case 'borderRadius':
+      case 'rounded':
+        effectType = 'radius';
+        break;
+      case 'shadow':
+        continue; // shadow is not supported in V2
+      default:
+        effectType = type;
     }
 
     if (typeof props === 'object') {
-      effects.push(renderer.createEffect(type as any, props, type));
+      effects.push(renderer.createEffect(effectType, props, effectType));
     }
   }
-  return renderer.createShader('DynamicShader', { effects });
+
+  node.lng.shader = renderer.createShader('DynamicShader', { effects });
 }
 
 export const LightningRendererNumberProps = [
@@ -387,8 +394,8 @@ export class ElementNode extends Object {
     // V2
     else {
       this._effects = v;
-      if (SHADERS_ENABLED && this.rendered) {
-        this.lng.shader = convertEffectsToShader(this, v);
+      if (this.rendered) {
+        v2_updateShader(this);
       }
     }
   }
@@ -972,8 +979,8 @@ export class ElementNode extends Object {
         if (SHADERS_ENABLED && props.shader && !props.shader.program) {
           props.shader = convertToShader(node, props.shader);
         }
-      } else if (SHADERS_ENABLED && node._effects) {
-        props.shader = convertEffectsToShader(node, node._effects);
+      } else {
+        v2_updateShader(node);
       }
 
       isDev && log('Rendering: ', this, props);
@@ -1014,8 +1021,8 @@ export class ElementNode extends Object {
         if (SHADERS_ENABLED && props.shader && !props.shader.program) {
           props.shader = convertToShader(node, props.shader);
         }
-      } else if (SHADERS_ENABLED && node._effects) {
-        props.shader = convertEffectsToShader(node, node._effects);
+      } else {
+        v2_updateShader(node);
       }
 
       isDev && log('Rendering: ', this, props);
