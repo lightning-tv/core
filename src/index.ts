@@ -4,3 +4,4 @@ export * from './utils.js';
 export * from './intrinsicTypes.js';
 export * from './focusKeyTypes.js';
 export * from './config.js';
+export * from './shaders.js';

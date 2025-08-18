@@ -1,5 +1,11 @@
 import type * as lngr2 from 'lngr2';
 import type * as lngr3 from 'lngr3';
+import * as lngr2_webgl from 'lngr2/webgl';
+import * as lngr3_webgl from 'lngr3/webgl';
+import * as lngr2_canvas from 'lngr2/canvas';
+import * as lngr3_canvas from 'lngr3/canvas';
+import * as lngr2_inspector from 'lngr2/inspector';
+import * as lngr3_inspector from 'lngr3/inspector';
 import type {
   TextProps,
   AnimationSettings,
@@ -89,3 +95,65 @@ export const Config: Config = {
   focusStateKey: '$focus',
   lockStyles: true,
 };
+
+export function useSdfFontEngine() {
+  if (DOM_RENDERING) return;
+
+  Config.rendererOptions ??= {};
+  Config.rendererOptions.fontEngines ??= [];
+
+  if (LIGHTNING_RENDERER_V3) {
+    Config.rendererOptions.fontEngines.push(lngr3_webgl.SdfTextRenderer);
+  } else {
+    Config.rendererOptions.fontEngines.push(lngr2_webgl.SdfTextRenderer);
+  }
+}
+export function useCanvasFontEngine() {
+  if (DOM_RENDERING) return;
+
+  Config.rendererOptions ??= {};
+  Config.rendererOptions.fontEngines ??= [];
+
+  if (LIGHTNING_RENDERER_V3) {
+    Config.rendererOptions.fontEngines.push(lngr3_canvas.CanvasTextRenderer);
+  } else {
+    Config.rendererOptions.fontEngines.push(lngr2_canvas.CanvasTextRenderer);
+  }
+}
+
+export function useWebglRenderEngine() {
+  if (DOM_RENDERING) return;
+
+  Config.rendererOptions ??= {};
+
+  if (LIGHTNING_RENDERER_V3) {
+    Config.rendererOptions.renderEngine = lngr3_webgl.WebGlCoreRenderer as any;
+  } else {
+    Config.rendererOptions.renderEngine = lngr2_webgl.WebGlCoreRenderer as any;
+  }
+}
+export function useCanvasRenderEngine() {
+  if (DOM_RENDERING) return;
+
+  Config.rendererOptions ??= {};
+
+  if (LIGHTNING_RENDERER_V3) {
+    Config.rendererOptions.renderEngine =
+      lngr3_canvas.CanvasCoreRenderer as any;
+  } else {
+    Config.rendererOptions.renderEngine =
+      lngr2_canvas.CanvasCoreRenderer as any;
+  }
+}
+
+export function useInspector() {
+  if (DOM_RENDERING) return;
+
+  Config.rendererOptions ??= {};
+
+  if (LIGHTNING_RENDERER_V3) {
+    Config.rendererOptions.inspector = lngr3_inspector.Inspector as any;
+  } else {
+    Config.rendererOptions.inspector = lngr2_inspector.Inspector as any;
+  }
+}
