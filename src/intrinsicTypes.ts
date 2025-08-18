@@ -13,8 +13,6 @@ import {
 import {
   IRendererNodeProps,
   IAnimationController,
-  IRendererNode,
-  IRendererTextNode,
   IRendererTextNodeProps,
 } from './lightningInit.js';
 
@@ -31,7 +29,9 @@ export type NumberProps<T> = {
 /**
  * Properties of a Node used by the animate() function
  */
-export type CoreNodeAnimateProps = NumberProps<IRendererNodeProps>;
+export interface CoreNodeAnimateProps extends NumberProps<IRendererNodeProps> {
+  shaderProps: Effects;
+}
 
 export type AddColorString<T> = {
   [K in keyof T]: K extends `color${string}` ? string | number : T[K];

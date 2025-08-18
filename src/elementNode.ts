@@ -57,6 +57,7 @@ import {
   ShaderBorderProps,
   ShaderLinearGradientProps,
   ShaderRadialGradientProps,
+  ShaderRoundedProps,
   ShaderShadowProps,
 } from './shaders.js';
 
@@ -1110,158 +1111,194 @@ if (isDev) {
 
 // V3
 if (LIGHTNING_RENDERER_V3) {
-  function createRawShaderAccessor<T>(key: keyof StyleEffects) {
-    return {
-      set(this: ElementNode, value: T) {
-        this.shader = [key, value as unknown as IRendererShaderProps];
-      },
+  function setShader<K extends keyof StyleEffects>(
+    el: ElementNode,
+    key: K,
+    value: StyleEffects[K],
+  ) {
+    if (value == null) return;
 
-      get(this: ElementNode) {
-        return this.shader;
-      },
-    };
+    let target = el.lng.shader || {};
+
+    let animationSettings: AnimationSettings | undefined;
+    if (el.lng.shader?.program) {
+      target = el.lng.shader.props;
+      const transitionKey = key === 'rounded' ? 'borderRadius' : key;
+      if (
+        el.transition &&
+        (el.transition === true || el.transition[transitionKey])
+      ) {
+        target = {};
+        animationSettings =
+          el.transition === true || el.transition[transitionKey] === true
+            ? undefined
+            : (el.transition[transitionKey] as undefined | AnimationSettings);
+      }
+    }
+
+    if (key === 'rounded' || typeof value === 'number') {
+      target.radius = value;
+    } else {
+      parseAndAssignShaderProps(key, value, target);
+    }
+
+    if (el.rendered) {
+      if (!el.lng.shader) {
+        el.lng.shader = convertToShader(el, target);
+      }
+    } else {
+      el.lng.shader = target;
+    }
+
+    if (animationSettings) {
+      el.animate({ shaderProps: target }, animationSettings).start();
+    }
   }
 
-  function shaderAccessor<T extends Record<string, any> | number>(
-    key: 'border' | 'shadow' | 'rounded',
-  ) {
-    return {
-      set(this: ElementNode, value: T) {
-        let target = this.lng.shader || {};
-
-        let animationSettings: AnimationSettings | undefined;
-        if (this.lng.shader?.program) {
-          target = this.lng.shader.props;
-          const transitionKey = key === 'rounded' ? 'borderRadius' : key;
-          if (
-            this.transition &&
-            (this.transition === true || this.transition[transitionKey])
-          ) {
-            target = {};
-            animationSettings =
-              this.transition === true ||
-              this.transition[transitionKey] === true
-                ? undefined
-                : (this.transition[transitionKey] as
-                    | undefined
-                    | AnimationSettings);
-          }
-        }
-
-        if (key === 'rounded' || typeof value === 'number') {
-          target.radius = value;
-        } else {
-          parseAndAssignShaderProps(key, value, target);
-        }
-
-        if (this.rendered) {
-          if (!this.lng.shader) {
-            this.lng.shader = convertToShader(this, target);
-          }
-        } else {
-          this.lng.shader = target;
-        }
-
-        if (animationSettings) {
-          this.animate({ shaderProps: target }, animationSettings).start();
-        }
-      },
-      get(this: ElementNode) {
-        return this.effects?.[key];
-      },
-    };
+  function getEffect(el: ElementNode, prop: string): any {
+    return (el.effects as any)?.[prop];
   }
 
   Object.defineProperties(ElementNode.prototype, {
-    border: shaderAccessor<ShaderBorderProps>('border'),
-    shadow: shaderAccessor<ShaderShadowProps>('shadow'),
-    rounded: shaderAccessor<BorderRadius>('rounded'),
+    border: {
+      set(this: ElementNode, value: ShaderBorderProps) {
+        setShader(this, 'border', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'border');
+      },
+    },
+    shadow: {
+      set(this: ElementNode, value: ShaderShadowProps) {
+        setShader(this, 'shadow', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'shadow');
+      },
+    },
+    rounded: {
+      set(this: ElementNode, value: ShaderRoundedProps) {
+        setShader(this, 'rounded', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'rounded');
+      },
+    },
     // Alias for rounded
-    borderRadius: shaderAccessor<BorderRadius>('rounded'),
-    linearGradient:
-      createRawShaderAccessor<ShaderLinearGradientProps>('linearGradient'),
-    radialGradient:
-      createRawShaderAccessor<ShaderRadialGradientProps>('radialGradient'),
+    borderRadius: {
+      set(this: ElementNode, value: ShaderRoundedProps) {
+        setShader(this, 'rounded', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'rounded');
+      },
+    },
+    linearGradient: {
+      set(this: ElementNode, value: IRendererShaderProps) {
+        this.shader = ['linearGradient', value];
+      },
+      get(this: ElementNode) {
+        return this.shader;
+      },
+    },
+    radialGradient: {
+      set(this: ElementNode, value: IRendererShaderProps) {
+        this.shader = ['radialGradient', value];
+      },
+      get(this: ElementNode) {
+        return this.shader;
+      },
+    },
   });
 }
 // V2
 else {
-  // Add Border Helpers
-  function createEffectAccessor<T>(key: keyof StyleEffects) {
-    return {
-      set(this: ElementNode, value: T) {
-        this.effects = this.effects
-          ? {
-              ...this.effects,
-              [key]: value,
-            }
-          : { [key]: value };
-      },
-
-      get(this: ElementNode): T | undefined {
-        return this.effects?.[key] as T | undefined;
-      },
+  function setEffect(el: ElementNode, prop: string, value: any) {
+    el.effects = {
+      ...el.effects,
+      [prop]: value,
     };
   }
 
-  function borderAccessor(
-    direction: '' | 'Top' | 'Right' | 'Bottom' | 'Left' = '',
-  ) {
-    return {
-      set(this: ElementNode, value: BorderStyle) {
-        // Format: width || { width, color }
-        if (isNumber(value)) {
-          value = { width: value, color: 0x000000ff };
-        }
-        this.effects = this.effects
-          ? {
-              ...(this.effects || {}),
-              ...{ [`border${direction}`]: value },
-            }
-          : { [`border${direction}`]: value };
-      },
-      get(this: ElementNode): BorderStyle | undefined {
-        return this.effects?.[`border${direction}`];
-      },
-    };
+  function getEffect(el: ElementNode, prop: string): any {
+    return (el.effects as any)?.[prop];
+  }
+
+  function toBorderStyle(value: BorderStyle | number): BorderStyle {
+    return isNumber(value) ? { width: value, color: 0x000000ff } : value;
   }
 
   Object.defineProperties(ElementNode.prototype, {
-    border: borderAccessor(),
-    borderLeft: borderAccessor('Left'),
-    borderRight: borderAccessor('Right'),
-    borderTop: borderAccessor('Top'),
-    borderBottom: borderAccessor('Bottom'),
-    linearGradient:
-      createEffectAccessor<LinearGradientEffectProps>('linearGradient'),
-    radialGradient:
-      createEffectAccessor<RadialGradientEffectProps>('radialGradient'),
+    border: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'border', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'border');
+      },
+    },
+    borderLeft: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'borderLeft', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'borderLeft');
+      },
+    },
+    borderRight: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'borderRight', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'borderRight');
+      },
+    },
+    borderTop: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'borderTop', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'borderTop');
+      },
+    },
+    borderBottom: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'borderBottom', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'borderBottom');
+      },
+    },
+    linearGradient: {
+      set(this: ElementNode, value: ShaderLinearGradientProps) {
+        setEffect(this, 'linearGradient', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'linearGradient');
+      },
+    },
+    radialGradient: {
+      set(this: ElementNode, value: ShaderRadialGradientProps) {
+        setEffect(this, 'radialGradient', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'radialGradient');
+      },
+    },
     rounded: {
       set(this: ElementNode, radius: BorderRadius) {
-        this.effects = this.effects
-          ? {
-              ...this.effects,
-              radius: { radius },
-            }
-          : { radius: { radius } };
+        setEffect(this, 'radius', { radius });
       },
-
       get(this: ElementNode): BorderRadius | undefined {
-        return this.effects?.radius?.radius;
+        return getEffect(this, 'radius')?.radius;
       },
     },
     borderRadius: {
       set(this: ElementNode, radius: BorderRadius) {
-        this.effects = this.effects
-          ? {
-              ...this.effects,
-              radius: { radius },
-            }
-          : { radius: { radius } };
+        setEffect(this, 'radius', { radius });
       },
-
       get(this: ElementNode): BorderRadius | undefined {
-        return this.effects?.radius?.radius;
+        return getEffect(this, 'radius')?.radius;
       },
     },
   });
