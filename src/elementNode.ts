@@ -89,16 +89,16 @@ function runLayout() {
   }
 }
 
+/** See prefixed props in shaders, eg rounded with border */
 const parseAndAssignShaderProps = (
   prefix: string,
   obj: Record<string, any>,
-  props: Record<string, any> = {},
+  props: Record<string, any>,
 ) => {
-  if (!obj) return;
   props[prefix] = obj;
-  Object.entries(obj).forEach(([key, value]) => {
+  for (let [key, value] of entries(obj)) {
     props[`${prefix}-${key}`] = value;
-  });
+  }
 };
 
 function convertToShader(_node: ElementNode, v: StyleEffects): IRendererShader {
@@ -1125,21 +1125,24 @@ if (LIGHTNING_RENDERER_V3) {
   ) {
     if (value == null) return;
 
+    let animationSettings: AnimationSettings | undefined;
     let target = el.lng.shader || {};
 
-    let animationSettings: AnimationSettings | undefined;
     if (el.lng.shader?.program) {
-      target = el.lng.shader.props;
-      const transitionKey = key === 'rounded' ? 'borderRadius' : key;
-      if (
-        el.transition &&
-        (el.transition === true || el.transition[transitionKey])
+      let transitionKey = key === 'rounded' ? 'borderRadius' : key;
+
+      if (el.transition === true) {
+        target = {};
+      } else if (
+        typeof el.transition === 'object' &&
+        el.transition[transitionKey]
       ) {
         target = {};
-        animationSettings =
-          el.transition === true || el.transition[transitionKey] === true
-            ? undefined
-            : (el.transition[transitionKey] as undefined | AnimationSettings);
+        if (typeof el.transition[transitionKey] === 'object') {
+          animationSettings = el.transition[transitionKey];
+        }
+      } else {
+        target = el.lng.shader.props;
       }
     }
 
