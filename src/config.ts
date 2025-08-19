@@ -20,13 +20,13 @@ import { type ElementNode } from './elementNode.js';
 */
 declare global {
   /** Whether the DOM renderer should be used instead of `@lightningjs/renderer` */
-  const __LIGHTNING_DOM_RENDERING__: boolean | undefined;
+  var __LIGHTNING_DOM_RENDERING__: boolean | undefined;
   /** Whether element shaders should be disabled */
-  const __LIGHTNING_DISABLE_SHADERS__: boolean | undefined;
+  var __LIGHTNING_DISABLE_SHADERS__: boolean | undefined;
   /** If should use `@lightningjs/renderer` v3 or v2 */
-  const __LIGHTNING_RENDERER_V3__: boolean | undefined;
+  var __LIGHTNING_RENDERER_V3__: boolean | undefined;
   /** Whether is in development environment, used to enable additional logging */
-  const __DEV__: boolean | undefined;
+  var __DEV__: boolean | undefined;
 
   /** Could be set by vite or other bundler */
   interface ImportMetaEnv {
