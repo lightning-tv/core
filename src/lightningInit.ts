@@ -76,10 +76,10 @@ export interface IRendererNodeShaded {
     props: Partial<lngr2.INodeAnimateProps<any>>,
     settings: Partial<lngr2.AnimationSettings>,
   ) => IAnimationController;
-  get absX(): number;
-  get absY(): number;
   on<E extends NodeEvents>(ev: E, cb: IRendererNodeOnCallback<E>): void;
   destroy(): void;
+  get absX(): number;
+  get absY(): number;
 }
 export type IRendererNodeOnCallback<E extends NodeEvents> = (
   node: IRendererNode,
@@ -245,6 +245,7 @@ export interface IRendererNode extends IRendererNodeShaded, IRendererNodeProps {
   div?: HTMLElement;
   props: IRendererNodeProps;
 }
+export { IRendererNode as INode };
 
 /** Based on {@link lngr2.ITextNodeProps} */
 export interface IRendererTextNodeProps

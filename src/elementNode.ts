@@ -283,6 +283,8 @@ export interface ElementNode extends RendererNode {
   padding?: number;
   x: number;
   y: number;
+  get absX(): number;
+  get absY(): number;
   width: number;
   height: number;
   zIndex?: number;
