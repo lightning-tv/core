@@ -753,6 +753,8 @@ class DOMNode implements IRendererNode {
 
   preventCleanup = true;
 
+  renderState = 0; /* Init */
+
   constructor(
     public stage: IRendererStage,
     public props: IRendererNodeProps,

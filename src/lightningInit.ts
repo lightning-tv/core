@@ -71,6 +71,7 @@ export interface IRendererTextureProps {}
 export interface IRendererNodeShaded {
   stage: IRendererStage;
   id: number;
+  renderState: lngr2.CoreNodeRenderState;
   animate: (
     props: Partial<lngr2.INodeAnimateProps<any>>,
     settings: Partial<lngr2.AnimationSettings>,
