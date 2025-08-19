@@ -1,5 +1,4 @@
 import type * as lngr2 from 'lngr2';
-import type * as lngr3 from 'lngr3';
 import {
   IAnimationController,
   IRendererNode,
@@ -19,11 +18,9 @@ import {
   type Styles,
   type AnimationEvents,
   type AnimationEventHandler,
-  AddColorString,
   TextProps,
   TextNode,
   type OnEvent,
-  NewOmit,
   CoreNodeAnimateProps,
   RendererNode,
 } from './intrinsicTypes.js';
@@ -52,7 +49,7 @@ import {
   SHADERS_ENABLED,
 } from './config.js';
 import { ForwardFocusHandler, setActiveElement } from './focusManager.js';
-import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
+import simpleAnimation from './animation.js';
 import {
   ShaderBorderProps,
   ShaderLinearGradientProps,
@@ -165,7 +162,7 @@ export const LightningRendererNumberProps = [
   'y',
   'zIndex',
   'zIndexLocked',
-];
+] as const;
 
 const LightningRendererNonAnimatingProps = [
   'absX',
@@ -201,7 +198,7 @@ const LightningRendererNonAnimatingProps = [
   'textureOptions',
   'verticalAlign',
   'wordWrap',
-];
+] as const;
 
 declare global {
   interface HTMLElement {
@@ -478,53 +475,6 @@ export class ElementNode extends Object {
     this.lng.shader = isArray(shaderProps)
       ? renderer.createShader(...shaderProps)
       : shaderProps;
-  }
-
-  _sendToLightningAnimatable(name: string, value: number) {
-    if (
-      this.transition &&
-      this.rendered &&
-      Config.animationsEnabled &&
-      (this.transition === true || this.transition[name])
-    ) {
-      const animationSettings =
-        this.transition === true || this.transition[name] === true
-          ? undefined
-          : (this.transition[name] as undefined | AnimationSettings);
-
-      if (Config.simpleAnimationsEnabled) {
-        simpleAnimation.add(
-          this,
-          name,
-          value,
-          animationSettings ||
-            (this.animationSettings as SimpleAnimationSettings),
-        );
-        simpleAnimation.register(renderer.stage);
-        return;
-      } else {
-        const animationController = this.animate(
-          { [name]: value },
-          animationSettings,
-        );
-
-        if (this.onAnimation) {
-          const animationEvents = Object.keys(
-            this.onAnimation,
-          ) as AnimationEvents[];
-          for (const event of animationEvents) {
-            const handler = this.onAnimation[event];
-            animationController.on(event, (controller, props) => {
-              handler!.call(this, controller, name, value, props);
-            });
-          }
-        }
-
-        return animationController.start();
-      }
-    }
-
-    (this.lng[name as keyof IRendererNode] as number | string) = value;
   }
 
   animate(
@@ -1088,13 +1038,47 @@ export class ElementNode extends Object {
   }
 }
 
+/* Animate setting number props */
 for (const key of LightningRendererNumberProps) {
   Object.defineProperty(ElementNode.prototype, key, {
     get(): number {
       return this.lng[key];
     },
-    set(this: ElementNode, v: number) {
-      this._sendToLightningAnimatable(key, v);
+    set(this: ElementNode, value: number) {
+      if (
+        this.transition &&
+        this.rendered &&
+        Config.animationsEnabled &&
+        (this.transition === true || this.transition[key])
+      ) {
+        let settings =
+          this.transition === true || this.transition[key] === true
+            ? undefined
+            : (this.transition[key] as undefined | AnimationSettings);
+
+        // Simple animation
+        if (Config.simpleAnimationsEnabled) {
+          settings ??= this.animationSettings!;
+          simpleAnimation.add(this, key, value, settings);
+          simpleAnimation.register(renderer.stage);
+        }
+        // Default-renderer animation
+        else {
+          let animation = this.animate({ [key]: value }, settings);
+
+          if (this.onAnimation) {
+            for (let [event, handler] of entries(this.onAnimation)) {
+              animation.on(event, (_, props) => {
+                handler!.call(this, animation, key, value, props);
+              });
+            }
+          }
+
+          return animation.start();
+        }
+      }
+
+      (this.lng[key as keyof IRendererNode] as number) = value;
     },
   });
 }
