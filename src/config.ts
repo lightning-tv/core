@@ -74,19 +74,19 @@ export interface RendererOptions
       lngr3.RendererMainSettings,
       'renderEngine' | 'fontEngines' | 'inspector'
     > {
-  renderEngine:
+  renderEngine?:
     | typeof lngr3_webgl.WebGlCoreRenderer
     | typeof lngr2_webgl.WebGlCoreRenderer
     | typeof lngr2_canvas.CanvasCoreRenderer
     | typeof lngr3_canvas.CanvasCoreRenderer
     | undefined;
-  fontEngines: (
+  fontEngines?: (
     | typeof lngr3_webgl.SdfTextRenderer
     | typeof lngr2_webgl.SdfTextRenderer
     | typeof lngr2_canvas.CanvasTextRenderer
     | typeof lngr3_canvas.CanvasTextRenderer
   )[];
-  inspector:
+  inspector?:
     | typeof lngr3_inspector.Inspector
     | typeof lngr2_inspector.Inspector
     | undefined;
@@ -171,6 +171,8 @@ export function useDefaultRenderEngine() {
 export function useSdfFontEngine() {
   if (DOM_RENDERING) return;
 
+  Config.rendererOptions.fontEngines ??= [];
+
   if (LIGHTNING_RENDERER_V3) {
     Config.rendererOptions.fontEngines.push(lngr3_webgl.SdfTextRenderer);
   } else {
@@ -179,6 +181,8 @@ export function useSdfFontEngine() {
 }
 export function useCanvasFontEngine() {
   if (DOM_RENDERING) return;
+
+  Config.rendererOptions.fontEngines ??= [];
 
   if (LIGHTNING_RENDERER_V3) {
     Config.rendererOptions.fontEngines.push(lngr3_canvas.CanvasTextRenderer);
