@@ -1,5 +1,6 @@
 import * as lngr3 from 'lngr3';
-import * as lngr_shaders from 'lngr3/webgl/shaders';
+import * as webgl_shaders from 'lngr3/webgl/shaders';
+import * as canvas_shaders from 'lngr3/canvas/shaders';
 
 import type {
   RoundedProps as ShaderRoundedProps,
@@ -21,6 +22,7 @@ export { WebGlShader };
 
 import { type IRendererShaderManager } from './lightningInit.js';
 import {
+  CANVAS_RENDERING,
   DOM_RENDERING,
   LIGHTNING_RENDERER_V3,
   SHADERS_ENABLED,
@@ -64,18 +66,44 @@ export type ShaderHolePunch = WebGlShader<ShaderHolePunchProps>;
 export type ShaderRadialGradient = WebGlShader<ShaderRadialGradientProps>;
 export type ShaderLinearGradient = WebGlShader<ShaderLinearGradientProps>;
 
-export const defaultShaderRounded: ShaderRounded = lngr_shaders.Rounded;
-export const defaultShaderShadow: ShaderShadow = lngr_shaders.Shadow;
+export const defaultShaderRounded: ShaderRounded = DOM_RENDERING
+  ? ({} as any)
+  : CANVAS_RENDERING
+    ? canvas_shaders.Rounded
+    : webgl_shaders.Rounded;
+export const defaultShaderShadow: ShaderShadow = DOM_RENDERING
+  ? ({} as any)
+  : CANVAS_RENDERING
+    ? canvas_shaders.Shadow
+    : webgl_shaders.Shadow;
 export const defaultShaderRoundedWithShadow: ShaderRoundedWithShadow =
-  lngr_shaders.RoundedWithShadow;
+  DOM_RENDERING
+    ? ({} as any)
+    : CANVAS_RENDERING
+      ? canvas_shaders.RoundedWithShadow
+      : webgl_shaders.RoundedWithShadow;
 // TODO: lngr_shaders.RoundedWithBorderAndShadow doesn't support border-gap
-export const defaultShaderRoundedWithBorderAndShadow =
-  lngr_shaders.RoundedWithBorderAndShadow as ShaderRoundedWithBorderAndShadow;
-export const defaultShaderHolePunch: ShaderHolePunch = lngr_shaders.HolePunch;
-export const defaultShaderRadialGradient: ShaderRadialGradient =
-  lngr_shaders.RadialGradient;
-export const defaultShaderLinearGradient: ShaderLinearGradient =
-  lngr_shaders.LinearGradient;
+export const defaultShaderRoundedWithBorderAndShadow: ShaderRoundedWithBorderAndShadow =
+  DOM_RENDERING
+    ? ({} as any)
+    : CANVAS_RENDERING
+      ? canvas_shaders.RoundedWithBorderAndShadow
+      : webgl_shaders.RoundedWithBorderAndShadow;
+export const defaultShaderHolePunch: ShaderHolePunch = DOM_RENDERING
+  ? ({} as any)
+  : CANVAS_RENDERING
+    ? canvas_shaders.HolePunch
+    : webgl_shaders.HolePunch;
+export const defaultShaderRadialGradient: ShaderRadialGradient = DOM_RENDERING
+  ? ({} as any)
+  : CANVAS_RENDERING
+    ? canvas_shaders.RadialGradient
+    : webgl_shaders.RadialGradient;
+export const defaultShaderLinearGradient: ShaderLinearGradient = DOM_RENDERING
+  ? ({} as any)
+  : CANVAS_RENDERING
+    ? canvas_shaders.LinearGradient
+    : webgl_shaders.LinearGradient;
 
 function toValidVec4(value: unknown): Vec4 {
   if (typeof value === 'number') {
@@ -190,7 +218,7 @@ const roundedWithBorderProps: lngr3.ShaderProps<ShaderRoundedWithBorderProps> =
     'border-outset': true,
   };
 
-export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
+const customShaderRoundedWithBorder: ShaderRoundedWithBorder = {
   props: roundedWithBorderProps,
   canBatch: () => false,
   update() {
@@ -477,6 +505,13 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     }
   `,
 };
+
+export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder =
+  DOM_RENDERING
+    ? ({} as any)
+    : CANVAS_RENDERING
+      ? canvas_shaders.RoundedWithBorder
+      : customShaderRoundedWithBorder;
 
 export function registerDefaultShaderRounded(
   shManager: IRendererShaderManager,

@@ -21,6 +21,8 @@ import { type ElementNode } from './elementNode.js';
 declare global {
   /** Whether the DOM renderer should be used instead of `@lightningjs/renderer` */
   var __LIGHTNING_DOM_RENDERING__: boolean | undefined;
+  /** Whether to use the canvas renderer of `@lightningjs/renderer` */
+  var __LIGHTNING_CANVAS_RENDERING__: boolean | undefined;
   /** Whether element shaders should be disabled */
   var __LIGHTNING_DISABLE_SHADERS__: boolean | undefined;
   /** If should use `@lightningjs/renderer` v3 or v2 */
@@ -48,6 +50,11 @@ export const DOM_RENDERING =
   typeof __LIGHTNING_DOM_RENDERING__ === 'boolean' &&
   __LIGHTNING_DOM_RENDERING__;
 
+/** Whether to use the canvas renderer of `@lightningjs/renderer` */
+export const CANVAS_RENDERING =
+  typeof __LIGHTNING_CANVAS_RENDERING__ === 'boolean' &&
+  __LIGHTNING_CANVAS_RENDERING__;
+
 /** Whether element shaders are enabled */
 export const SHADERS_ENABLED = !(
   typeof __LIGHTNING_DISABLE_SHADERS__ === 'boolean' &&
@@ -69,14 +76,14 @@ export interface Config {
   debug: boolean;
   focusDebug: boolean;
   keyDebug: boolean;
-  simpleAnimationsEnabled?: boolean;
-  animationSettings?: AnimationSettings;
+  simpleAnimationsEnabled: boolean;
+  animationSettings: AnimationSettings;
   animationsEnabled: boolean;
   fontSettings: Partial<TextProps>;
-  rendererOptions?: Partial<RendererOptions>;
+  rendererOptions: RendererOptions;
   setActiveElement: (elm: ElementNode) => void;
   focusStateKey: DollarString;
-  lockStyles?: boolean;
+  lockStyles: boolean;
 }
 
 export const Config: Config = {
@@ -84,9 +91,22 @@ export const Config: Config = {
   focusDebug: false,
   keyDebug: false,
   animationsEnabled: true,
+  simpleAnimationsEnabled: false,
   animationSettings: {
     duration: 250,
     easing: 'ease-in-out',
+  },
+  rendererOptions: {
+    renderEngine: (DOM_RENDERING
+      ? undefined
+      : CANVAS_RENDERING
+        ? LIGHTNING_RENDERER_V3
+          ? lngr3_canvas.CanvasCoreRenderer
+          : lngr2_canvas.CanvasCoreRenderer
+        : LIGHTNING_RENDERER_V3
+          ? lngr3_webgl.WebGlCoreRenderer
+          : lngr2_webgl.WebGlCoreRenderer) as any,
+    fontEngines: [],
   },
   fontSettings: {
     fontFamily: 'Ubuntu',
@@ -100,9 +120,6 @@ export const Config: Config = {
 export function useSdfFontEngine() {
   if (DOM_RENDERING) return;
 
-  Config.rendererOptions ??= {};
-  Config.rendererOptions.fontEngines ??= [];
-
   if (LIGHTNING_RENDERER_V3) {
     Config.rendererOptions.fontEngines.push(lngr3_webgl.SdfTextRenderer);
   } else {
@@ -112,45 +129,21 @@ export function useSdfFontEngine() {
 export function useCanvasFontEngine() {
   if (DOM_RENDERING) return;
 
-  Config.rendererOptions ??= {};
-  Config.rendererOptions.fontEngines ??= [];
-
   if (LIGHTNING_RENDERER_V3) {
     Config.rendererOptions.fontEngines.push(lngr3_canvas.CanvasTextRenderer);
   } else {
     Config.rendererOptions.fontEngines.push(lngr2_canvas.CanvasTextRenderer);
   }
 }
-
-export function useWebglRenderEngine() {
-  if (DOM_RENDERING) return;
-
-  Config.rendererOptions ??= {};
-
-  if (LIGHTNING_RENDERER_V3) {
-    Config.rendererOptions.renderEngine = lngr3_webgl.WebGlCoreRenderer as any;
+export function useDefaultFontEngine() {
+  if (CANVAS_RENDERING) {
+    useCanvasFontEngine();
   } else {
-    Config.rendererOptions.renderEngine = lngr2_webgl.WebGlCoreRenderer as any;
+    useSdfFontEngine();
   }
 }
-export function useCanvasRenderEngine() {
-  if (DOM_RENDERING) return;
-
-  Config.rendererOptions ??= {};
-
-  if (LIGHTNING_RENDERER_V3) {
-    Config.rendererOptions.renderEngine =
-      lngr3_canvas.CanvasCoreRenderer as any;
-  } else {
-    Config.rendererOptions.renderEngine =
-      lngr2_canvas.CanvasCoreRenderer as any;
-  }
-}
-
 export function useInspector() {
   if (DOM_RENDERING) return;
-
-  Config.rendererOptions ??= {};
 
   if (LIGHTNING_RENDERER_V3) {
     Config.rendererOptions.inspector = lngr3_inspector.Inspector as any;
