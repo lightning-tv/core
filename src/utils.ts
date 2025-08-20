@@ -1,8 +1,9 @@
-import { type INode, type Point } from '@lightningjs/renderer';
 import { Config, isDev } from './config.js';
 import type { Styles, ElementText, TextNode } from './intrinsicTypes.js';
-import { ElementNode } from './elementNode.js';
-import { NodeType } from './nodeTypes.js';
+import { ElementNode, NodeType } from './elementNode.js';
+import { IRendererNode } from './lightningInit.js';
+
+export { assertTruthy, assertTruthy as assert, deg2Rad } from 'lngr2/utils';
 
 function hasDebug(node: any) {
   return isObject(node) && node.debug;
@@ -19,6 +20,14 @@ export function log(
     }
   }
 }
+
+export const keys: <T extends object>(obj: T) => (keyof T)[] =
+  Object.keys as any;
+export const values: <T extends object>(obj: T) => T[keyof T][] =
+  Object.values as any;
+export const entries: <T extends object>(
+  obj: T,
+) => { [K in keyof T]-?: [K, T[K]] }[keyof T][] = Object.entries as any;
 
 export const isFunc = (obj: unknown): obj is CallableFunction =>
   obj instanceof Function;
@@ -48,7 +57,7 @@ export function isInteger(item: unknown): item is number {
   return Number.isInteger(item);
 }
 
-export function isINode(node: object): node is INode {
+export function isINode(node: object): node is IRendererNode {
   return 'destroy' in node && typeof node.destroy === 'function';
 }
 
@@ -157,6 +166,10 @@ const node${i} = renderer.createNode(props${i});
   return output;
 }
 
+export interface Point {
+  x: number;
+  y: number;
+}
 export interface Rect extends Point {
   width: number;
   height: number;

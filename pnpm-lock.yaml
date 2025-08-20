@@ -8,9 +8,12 @@ importers:
 
   .:
     dependencies:
-      '@lightningjs/renderer':
-        specifier: ^3.0.0-beta6
-        version: 3.0.0-beta7
+      lngr2:
+        specifier: npm:@lightningjs/renderer@2.16.0
+        version: '@lightningjs/renderer@2.16.0'
+      lngr3:
+        specifier: npm:@lightningjs/renderer@3.0.0-beta7
+        version: '@lightningjs/renderer@3.0.0-beta7'
     devDependencies:
       '@eslint/js':
         specifier: ^9.15.0
@@ -392,6 +395,10 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.0':
     resolution: {integrity: sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==}
+
+  '@lightningjs/renderer@2.16.0':
+    resolution: {integrity: sha512-TA0litV7/ZMgRjc54GvXavzjBJFSZ8T3z7ohel4dqE3Tw9N3hC3aBmkey6PpF4usQ8JemNBMNgj7/2gR7bINhw==}
+    engines: {node: '>= 20.9.0', npm: '>= 10.0.0', pnpm: '>= 8.9.2'}
 
   '@lightningjs/renderer@3.0.0-beta7':
     resolution: {integrity: sha512-yY5sbDeK+hEPdMohKdAC+TyEEkCaFhNm5oYKRIbA/tAGl0qqhq7qOguUkbLQEfYy7BtUmDLyjBt6sI73a+oypQ==}
@@ -2445,6 +2452,8 @@ snapshots:
       '@types/node': 24.0.1
 
   '@jridgewell/sourcemap-codec@1.5.0': {}
+
+  '@lightningjs/renderer@2.16.0': {}
 
   '@lightningjs/renderer@3.0.0-beta7': {}
 

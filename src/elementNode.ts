@@ -1,4 +1,6 @@
+import type * as lngr2 from 'lngr2';
 import {
+  IAnimationController,
   IRendererNode,
   IRendererNodeProps,
   IRendererShader,
@@ -16,11 +18,11 @@ import {
   type Styles,
   type AnimationEvents,
   type AnimationEventHandler,
-  AddColorString,
   TextProps,
   TextNode,
   type OnEvent,
-  NewOmit,
+  CoreNodeAnimateProps,
+  RendererNode,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flex.js';
@@ -36,22 +38,32 @@ import {
   logRenderTree,
   isFunction,
   spliceItem,
+  assert,
+  entries,
 } from './utils.js';
-import { Config, DOM_RENDERING, isDev, SHADERS_ENABLED } from './config.js';
-import type {
-  RendererMain,
-  INode,
-  INodeAnimateProps,
-  IAnimationController,
-  LinearGradientProps,
-  RadialGradientProps,
-  ShadowProps,
-  CoreShaderNode,
-} from '@lightningjs/renderer';
-import { assertTruthy } from '@lightningjs/renderer/utils';
-import { NodeType } from './nodeTypes.js';
+import {
+  Config,
+  DOM_RENDERING,
+  isDev,
+  LIGHTNING_RENDERER_V3,
+  SHADERS_ENABLED,
+} from './config.js';
 import { ForwardFocusHandler, setActiveElement } from './focusManager.js';
-import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
+import simpleAnimation from './animation.js';
+import {
+  ShaderBorderProps,
+  ShaderLinearGradientProps,
+  ShaderRadialGradientProps,
+  ShaderRoundedProps,
+  ShaderShadowProps,
+} from './shaders.js';
+
+export const NodeType = {
+  Element: 'element',
+  TextNode: 'textNode',
+  Text: 'text',
+} as const;
+export type NodeTypes = (typeof NodeType)[keyof typeof NodeType];
 
 let layoutRunQueued = false;
 const layoutQueue = new Set<ElementNode>();
@@ -74,16 +86,16 @@ function runLayout() {
   }
 }
 
+/** See prefixed props in shaders, eg rounded with border */
 const parseAndAssignShaderProps = (
   prefix: string,
   obj: Record<string, any>,
-  props: Record<string, any> = {},
+  props: Record<string, any>,
 ) => {
-  if (!obj) return;
   props[prefix] = obj;
-  Object.entries(obj).forEach(([key, value]) => {
+  for (let [key, value] of entries(obj)) {
     props[`${prefix}-${key}`] = value;
-  });
+  }
 };
 
 function convertToShader(_node: ElementNode, v: StyleEffects): IRendererShader {
@@ -91,6 +103,32 @@ function convertToShader(_node: ElementNode, v: StyleEffects): IRendererShader {
   if (v.border) type += 'WithBorder';
   if (v.shadow) type += 'WithShadow';
   return renderer.createShader(type, v as IRendererShaderProps);
+}
+
+function v2_updateShader(node: ElementNode) {
+  if (!SHADERS_ENABLED) return;
+  if (!node._effects) return;
+
+  let effects: lngr2.EffectDescUnion[] = [];
+  for (let [type, props] of entries(node._effects)) {
+    let effectType: keyof lngr2.EffectMap;
+    switch (type) {
+      case 'borderRadius':
+      case 'rounded':
+        effectType = 'radius';
+        break;
+      case 'shadow':
+        continue; // shadow is not supported in V2
+      default:
+        effectType = type;
+    }
+
+    if (typeof props === 'object') {
+      effects.push(renderer.createEffect(effectType, props, effectType));
+    }
+  }
+
+  node.lng.shader = renderer.createShader('DynamicShader', { effects });
 }
 
 export const LightningRendererNumberProps = [
@@ -124,7 +162,7 @@ export const LightningRendererNumberProps = [
   'y',
   'zIndex',
   'zIndexLocked',
-];
+] as const;
 
 const LightningRendererNonAnimatingProps = [
   'absX',
@@ -160,7 +198,7 @@ const LightningRendererNonAnimatingProps = [
   'textureOptions',
   'verticalAlign',
   'wordWrap',
-];
+] as const;
 
 declare global {
   interface HTMLElement {
@@ -169,16 +207,13 @@ declare global {
   }
 }
 
-export type RendererNode = AddColorString<
-  Partial<NewOmit<INode, 'parent' | 'shader' | 'src' | 'children' | 'id'>>
->;
 export interface ElementNode extends RendererNode {
   [key: string]: unknown;
 
   // Properties
   _animationQueue?:
     | Array<{
-        props: Partial<INodeAnimateProps<CoreShaderNode>>;
+        props: Partial<CoreNodeAnimateProps>;
         animationSettings?: AnimationSettings;
       }>
     | undefined;
@@ -212,7 +247,6 @@ export interface ElementNode extends RendererNode {
     | (IRendererTextNode & { shader?: any });
   ref?: ElementNode | ((node: ElementNode) => void) | undefined;
   rendered: boolean;
-  renderer?: RendererMain;
   right?: number;
   selected?: number;
   preFlexwidth?: number;
@@ -240,8 +274,8 @@ export interface ElementNode extends RendererNode {
     | 'spaceBetween'
     | 'spaceAround'
     | 'spaceEvenly';
-  linearGradient?: LinearGradientProps;
-  radialGradient?: RadialGradientProps;
+  linearGradient?: ShaderLinearGradientProps;
+  radialGradient?: ShaderRadialGradientProps;
   marginBottom?: number;
   marginLeft?: number;
   marginRight?: number;
@@ -249,6 +283,8 @@ export interface ElementNode extends RendererNode {
   padding?: number;
   x: number;
   y: number;
+  get absX(): number;
+  get absY(): number;
   width: number;
   height: number;
   zIndex?: number;
@@ -265,8 +301,6 @@ export interface ElementNode extends RendererNode {
    * - 'stopped': Fired when the animation stops.
    *
    * Each event handler is optional and maps to a corresponding event.
-   *
-   * @type {Partial<Record<AnimationEvents, AnimationEventHandler>>}
    *
    * @property {AnimationEventHandler} [animating] - Handler for the 'animating' event.
    * @property {AnimationEventHandler} [tick] - Handler for the 'tick' event.
@@ -326,28 +360,42 @@ export class ElementNode extends Object {
   }
 
   get effects(): StyleEffects | undefined {
-    return this.lng.shader;
+    if (LIGHTNING_RENDERER_V3) {
+      return this.lng.shader;
+    } else {
+      return this._effects;
+    }
   }
 
   set effects(v: StyleEffects) {
-    if (!SHADERS_ENABLED) return;
-    let target = this.lng.shader || {};
-    if (this.lng.shader?.program) {
-      target = this.lng.shader.props;
-    }
-    if (v.rounded) target.radius = v.rounded.radius;
-    if (v.borderRadius) target.radius = v.borderRadius;
-    if (v.border) parseAndAssignShaderProps('border', v.border, target);
-    if (v.shadow) parseAndAssignShaderProps('shadow', v.shadow, target);
-
-    if (this.rendered) {
-      if (!this.lng.shader) {
-        this.lng.shader = convertToShader(this, target);
-      } else if (DOM_RENDERING) {
-        this.lng.shader = this.lng.shader; // lng.shader is a setter, force style update
+    // V3
+    if (LIGHTNING_RENDERER_V3) {
+      if (!SHADERS_ENABLED) return;
+      let target = this.lng.shader || {};
+      if (this.lng.shader?.program) {
+        target = this.lng.shader.props;
       }
-    } else {
-      this.lng.shader = target;
+      if (v.rounded) target.radius = v.rounded.radius;
+      if (v.borderRadius) target.radius = v.borderRadius;
+      if (v.border) parseAndAssignShaderProps('border', v.border, target);
+      if (v.shadow) parseAndAssignShaderProps('shadow', v.shadow, target);
+
+      if (this.rendered) {
+        if (!this.lng.shader) {
+          this.lng.shader = convertToShader(this, target);
+        } else if (DOM_RENDERING) {
+          this.lng.shader = this.lng.shader; // lng.shader is a setter, force style update
+        }
+      } else {
+        this.lng.shader = target;
+      }
+    }
+    // V2
+    else {
+      this._effects = v;
+      if (this.rendered) {
+        v2_updateShader(this);
+      }
     }
   }
 
@@ -431,62 +479,11 @@ export class ElementNode extends Object {
       : shaderProps;
   }
 
-  _sendToLightningAnimatable(name: string, value: number) {
-    if (
-      this.transition &&
-      this.rendered &&
-      Config.animationsEnabled &&
-      (this.transition === true || this.transition[name])
-    ) {
-      const animationSettings =
-        this.transition === true || this.transition[name] === true
-          ? undefined
-          : (this.transition[name] as undefined | AnimationSettings);
-
-      if (Config.simpleAnimationsEnabled) {
-        simpleAnimation.add(
-          this,
-          name,
-          value,
-          animationSettings ||
-            (this.animationSettings as SimpleAnimationSettings),
-        );
-        simpleAnimation.register(renderer.stage);
-        return;
-      } else {
-        const animationController = this.animate(
-          { [name]: value },
-          animationSettings,
-        );
-
-        if (this.onAnimation) {
-          const animationEvents = Object.keys(
-            this.onAnimation,
-          ) as AnimationEvents[];
-          for (const event of animationEvents) {
-            const handler = this.onAnimation[event];
-            animationController.on(
-              event,
-              (controller: IAnimationController, props?: any) => {
-                handler!.call(this, controller, name, value, props);
-              },
-            );
-          }
-        }
-
-        return animationController.start();
-      }
-    }
-
-    (this.lng[name as keyof IRendererNode] as number | string) = value;
-  }
-
   animate(
-    props: Partial<INodeAnimateProps<CoreShaderNode>>,
+    props: Partial<CoreNodeAnimateProps>,
     animationSettings?: AnimationSettings,
   ): IAnimationController {
-    isDev &&
-      assertTruthy(this.rendered, 'Node must be rendered before animating');
+    isDev && assert(this.rendered, 'Node must be rendered before animating');
     return (this.lng as IRendererNode).animate(
       props,
       animationSettings || this.animationSettings || {},
@@ -494,7 +491,7 @@ export class ElementNode extends Object {
   }
 
   chain(
-    props: Partial<INodeAnimateProps<CoreShaderNode>>,
+    props: Partial<CoreNodeAnimateProps>,
     animationSettings?: AnimationSettings,
   ) {
     if (this._animationRunning) {
@@ -660,7 +657,7 @@ export class ElementNode extends Object {
   }
 
   searchChildrenById(id: string): ElementNode | undefined {
-    // traverse all the childrens children
+    // traverse all the children's children
     for (let i = 0; i < this.children.length; i++) {
       const child = this.children[i];
       if (isElementNode(child)) {
@@ -930,8 +927,12 @@ export class ElementNode extends Object {
       }
 
       // Can you put effects on Text nodes? Need to confirm...
-      if (SHADERS_ENABLED && props.shader && !props.shader.program) {
-        props.shader = convertToShader(node, props.shader);
+      if (LIGHTNING_RENDERER_V3) {
+        if (SHADERS_ENABLED && props.shader && !props.shader.program) {
+          props.shader = convertToShader(node, props.shader);
+        }
+      } else {
+        v2_updateShader(node);
       }
 
       isDev && log('Rendering: ', this, props);
@@ -968,8 +969,12 @@ export class ElementNode extends Object {
         }
       }
 
-      if (SHADERS_ENABLED && props.shader && !props.shader.program) {
-        props.shader = convertToShader(node, props.shader);
+      if (LIGHTNING_RENDERER_V3) {
+        if (SHADERS_ENABLED && props.shader && !props.shader.program) {
+          props.shader = convertToShader(node, props.shader);
+        }
+      } else {
+        v2_updateShader(node);
       }
 
       isDev && log('Rendering: ', this, props);
@@ -1000,8 +1005,10 @@ export class ElementNode extends Object {
     this.onRender?.(this);
 
     if (node.onEvent) {
-      for (const [name, handler] of Object.entries(node.onEvent)) {
-        node.lng.on(name, (_inode, data) => handler.call(node, node, data));
+      for (const [name, handler] of entries(node.onEvent)) {
+        if (handler) {
+          node.lng.on(name, (handler as any).bind(node, node));
+        }
       }
     }
 
@@ -1015,7 +1022,7 @@ export class ElementNode extends Object {
       const numChildren = node.children.length;
       for (let i = 0; i < numChildren; i++) {
         const c = node.children[i];
-        isDev && assertTruthy(c, 'Child is undefined');
+        isDev && assert(c, 'Child is undefined');
         // Text elements sneak in from Solid creating tracked nodes
         if (isElementNode(c)) {
           c.render();
@@ -1033,13 +1040,47 @@ export class ElementNode extends Object {
   }
 }
 
+/* Animate setting number props */
 for (const key of LightningRendererNumberProps) {
   Object.defineProperty(ElementNode.prototype, key, {
     get(): number {
       return this.lng[key];
     },
-    set(this: ElementNode, v: number) {
-      this._sendToLightningAnimatable(key, v);
+    set(this: ElementNode, value: number) {
+      if (
+        this.transition &&
+        this.rendered &&
+        Config.animationsEnabled &&
+        (this.transition === true || this.transition[key])
+      ) {
+        let settings =
+          this.transition === true || this.transition[key] === true
+            ? undefined
+            : (this.transition[key] as undefined | AnimationSettings);
+
+        // Simple animation
+        if (Config.simpleAnimationsEnabled) {
+          settings ??= this.animationSettings!;
+          simpleAnimation.add(this, key, value, settings);
+          simpleAnimation.register(renderer.stage);
+        }
+        // Default-renderer animation
+        else {
+          let animation = this.animate({ [key]: value }, settings);
+
+          if (this.onAnimation) {
+            for (let [event, handler] of entries(this.onAnimation)) {
+              animation.on(event, (_, props) => {
+                handler!.call(this, animation, key, value, props);
+              });
+            }
+          }
+
+          return animation.start();
+        }
+      }
+
+      (this.lng[key as keyof IRendererNode] as number) = value;
     },
   });
 }
@@ -1055,81 +1096,206 @@ for (const key of LightningRendererNonAnimatingProps) {
   });
 }
 
-function createRawShaderAccessor<T>(key: keyof StyleEffects) {
-  return {
-    set(this: ElementNode, value: T) {
-      this.shader = [key, value as unknown as IRendererShaderProps];
-    },
-
-    get(this: ElementNode) {
-      return this.shader;
-    },
-  };
-}
-
-function shaderAccessor<T extends Record<string, any> | number>(
-  key: 'border' | 'shadow' | 'rounded',
-) {
-  return {
-    set(this: ElementNode, value: T) {
-      let target = this.lng.shader || {};
-
-      let animationSettings: AnimationSettings | undefined;
-      if (this.lng.shader?.program) {
-        target = this.lng.shader.props;
-        const transitionKey = key === 'rounded' ? 'borderRadius' : key;
-        if (
-          this.transition &&
-          (this.transition === true || this.transition[transitionKey])
-        ) {
-          target = {};
-          animationSettings =
-            this.transition === true || this.transition[transitionKey] === true
-              ? undefined
-              : (this.transition[transitionKey] as
-                  | undefined
-                  | AnimationSettings);
-        }
-      }
-
-      if (key === 'rounded' || typeof value === 'number') {
-        target.radius = value;
-      } else {
-        parseAndAssignShaderProps(key, value, target);
-      }
-
-      if (this.rendered) {
-        if (!this.lng.shader) {
-          this.lng.shader = convertToShader(this, target);
-        }
-      } else {
-        this.lng.shader = target;
-      }
-
-      if (animationSettings) {
-        this.animate({ shaderProps: target }, animationSettings).start();
-      }
-    },
-    get(this: ElementNode) {
-      return this.effects?.[key];
-    },
-  };
-}
-
 if (isDev) {
   ElementNode.prototype.lngTree = function () {
     return logRenderTree(this);
   };
 }
 
-Object.defineProperties(ElementNode.prototype, {
-  border: shaderAccessor<BorderStyle>('border'),
-  shadow: shaderAccessor<ShadowProps>('shadow'),
-  rounded: shaderAccessor<BorderRadius>('rounded'),
-  // Alias for rounded
-  borderRadius: shaderAccessor<BorderRadius>('rounded'),
-  linearGradient:
-    createRawShaderAccessor<LinearGradientProps>('linearGradient'),
-  radialGradient:
-    createRawShaderAccessor<RadialGradientProps>('radialGradient'),
-});
+// V3
+if (LIGHTNING_RENDERER_V3) {
+  function setShader<K extends keyof StyleEffects>(
+    el: ElementNode,
+    key: K,
+    value: StyleEffects[K],
+  ) {
+    if (value == null) return;
+
+    let animationSettings: AnimationSettings | undefined;
+    let target = el.lng.shader || {};
+
+    if (el.lng.shader?.program) {
+      let transitionKey = key === 'rounded' ? 'borderRadius' : key;
+
+      if (el.transition === true) {
+        target = {};
+      } else if (
+        typeof el.transition === 'object' &&
+        el.transition[transitionKey]
+      ) {
+        target = {};
+        if (typeof el.transition[transitionKey] === 'object') {
+          animationSettings = el.transition[transitionKey];
+        }
+      } else {
+        target = el.lng.shader.props;
+      }
+    }
+
+    if (key === 'rounded' || typeof value === 'number') {
+      target.radius = value;
+    } else {
+      parseAndAssignShaderProps(key, value, target);
+    }
+
+    if (el.rendered) {
+      if (!el.lng.shader) {
+        el.lng.shader = convertToShader(el, target);
+      }
+    } else {
+      el.lng.shader = target;
+    }
+
+    if (animationSettings) {
+      el.animate({ shaderProps: target }, animationSettings).start();
+    }
+  }
+
+  function getEffect(el: ElementNode, prop: string): any {
+    return (el.effects as any)?.[prop];
+  }
+
+  Object.defineProperties(ElementNode.prototype, {
+    border: {
+      set(this: ElementNode, value: ShaderBorderProps) {
+        setShader(this, 'border', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'border');
+      },
+    },
+    shadow: {
+      set(this: ElementNode, value: ShaderShadowProps) {
+        setShader(this, 'shadow', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'shadow');
+      },
+    },
+    rounded: {
+      set(this: ElementNode, value: ShaderRoundedProps) {
+        setShader(this, 'rounded', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'rounded');
+      },
+    },
+    // Alias for rounded
+    borderRadius: {
+      set(this: ElementNode, value: ShaderRoundedProps) {
+        setShader(this, 'rounded', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'rounded');
+      },
+    },
+    linearGradient: {
+      set(this: ElementNode, value: IRendererShaderProps) {
+        this.shader = ['linearGradient', value];
+      },
+      get(this: ElementNode) {
+        return this.shader;
+      },
+    },
+    radialGradient: {
+      set(this: ElementNode, value: IRendererShaderProps) {
+        this.shader = ['radialGradient', value];
+      },
+      get(this: ElementNode) {
+        return this.shader;
+      },
+    },
+  });
+}
+// V2
+else {
+  function setEffect(el: ElementNode, prop: string, value: any) {
+    el.effects = {
+      ...el.effects,
+      [prop]: value,
+    };
+  }
+
+  function getEffect(el: ElementNode, prop: string): any {
+    return (el.effects as any)?.[prop];
+  }
+
+  function toBorderStyle(value: BorderStyle | number): BorderStyle {
+    return isNumber(value) ? { width: value, color: 0x000000ff } : value;
+  }
+
+  Object.defineProperties(ElementNode.prototype, {
+    border: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'border', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'border');
+      },
+    },
+    borderLeft: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'borderLeft', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'borderLeft');
+      },
+    },
+    borderRight: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'borderRight', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'borderRight');
+      },
+    },
+    borderTop: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'borderTop', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'borderTop');
+      },
+    },
+    borderBottom: {
+      set(this: ElementNode, value: BorderStyle) {
+        setEffect(this, 'borderBottom', toBorderStyle(value));
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'borderBottom');
+      },
+    },
+    linearGradient: {
+      set(this: ElementNode, value: ShaderLinearGradientProps) {
+        setEffect(this, 'linearGradient', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'linearGradient');
+      },
+    },
+    radialGradient: {
+      set(this: ElementNode, value: ShaderRadialGradientProps) {
+        setEffect(this, 'radialGradient', value);
+      },
+      get(this: ElementNode) {
+        return getEffect(this, 'radialGradient');
+      },
+    },
+    rounded: {
+      set(this: ElementNode, radius: BorderRadius) {
+        setEffect(this, 'radius', { radius });
+      },
+      get(this: ElementNode): BorderRadius | undefined {
+        return getEffect(this, 'radius')?.radius;
+      },
+    },
+    borderRadius: {
+      set(this: ElementNode, radius: BorderRadius) {
+        setEffect(this, 'radius', { radius });
+      },
+      get(this: ElementNode): BorderRadius | undefined {
+        return getEffect(this, 'radius')?.radius;
+      },
+    },
+  });
+}
