@@ -645,6 +645,19 @@ function scheduleUpdateDOMTextMeasurement(node: DOMText) {
   textNodesToMeasure.add(node);
 }
 
+/**
+ * @param name name of the font
+ * @param url url to ttf file
+ */
+export function addFontUrl(name: string, url: string): void {
+  // Load font file
+  let font = new FontFace(name, `url(${url})`);
+  font.load().then(() => {
+    // @ts-expect-error https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet/add
+    document.fonts.add(font);
+  });
+}
+
 function updateNodeData(node: DOMNode | DOMText) {
   for (let key in node.data) {
     let keyValue: unknown = node.data[key];

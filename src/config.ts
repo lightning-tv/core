@@ -10,6 +10,7 @@ import type {
   TextProps,
   AnimationSettings,
   DollarString,
+  NewOmit,
 } from './intrinsicTypes.js';
 import { type ElementNode } from './elementNode.js';
 
@@ -64,8 +65,32 @@ export const SHADERS_ENABLED = !(
 export const LIGHTNING_RENDERER_V3 =
   typeof __LIGHTNING_RENDERER_V3__ === 'boolean' && __LIGHTNING_RENDERER_V3__;
 
-export type RendererOptions = lngr2.RendererMainSettings &
-  lngr3.RendererMainSettings;
+export interface RendererOptions
+  extends NewOmit<
+      lngr2.RendererMainSettings,
+      'renderEngine' | 'fontEngines' | 'inspector'
+    >,
+    NewOmit<
+      lngr3.RendererMainSettings,
+      'renderEngine' | 'fontEngines' | 'inspector'
+    > {
+  renderEngine:
+    | typeof lngr3_webgl.WebGlCoreRenderer
+    | typeof lngr2_webgl.WebGlCoreRenderer
+    | typeof lngr2_canvas.CanvasCoreRenderer
+    | typeof lngr3_canvas.CanvasCoreRenderer
+    | undefined;
+  fontEngines: (
+    | typeof lngr3_webgl.SdfTextRenderer
+    | typeof lngr2_webgl.SdfTextRenderer
+    | typeof lngr2_canvas.CanvasTextRenderer
+    | typeof lngr3_canvas.CanvasTextRenderer
+  )[];
+  inspector:
+    | typeof lngr3_inspector.Inspector
+    | typeof lngr2_inspector.Inspector
+    | undefined;
+}
 
 /**
   RUNTIME LIGHTNING CONFIGURATION \
@@ -97,7 +122,7 @@ export const Config: Config = {
     easing: 'ease-in-out',
   },
   rendererOptions: {
-    renderEngine: (DOM_RENDERING
+    renderEngine: DOM_RENDERING
       ? undefined
       : CANVAS_RENDERING
         ? LIGHTNING_RENDERER_V3
@@ -105,8 +130,9 @@ export const Config: Config = {
           : lngr2_canvas.CanvasCoreRenderer
         : LIGHTNING_RENDERER_V3
           ? lngr3_webgl.WebGlCoreRenderer
-          : lngr2_webgl.WebGlCoreRenderer) as any,
+          : lngr2_webgl.WebGlCoreRenderer,
     fontEngines: [],
+    inspector: undefined,
   },
   fontSettings: {
     fontFamily: 'Ubuntu',
@@ -117,6 +143,31 @@ export const Config: Config = {
   lockStyles: true,
 };
 
+export function useWebglRenderEngine() {
+  if (DOM_RENDERING) return;
+
+  if (LIGHTNING_RENDERER_V3) {
+    Config.rendererOptions.renderEngine = lngr3_webgl.WebGlCoreRenderer;
+  } else {
+    Config.rendererOptions.renderEngine = lngr2_webgl.WebGlCoreRenderer;
+  }
+}
+export function useCanvasRenderEngine() {
+  if (DOM_RENDERING) return;
+
+  if (LIGHTNING_RENDERER_V3) {
+    Config.rendererOptions.renderEngine = lngr3_canvas.CanvasCoreRenderer;
+  } else {
+    Config.rendererOptions.renderEngine = lngr2_canvas.CanvasCoreRenderer;
+  }
+}
+export function useDefaultRenderEngine() {
+  if (CANVAS_RENDERING) {
+    useWebglRenderEngine();
+  } else {
+    useCanvasRenderEngine();
+  }
+}
 export function useSdfFontEngine() {
   if (DOM_RENDERING) return;
 
@@ -146,8 +197,8 @@ export function useInspector() {
   if (DOM_RENDERING) return;
 
   if (LIGHTNING_RENDERER_V3) {
-    Config.rendererOptions.inspector = lngr3_inspector.Inspector as any;
+    Config.rendererOptions.inspector = lngr3_inspector.Inspector;
   } else {
-    Config.rendererOptions.inspector = lngr2_inspector.Inspector as any;
+    Config.rendererOptions.inspector = lngr2_inspector.Inspector;
   }
 }

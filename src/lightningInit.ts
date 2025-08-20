@@ -1,6 +1,6 @@
 import * as lngr2 from 'lngr2';
 import * as lngr3 from 'lngr3';
-import { DOMRendererMain } from './domRenderer.js';
+import { addFontUrl, DOMRendererMain } from './domRenderer.js';
 import {
   CANVAS_RENDERING,
   DOM_RENDERING,
@@ -297,22 +297,33 @@ export function startLightningRenderer(
   renderer = DOM_RENDERING
     ? new DOMRendererMain(options, rootId)
     : LIGHTNING_RENDERER_V3
-      ? (new lngr3.RendererMain(options, rootId) as any as IRendererMain)
-      : (new lngr2.RendererMain(options, rootId) as any as IRendererMain);
+      ? (new lngr3.RendererMain(
+          options as lngr3.RendererMainSettings,
+          rootId,
+        ) as any)
+      : (new lngr2.RendererMain(
+          options as lngr2.RendererMainSettings,
+          rootId,
+        ) as any);
   return renderer;
 }
 
-export function loadFonts(
-  fonts: (
-    | lngr2.WebTrFontFaceOptions
-    | (Partial<lngr2.SdfTrFontFaceOptions> & { type: SdfFontType })
-  )[],
-) {
-  if (DOM_RENDERING) return;
+export type FontToLoad =
+  | lngr2.WebTrFontFaceOptions
+  | (NewOmit<lngr2.SdfTrFontFaceOptions, 'stage'> & { type: SdfFontType })
+  | lngr3.WebTrFontFaceOptions
+  | (NewOmit<lngr3.SdfTrFontFaceOptions, 'stage'> & { type: SdfFontType });
 
+export function loadFonts(fonts: FontToLoad[]) {
   for (let font of fonts) {
+    // DOM
+    if (DOM_RENDERING) {
+      if ('fontUrl' in font) {
+        addFontUrl(font.fontFamily, font.fontUrl);
+      }
+    }
     // Canvas — Web
-    if (CANVAS_RENDERING) {
+    else if (CANVAS_RENDERING) {
       if ('fontUrl' in font) {
         let fontFace: any;
         if (LIGHTNING_RENDERER_V3) {
@@ -331,12 +342,12 @@ export function loadFonts(
           fontFace = new lngr3.SdfTrFontFace(font.type, {
             ...font,
             stage: renderer.stage as any,
-          } as lngr3.SdfTrFontFaceOptions);
+          });
         } else {
           fontFace = new lngr2.SdfTrFontFace(font.type, {
             ...font,
             stage: renderer.stage as any,
-          } as lngr2.SdfTrFontFaceOptions);
+          });
         }
         renderer.stage.fontManager.addFontFace(fontFace);
       }
