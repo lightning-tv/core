@@ -215,6 +215,7 @@ export interface ElementNode extends RendererNode {
   _rendererProps?: any;
   _states?: States;
   _style?: Styles;
+  _lastAnyKeyPressTime?: number;
   _type: 'element' | 'textNode';
   _undoStyles?: string[];
   autosize?: boolean;
@@ -275,6 +276,7 @@ export interface ElementNode extends RendererNode {
   padding?: number;
   x: number;
   y: number;
+  throttleInput?: number;
   width: number;
   height: number;
   zIndex?: number;

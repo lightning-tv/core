@@ -54,6 +54,7 @@ export interface Config {
   setActiveElement: (elm: ElementNode) => void;
   focusStateKey: DollarString;
   lockStyles?: boolean;
+  throttleInput?: number;
 }
 
 export const Config: Config = {
