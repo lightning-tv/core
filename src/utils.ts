@@ -217,6 +217,6 @@ export function getElementScreenRect(
  * ({@link ElementNode.states} contains the {@link Config.focusStateKey} focus state)
  */
 export function isFocused(el: ElementNode | ElementText): boolean {
-  return el.states && el.states.has(Config.focusStateKey);
+  return el?.states?.has(Config.focusStateKey);
 }
 export const hasFocus = isFocused;
