@@ -1,3 +1,4 @@
+// import { getTimingFunction, mergeColorProgress } from '@lightningjs/renderer/utils';
 import { getTimingFunction, mergeColorProgress } from './timings.js';
 import {
   type ElementNode,
@@ -66,6 +67,10 @@ export class SimpleAnimation {
     value: number,
     settings: SimpleAnimationSettings,
   ): void {
+    const existingConfig = this.nodeConfigs.find(
+      (config) => config.node === node && config.propName === key,
+    );
+
     const duration = settings.duration ?? 0;
     const delay = settings.delay ?? 0;
     const easing = settings.easing || 'linear';
@@ -74,18 +79,29 @@ export class SimpleAnimation {
     const targetValue = value;
     const startValue = node[key] as number;
 
-    this.nodeConfigs.push({
-      node,
-      duration,
-      delay,
-      easing,
-      progress: 0,
-      delayFor: delay,
-      timingFunction,
-      propName: key,
-      startValue,
-      targetValue,
-    });
+    if (existingConfig) {
+      existingConfig.duration = duration;
+      existingConfig.delay = delay;
+      existingConfig.easing = easing;
+      existingConfig.timingFunction = timingFunction;
+      existingConfig.targetValue = targetValue;
+      existingConfig.startValue = startValue;
+      existingConfig.progress = 0;
+      existingConfig.delayFor = delay;
+    } else {
+      this.nodeConfigs.push({
+        node,
+        duration,
+        delay,
+        easing,
+        progress: 0,
+        delayFor: delay,
+        timingFunction,
+        propName: key,
+        startValue,
+        targetValue,
+      });
+    }
   }
 
   update(dt: number) {

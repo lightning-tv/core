@@ -188,6 +188,9 @@ export default function (node: ElementNode): boolean {
   if (justify === 'flexStart') {
     if (node.flexWrap === 'wrap') {
       let crossCurrentPos = 0;
+      // use the child size to do wrap, not the container
+      const childCrossSize =
+        processedChildren[0]?.crossSize || containerCrossSize;
       const crossGap = isRow ? (node.columnGap ?? gap) : (node.rowGap ?? gap);
       for (const pc of processedChildren) {
         if (
@@ -195,13 +198,13 @@ export default function (node: ElementNode): boolean {
           currentPos > (node.padding || 0)
         ) {
           currentPos = node.padding || 0;
-          crossCurrentPos += containerCrossSize + crossGap;
+          crossCurrentPos += childCrossSize + crossGap;
         }
         pc.node[prop] = currentPos + pc.marginStart;
         currentPos += pc.totalMainSizeOnAxis + gap;
         doCrossAlign(pc, crossCurrentPos);
       }
-      const finalCrossSize = crossCurrentPos + containerCrossSize;
+      const finalCrossSize = crossCurrentPos + childCrossSize;
       if (node[crossDimension] !== finalCrossSize) {
         node[`preFlex${crossDimension}`] = node[crossDimension];
         node[crossDimension] = finalCrossSize;

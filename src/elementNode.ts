@@ -194,6 +194,7 @@ export interface ElementNode extends RendererNode {
   _rendererProps?: any;
   _states?: States;
   _style?: Styles;
+  _lastAnyKeyPressTime?: number;
   _type: 'element' | 'textNode';
   _undoStyles?: string[];
   autosize?: boolean;
@@ -249,6 +250,7 @@ export interface ElementNode extends RendererNode {
   padding?: number;
   x: number;
   y: number;
+  throttleInput?: number;
   width: number;
   height: number;
   zIndex?: number;
@@ -377,7 +379,9 @@ export class ElementNode extends Object {
     node: ElementNode | ElementText | TextNode,
     beforeNode?: ElementNode | ElementText | TextNode | null,
   ) {
-    if (node.parent && node.parent !== this) {
+    // always remove nodes if they have a parent - for back swap of node
+    // this will then put the node at the end of the array when re-added
+    if (node.parent) {
       node.parent.removeChild(node);
 
       // We're inserting a node thats been rendered into a node that hasn't been

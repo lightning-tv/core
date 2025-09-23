@@ -139,12 +139,26 @@ const updateFocusPath = (
   return fp;
 };
 
+let lastGlobalKeyPressTime = 0;
+
 const propagateKeyPress = (
   e: KeyboardEvent,
   mappedEvent?: string,
   isHold: boolean = false,
   isUp: boolean = false,
 ): boolean => {
+  const currentTime = performance.now();
+  if (!isUp && Config.throttleInput) {
+    if (currentTime - lastGlobalKeyPressTime < Config.throttleInput) {
+      if (isDev && Config.keyDebug) {
+        console.log(
+          `Keypress throttled by global Config.throttleInput: ${Config.throttleInput}ms`,
+        );
+      }
+      return false;
+    }
+    lastGlobalKeyPressTime = currentTime;
+  }
   let finalFocusElm: ElementNode | undefined;
   let handlerAvailable: ElementNode | undefined;
   const numItems = focusPath.length;
@@ -154,14 +168,24 @@ const propagateKeyPress = (
 
   for (let i = numItems - 1; i >= 0; i--) {
     const elm = focusPath[i]!;
-    const captureHandler = elm[captureEvent] || elm[captureKey];
-    if (isFunction(captureHandler)) {
-      handlerAvailable = elm;
+
+    // Check throttle for capture phase
+    if (elm.throttleInput) {
       if (
-        captureHandler.call(elm, e, elm, finalFocusElm, mappedEvent) === true
+        elm._lastAnyKeyPressTime !== undefined &&
+        currentTime - elm._lastAnyKeyPressTime < elm.throttleInput
       ) {
         return true;
       }
+    }
+
+    const captureHandler = elm[captureEvent] || elm[captureKey];
+    if (
+      isFunction(captureHandler) &&
+      captureHandler.call(elm, e, elm, finalFocusElm, mappedEvent) === true
+    ) {
+      elm._lastAnyKeyPressTime = currentTime;
+      return true;
     }
   }
 
@@ -184,37 +208,51 @@ const propagateKeyPress = (
       finalFocusElm = elm;
     }
 
+    // Check throttle for bubbling phase
+    if (elm.throttleInput) {
+      if (
+        elm._lastAnyKeyPressTime !== undefined &&
+        currentTime - elm._lastAnyKeyPressTime < elm.throttleInput
+      ) {
+        return true;
+      }
+    }
+
+    let handled = false;
+
     // Check for the release event handler if isUp is true and the key is defined
     if (isUp && releaseEventHandlerKey) {
       const eventHandler = elm[releaseEventHandlerKey];
       if (isFunction(eventHandler)) {
         handlerAvailable = elm;
-        if (eventHandler.call(elm, e, elm, finalFocusElm) === true) {
-          return true;
-        }
+        if (eventHandler.call(elm, e, elm, finalFocusElm) === true)
+          handled = true;
       }
     } else if (!isUp && eventHandlerKey) {
       // Check for the regular event handler if isUp is false and the key is defined
       const eventHandler = elm[eventHandlerKey];
       if (isFunction(eventHandler)) {
         handlerAvailable = elm;
-        if (eventHandler.call(elm, e, elm, finalFocusElm) === true) {
-          return true;
-        }
+        if (eventHandler.call(elm, e, elm, finalFocusElm) === true)
+          handled = true;
       }
     }
 
-    // Check for the fallback handler if its key is defined
-    if (fallbackHandlerKey) {
+    // Check for the fallback handler if its key is defined and not already handled by specific key handler
+    if (!handled && fallbackHandlerKey) {
       const fallbackHandler = elm[fallbackHandlerKey];
       if (isFunction(fallbackHandler)) {
         handlerAvailable = elm;
         if (
           fallbackHandler.call(elm, e, mappedEvent, elm, finalFocusElm) === true
-        ) {
-          return true;
-        }
+        )
+          handled = true;
       }
+    }
+
+    if (handled) {
+      elm._lastAnyKeyPressTime = currentTime;
+      return true;
     }
   }
 
