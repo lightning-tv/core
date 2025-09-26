@@ -142,7 +142,7 @@ export interface TextProps
       >
     > {
   states?: NodeStates;
-  fontWeight: number | string;
+  fontWeight?: number | string;
   style?: TextStyles;
 }
 
