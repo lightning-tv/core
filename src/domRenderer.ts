@@ -276,11 +276,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     let { x, y } = props;
 
     if (props.mountX != null) {
-      x -= (props.width ?? 0) * props.mountX;
+      x -= (props.w ?? 0) * props.mountX;
     }
 
     if (props.mountY != null) {
-      y -= (props.height ?? 0) * props.mountY;
+      y -= (props.h ?? 0) * props.mountY;
     }
 
     if (x !== 0) transform += `translateX(${x}px)`;
@@ -320,9 +320,6 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     if (textProps.fontWeight !== 'normal') {
       style += `font-weight: ${textProps.fontWeight};`;
     }
-    if (textProps.fontStretch !== 'normal') {
-      style += `font-stretch: ${textProps.fontStretch};`;
-    }
     if (textProps.lineHeight != null) {
       style += `line-height: ${textProps.lineHeight}px;`;
     }
@@ -336,14 +333,14 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     let maxLines = textProps.maxLines || Infinity;
     switch (textProps.contain) {
       case 'width':
-        style += `width: ${props.width}px; overflow: hidden;`;
+        style += `width: ${props.w}px; overflow: hidden;`;
         break;
       case 'both': {
         let lineHeight = getNodeLineHeight(textProps);
-        maxLines = Math.min(maxLines, Math.floor(props.height / lineHeight));
+        maxLines = Math.min(maxLines, Math.floor(props.h / lineHeight));
         maxLines = Math.max(1, maxLines);
         let height = maxLines * lineHeight;
-        style += `width: ${props.width}px; height: ${height}px; overflow: hidden;`;
+        style += `width: ${props.w}px; height: ${height}px; overflow: hidden;`;
         break;
       }
       case 'none':
@@ -367,8 +364,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   }
   // <Node>
   else {
-    if (props.width !== 0) style += `width: ${props.width}px;`;
-    if (props.height !== 0) style += `height: ${props.height}px;`;
+    if (props.w !== 0) style += `width: ${props.w}px;`;
+    if (props.h !== 0) style += `height: ${props.h}px;`;
 
     let vGradient =
       props.colorBottom !== props.colorTop
@@ -448,7 +445,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     if (props.shader?.props != null) {
       let shader = props.shader.props;
 
-      let borderWidth = shader['border-width'];
+      let borderWidth = shader['border-w'];
       let borderColor = shader['border-color'];
       let borderGap = shader['border-gap'] ?? 0;
       let borderInset = shader['border-inset'] ?? true;
@@ -538,20 +535,17 @@ function updateDOMTextSize(node: DOMText): void {
   switch (node.contain) {
     case 'width':
       size = getElSize(node);
-      if (node.props.height !== size.height) {
-        node.props.height = size.height;
+      if (node.props.h !== size.height) {
+        node.props.h = size.height;
         updateNodeStyles(node);
         node.emit('loaded');
       }
       break;
     case 'none':
       size = getElSize(node);
-      if (
-        node.props.height !== size.height ||
-        node.props.width !== size.width
-      ) {
-        node.props.width = size.width;
-        node.props.height = size.height;
+      if (node.props.h !== size.height || node.props.w !== size.width) {
+        node.props.w = size.width;
+        node.props.h = size.height;
         updateNodeStyles(node);
         node.emit('loaded');
       }
@@ -603,8 +597,8 @@ function resolveNodeDefaults(
   return {
     x: props.x ?? 0,
     y: props.y ?? 0,
-    width: props.width ?? 0,
-    height: props.height ?? 0,
+    w: props.w ?? 0,
+    h: props.h ?? 0,
     alpha: props.alpha ?? 1,
     autosize: props.autosize ?? false,
     boundsMargin: props.boundsMargin ?? null,
@@ -644,7 +638,6 @@ function resolveNodeDefaults(
     rtt: props.rtt ?? false,
     data: {},
     imageType: props.imageType,
-    strictBounds: props.strictBounds ?? false,
   };
 }
 
@@ -659,20 +652,19 @@ function resolveTextNodeDefaults(
     fontFamily: props.fontFamily ?? 'sans-serif',
     fontStyle: props.fontStyle ?? 'normal',
     fontWeight: props.fontWeight ?? 'normal',
-    fontStretch: props.fontStretch ?? 'normal',
+    forceLoad: props.forceLoad ?? false,
     textAlign: props.textAlign ?? 'left',
     contain: props.contain ?? 'none',
-    scrollable: props.scrollable ?? false,
-    scrollY: props.scrollY ?? 0,
     offsetY: props.offsetY ?? 0,
     letterSpacing: props.letterSpacing ?? 0,
-    lineHeight: props.lineHeight, // `undefined` is a valid value
+    lineHeight: props.lineHeight ?? 0,
     maxLines: props.maxLines ?? 0,
+    maxWidth: props.maxWidth ?? 0,
+    maxHeight: props.maxHeight ?? 0,
     textBaseline: props.textBaseline ?? 'alphabetic',
     verticalAlign: props.verticalAlign ?? 'middle',
     overflowSuffix: props.overflowSuffix ?? '...',
     wordBreak: props.wordBreak ?? 'normal',
-    debug: props.debug ?? {},
   };
 }
 
@@ -737,18 +729,32 @@ class DOMNode extends EventEmitter implements IRendererNode {
     this.props.y = v;
     updateNodeStyles(this);
   }
+  get w() {
+    return this.props.w;
+  }
+  set w(v) {
+    this.props.w = v;
+    updateNodeStyles(this);
+  }
+  get h() {
+    return this.props.h;
+  }
+  set h(v) {
+    this.props.h = v;
+    updateNodeStyles(this);
+  }
   get width() {
-    return this.props.width;
+    return this.props.w;
   }
   set width(v) {
-    this.props.width = v;
+    this.props.w = v;
     updateNodeStyles(this);
   }
   get height() {
-    return this.props.height;
+    return this.props.h;
   }
   set height(v) {
-    this.props.height = v;
+    this.props.h = v;
     updateNodeStyles(this);
   }
   get alpha() {
@@ -954,14 +960,6 @@ class DOMNode extends EventEmitter implements IRendererNode {
     this.props.shader = v;
     updateNodeStyles(this);
   }
-  get strictBounds() {
-    return this.props.strictBounds;
-  }
-  set strictBounds(v) {
-    this.props.strictBounds = v;
-    updateNodeStyles(this);
-  }
-
   get data(): IRendererNode['data'] {
     return this.props.data;
   }
@@ -1061,18 +1059,31 @@ class DOMText extends DOMNode {
     this.props.fontWeight = v;
     updateNodeStyles(this);
   }
-  get fontStretch() {
-    return this.props.fontStretch;
+  get forceLoad() {
+    return this.props.forceLoad;
   }
-  set fontStretch(v) {
-    this.props.fontStretch = v;
-    updateNodeStyles(this);
+  set forceLoad(v) {
+    this.props.forceLoad = v;
   }
   get lineHeight() {
     return this.props.lineHeight;
   }
   set lineHeight(v) {
     this.props.lineHeight = v;
+    updateNodeStyles(this);
+  }
+  get maxWidth() {
+    return this.props.maxWidth;
+  }
+  set maxWidth(v) {
+    this.props.maxWidth = v;
+    updateNodeStyles(this);
+  }
+  get maxHeight() {
+    return this.props.maxHeight;
+  }
+  set maxHeight(v) {
+    this.props.maxHeight = v;
     updateNodeStyles(this);
   }
   get letterSpacing() {
@@ -1131,20 +1142,6 @@ class DOMText extends DOMNode {
     this.props.textRendererOverride = v;
     updateNodeStyles(this);
   }
-  get scrollable() {
-    return this.props.scrollable;
-  }
-  set scrollable(v) {
-    this.props.scrollable = v;
-    updateNodeStyles(this);
-  }
-  get scrollY() {
-    return this.props.scrollY;
-  }
-  set scrollY(v) {
-    this.props.scrollY = v;
-    updateNodeStyles(this);
-  }
   get offsetY() {
     return this.props.offsetY;
   }
@@ -1157,13 +1154,6 @@ class DOMText extends DOMNode {
   }
   set wordBreak(v) {
     this.props.wordBreak = v;
-    updateNodeStyles(this);
-  }
-  get debug() {
-    return this.props.debug;
-  }
-  set debug(v) {
-    this.props.debug = v;
     updateNodeStyles(this);
   }
 }
@@ -1226,9 +1216,7 @@ export class DOMRendererMain implements IRendererMain {
       renderer: {
         mode: 'canvas',
       },
-      fontManager: {
-        addFontFace: () => {},
-      },
+      loadFont: async () => {},
       shManager: {
         registerShaderType() {},
       },
@@ -1241,8 +1229,8 @@ export class DOMRendererMain implements IRendererMain {
     this.root = new DOMNode(
       this.stage,
       resolveNodeDefaults({
-        width: settings.appWidth ?? 1920,
-        height: settings.appHeight ?? 1080,
+        w: settings.appWidth ?? 1920,
+        h: settings.appHeight ?? 1080,
         shader: defaultShader,
         zIndex: 65534,
       }),

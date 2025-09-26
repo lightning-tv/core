@@ -24,12 +24,12 @@ export interface IRendererFontManager {
 export interface IRendererStage {
   root: IRendererNode;
   renderer: IRendererCoreRenderer;
-  fontManager: IRendererFontManager;
   shManager: IRendererShaderManager;
   animationManager: {
     registerAnimation: (anim: any) => void;
     unregisterAnimation: (anim: any) => void;
   };
+  loadFont(kind: string, props: any): Promise<void>;
 }
 
 /** Based on {@link lng.CoreShaderManager} */
@@ -92,6 +92,8 @@ export interface IRendererTextNodeProps
   extends Omit<lng.ITextNodeProps, 'shader' | 'parent'> {
   shader: IRendererShader | null;
   parent: IRendererNode | null;
+  fontWeight?: string;
+  contain?: string;
 }
 /** Based on {@link lng.ITextNode} */
 export interface IRendererTextNode
@@ -128,13 +130,7 @@ export function startLightningRenderer(
     : (new lng.RendererMain(options, rootId) as any as IRendererMain);
   return renderer;
 }
-
-export function loadFonts(
-  fonts: (
-    | lng.WebTrFontFaceOptions
-    | (Partial<lng.SdfTrFontFaceOptions> & { type: SdfFontType })
-  )[],
-) {
+export function loadFonts(fonts: any[]) {
   for (const font of fonts) {
     // WebGL — SDF
     if (
@@ -142,16 +138,11 @@ export function loadFonts(
       'type' in font &&
       (font.type === 'msdf' || font.type === 'ssdf')
     ) {
-      renderer.stage.fontManager.addFontFace(
-        new lng.SdfTrFontFace(font.type, {
-          ...font,
-          stage: renderer.stage as any,
-        } as lng.SdfTrFontFaceOptions),
-      );
+      renderer.stage.loadFont('sdf', font);
     }
     // Canvas — Web
-    else if ('fontUrl' in font) {
-      renderer.stage.fontManager.addFontFace(new lng.WebTrFontFace(font));
+    else if ('fontUrl' in font && renderer.stage.renderer.mode !== 'webgl') {
+      renderer.stage.loadFont('canvas', font);
     }
   }
 }

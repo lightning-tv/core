@@ -104,7 +104,7 @@ export const LightningRendererNumberProps = [
   'colorTr',
   'colorBl',
   'colorBr',
-  'height',
+  'h',
   'fontSize',
   'lineHeight',
   'mount',
@@ -117,7 +117,7 @@ export const LightningRendererNumberProps = [
   'scale',
   'scaleX',
   'scaleY',
-  'width',
+  'w',
   'worldX',
   'worldY',
   'x',
@@ -140,7 +140,9 @@ const LightningRendererNonAnimatingProps = [
   'fontWeight',
   'imageType',
   'letterSpacing',
+  'maxHeight',
   'maxLines',
+  'maxWidth',
   'offsetY',
   'overflowSuffix',
   'preventCleanup',
@@ -251,8 +253,8 @@ export interface ElementNode extends RendererNode {
   x: number;
   y: number;
   throttleInput?: number;
-  width: number;
-  height: number;
+  w: number;
+  h: number;
   zIndex?: number;
   transition?:
     | Record<string, AnimationSettings | undefined | true | false>
@@ -373,6 +375,22 @@ export class ElementNode extends Object {
     if (this.rendered && p?.rendered) {
       this.lng.parent = (p.lng as IRendererNode) ?? null;
     }
+  }
+
+  get height() {
+    return this.h;
+  }
+
+  set height(h) {
+    this.h = h;
+  }
+
+  get width() {
+    return this.w;
+  }
+
+  set width(w) {
+    this.w = w;
   }
 
   insertChild(
@@ -866,8 +884,8 @@ export class ElementNode extends Object {
     }
 
     const props = node.lng;
-    const parentWidth = parent.width || 0;
-    const parentHeight = parent.height || 0;
+    const parentWidth = parent.w || 0;
+    const parentHeight = parent.h || 0;
 
     props.x = props.x || 0;
     props.y = props.y || 0;
@@ -914,22 +932,29 @@ export class ElementNode extends Object {
 
       // contain is either width or both
       if (textProps.contain) {
-        if (!textProps.width) {
-          textProps.width =
+        if (!textProps.w) {
+          textProps.w =
             parentWidth - textProps.x! - (textProps.marginRight || 0);
         }
 
         if (
           textProps.contain === 'both' &&
-          !textProps.height &&
+          !textProps.h &&
           !textProps.maxLines
         ) {
-          textProps.height =
+          textProps.h =
             parentHeight - textProps.y! - (textProps.marginBottom || 0);
         } else if (textProps.maxLines === 1) {
-          textProps.height = (textProps.height ||
+          textProps.h = (textProps.h ||
             textProps.lineHeight ||
             textProps.fontSize) as number;
+        }
+
+        if (textProps.contain === 'both') {
+          textProps.maxWidth = textProps.w;
+          textProps.maxHeight = textProps.h;
+        } else if (textProps.contain === 'width') {
+          textProps.maxWidth = textProps.w;
         }
       }
 
@@ -943,7 +968,7 @@ export class ElementNode extends Object {
         props as unknown as IRendererTextNodeProps,
       );
       if (parent.requiresLayout()) {
-        if (!props.width || !props.height) {
+        if (!props.w || !props.h) {
           node._layoutOnLoad();
         }
       }
@@ -951,13 +976,13 @@ export class ElementNode extends Object {
       // If its not an image or texture apply some defaults
       if (!props.texture) {
         // Set width and height to parent less offset
-        if (isNaN(props.width as number)) {
-          props.width = node.flexGrow ? 0 : parentWidth - props.x;
+        if (isNaN(props.w as number)) {
+          props.w = node.flexGrow ? 0 : parentWidth - props.x;
           node._calcWidth = true;
         }
 
-        if (isNaN(props.height as number)) {
-          props.height = parentHeight - props.y;
+        if (isNaN(props.h as number)) {
+          props.h = parentHeight - props.y;
           node._calcHeight = true;
         }
 

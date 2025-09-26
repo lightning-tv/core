@@ -77,7 +77,7 @@ export interface ElementText
       ElementNode,
       '_type' | 'parent' | 'children' | 'src' | 'scale'
     >,
-    NewOmit<RendererText, 'x' | 'y' | 'width' | 'height'> {
+    NewOmit<RendererText, 'x' | 'y' | 'w' | 'h'> {
   _type: 'textNode';
   parent?: ElementNode;
   children: TextNode[];
@@ -142,6 +142,7 @@ export interface TextProps
       >
     > {
   states?: NodeStates;
+  fontWeight: number | string;
   style?: TextStyles;
 }
 

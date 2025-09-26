@@ -159,7 +159,7 @@ const roundedWithBorderProps: lngr.ShaderProps<ShaderRoundedWithBorderProps> = {
       return (props.radius as Vec4)[3];
     },
   },
-  'border-width': {
+  'border-w': {
     default: [0, 0, 0, 0],
     resolve(value) {
       return toValidVec4(value);
@@ -170,37 +170,37 @@ const roundedWithBorderProps: lngr.ShaderProps<ShaderRoundedWithBorderProps> = {
   'border-top': {
     default: 0,
     set(value, props) {
-      (props['border-width'] as Vec4)[0] = value;
+      (props['border-w'] as Vec4)[0] = value;
     },
     get(props) {
-      return (props['border-width'] as Vec4)[0];
+      return (props['border-w'] as Vec4)[0];
     },
   },
   'border-right': {
     default: 0,
     set(value, props) {
-      (props['border-width'] as Vec4)[1] = value;
+      (props['border-w'] as Vec4)[1] = value;
     },
     get(props) {
-      return (props['border-width'] as Vec4)[1];
+      return (props['border-w'] as Vec4)[1];
     },
   },
   'border-bottom': {
     default: 0,
     set(value, props) {
-      (props['border-width'] as Vec4)[2] = value;
+      (props['border-w'] as Vec4)[2] = value;
     },
     get(props) {
-      return (props['border-width'] as Vec4)[2];
+      return (props['border-w'] as Vec4)[2];
     },
   },
   'border-left': {
     default: 0,
     set(value, props) {
-      (props['border-width'] as Vec4)[3] = value;
+      (props['border-w'] as Vec4)[3] = value;
     },
     get(props) {
-      return (props['border-width'] as Vec4)[3];
+      return (props['border-w'] as Vec4)[3];
     },
   },
   'border-inset': true,
@@ -211,7 +211,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
   canBatch: () => false,
   update(node) {
     let props = this.props!;
-    let borderWidth = props['border-width'] as Vec4;
+    let borderWidth = props['border-w'] as Vec4;
     let borderGap = props['border-gap'];
     let inset = props['border-inset'];
 
@@ -226,8 +226,8 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
     let borderZero = b_t === 0 && b_r === 0 && b_b === 0 && b_l === 0;
     this.uniform1i('u_borderZero', borderZero ? 1 : 0);
 
-    let origWidth = node.width;
-    let origHeight = node.height;
+    let origWidth = node.w;
+    let origHeight = node.h;
     this.uniform2f('u_dimensions_orig', origWidth, origHeight);
 
     let finalWidth = origWidth;
@@ -285,7 +285,7 @@ export const defaultShaderRoundedWithBorder: ShaderRoundedWithBorder = {
 
     uniform vec2 u_resolution;
     uniform float u_pixelRatio;
-    
+
     /* Passed by shader setup */
     uniform vec2 u_dimensions;
     uniform vec2 u_dimensions_orig;
