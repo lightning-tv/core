@@ -393,6 +393,15 @@ export class ElementNode extends Object {
     this.w = w;
   }
 
+  set fontWeight(v) {
+    this._fontWeight = v;
+    this.fontFamily = `{${this.fontFamily}${v}`;
+  }
+
+  get fontWeight() {
+    return this._fontWeight;
+  }
+
   insertChild(
     node: ElementNode | ElementText | TextNode,
     beforeNode?: ElementNode | ElementText | TextNode | null,
