@@ -12,14 +12,11 @@ import { type ElementNode } from './elementNode.js';
   or set them in the global scope before importing lightning-core.
 */
 declare global {
-  /** Whether the DOM renderer should be used instead of `@lightningjs/renderer` */
-  var LIGHTNING_DOM_RENDERING: boolean | undefined;
-  /** Whether element shaders should be disabled */
-  var LIGHTNING_DISABLE_SHADERS: boolean | undefined;
-
   /** Could be set by vite or other bundler */
   interface ImportMetaEnv {
     DEV?: unknown;
+    VITE_LIGHTNING_DOM_RENDERING?: unknown;
+    VITE_LIGHTNING_DISABLE_SHADERS?: unknown;
   }
   interface ImportMeta {
     env?: ImportMetaEnv;
@@ -27,14 +24,11 @@ declare global {
 }
 
 export const isDev = !!(import.meta.env && import.meta.env.DEV);
-
-/** Whether the DOM renderer is used instead of `@lightningjs/renderer` */
-export const DOM_RENDERING =
-  typeof LIGHTNING_DOM_RENDERING === 'boolean' && LIGHTNING_DOM_RENDERING;
-
-/** Whether element shaders are enabled */
-export const SHADERS_ENABLED = !(
-  typeof LIGHTNING_DISABLE_SHADERS === 'boolean' && LIGHTNING_DISABLE_SHADERS
+export const DOM_RENDERING = !!(
+  import.meta.env && import.meta.env.VITE_LIGHTNING_DOM_RENDERING === 'true'
+);
+export const SHADERS_ENABLED = !!(
+  import.meta.env && import.meta.env.VITE_LIGHTNING_DISABLE_SHADERS !== 'true'
 );
 
 /**
