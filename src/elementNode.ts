@@ -82,7 +82,8 @@ const parseAndAssignShaderProps = (
   if (!obj) return;
   props[prefix] = obj;
   Object.entries(obj).forEach(([key, value]) => {
-    props[`${prefix}-${key}`] = value;
+    let transformedKey = key === 'width' ? 'w' : key;
+    props[`${prefix}-${transformedKey}`] = value;
   });
 };
 
