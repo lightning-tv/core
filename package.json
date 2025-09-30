@@ -1,6 +1,6 @@
 {
   "name": "@lightningtv/core",
-  "version": "2.12.2",
+  "version": "3.0.0-17",
   "description": "Lightning TV Core for Universal Renderers",
   "type": "module",
   "exports": {
@@ -46,7 +46,7 @@
   "author": "Chris Lorenzo",
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@lightningjs/renderer": "^2.16.0"
+    "@lightningjs/renderer": "^3.0.0-beta14"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

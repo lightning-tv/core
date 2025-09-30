@@ -1,21 +1,16 @@
-import {
-  type FadeOutEffectProps,
-  type GlitchEffectProps,
-  type GrayscaleEffectProps,
-  type AnimationSettings as RendererAnimationSettings,
-  type LinearGradientEffectProps,
-  type RadialGradientEffectProps,
-  type RadialProgressEffectProps,
-  type ITextNodeProps,
-  type HolePunchEffectProps,
-  type IAnimationController,
-  NodeLoadedPayload,
-  NodeFailedPayload,
-} from '@lightningjs/renderer';
+import * as lngr from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
+import {
+  ShaderBorderProps,
+  ShaderHolePunchProps,
+  ShaderLinearGradientProps,
+  ShaderRadialGradientProps,
+  ShaderRoundedProps,
+  ShaderShadowProps,
+} from './shaders.js';
 
-export type AnimationSettings = Partial<RendererAnimationSettings>;
+export type AnimationSettings = Partial<lngr.AnimationSettings>;
 
 export type AddColorString<T> = {
   [K in keyof T]: K extends `color${string}` ? string | number : T[K];
@@ -27,38 +22,20 @@ export interface BorderStyleObject {
 }
 
 export type DollarString = `$${string}`;
-export type BorderStyle = number | BorderStyleObject;
+export type BorderStyle = BorderStyleObject;
 export type BorderRadius = number | number[];
 
 export interface Effects {
-  fadeOut?: FadeOutEffectProps;
-  linearGradient?: LinearGradientEffectProps;
-  radialGradient?: RadialGradientEffectProps;
-  radialProgressGradient?: RadialProgressEffectProps;
-  grayscale?: GrayscaleEffectProps;
-  glitch?: GlitchEffectProps;
-  radialProgress?: RadialProgressEffectProps;
-  holePunch?: HolePunchEffectProps;
+  linearGradient?: Partial<ShaderLinearGradientProps>;
+  radialGradient?: Partial<ShaderRadialGradientProps>;
+  holePunch?: Partial<ShaderHolePunchProps>;
+  shadow?: Partial<ShaderShadowProps>;
+  rounded?: Partial<ShaderRoundedProps>;
+  borderRadius?: Partial<BorderRadius>;
+  border?: Partial<ShaderBorderProps>;
 }
 
-export interface BorderEffects {
-  radius?: { radius: BorderRadius };
-  rounded?: { radius: BorderRadius };
-  border?: BorderStyle;
-  borderTop?: BorderStyle;
-  borderRight?: BorderStyle;
-  borderBottom?: BorderStyle;
-  borderLeft?: BorderStyle;
-}
-
-export type StyleEffects = Effects & BorderEffects;
-
-// Renderer should export EffectDesc
-export type ShaderEffectDesc = {
-  name?: string;
-  type: keyof StyleEffects;
-  props: StyleEffects[keyof StyleEffects];
-};
+export type StyleEffects = Effects;
 
 export type NewOmit<T, K extends PropertyKey> = {
   [P in keyof T as Exclude<P, K>]: T[P];
@@ -69,7 +46,7 @@ export type RemoveUnderscoreProps<T> = {
 };
 
 type RendererText = AddColorString<
-  Partial<Omit<ITextNodeProps, 'debug' | 'shader' | 'parent'>>
+  Partial<Omit<lngr.ITextNodeProps, 'debug' | 'shader' | 'parent'>>
 >;
 
 type CleanElementNode = NewOmit<
@@ -100,7 +77,7 @@ export interface ElementText
       ElementNode,
       '_type' | 'parent' | 'children' | 'src' | 'scale'
     >,
-    NewOmit<RendererText, 'x' | 'y' | 'width' | 'height'> {
+    NewOmit<RendererText, 'x' | 'y' | 'w' | 'h'> {
   _type: 'textNode';
   parent?: ElementNode;
   children: TextNode[];
@@ -165,6 +142,7 @@ export interface TextProps
       >
     > {
   states?: NodeStates;
+  fontWeight?: number | string;
   style?: TextStyles;
 }
 
@@ -181,15 +159,15 @@ export interface IntrinsicTextNodeStyleProps extends TextStyles {}
 
 export type AnimationEvents = 'animating' | 'tick' | 'stopped';
 export type AnimationEventHandler = (
-  controller: IAnimationController,
+  controller: lngr.IAnimationController,
   name: string,
   endValue: number,
   props?: any,
 ) => void;
 
 type EventPayloadMap = {
-  loaded: NodeLoadedPayload;
-  failed: NodeFailedPayload;
+  loaded: lngr.NodeLoadedPayload;
+  failed: lngr.NodeFailedPayload;
   freed: Event;
   inBounds: Event;
   outOfBounds: Event;

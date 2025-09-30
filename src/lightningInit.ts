@@ -1,6 +1,14 @@
 import * as lng from '@lightningjs/renderer';
 import { DOMRendererMain } from './domRenderer.js';
 import { DOM_RENDERING } from './config.js';
+import {
+  ShaderBorderPrefixedProps,
+  ShaderHolePunchProps,
+  ShaderLinearGradientProps,
+  ShaderRadialGradientProps,
+  ShaderRoundedProps,
+  ShaderShadowPrefixedProps,
+} from './shaders.js';
 
 export type SdfFontType = 'ssdf' | 'msdf';
 
@@ -16,12 +24,12 @@ export interface IRendererFontManager {
 export interface IRendererStage {
   root: IRendererNode;
   renderer: IRendererCoreRenderer;
-  fontManager: IRendererFontManager;
   shManager: IRendererShaderManager;
   animationManager: {
     registerAnimation: (anim: any) => void;
     unregisterAnimation: (anim: any) => void;
   };
+  loadFont(kind: string, props: any): Promise<void>;
 }
 
 /** Based on {@link lng.CoreShaderManager} */
@@ -37,7 +45,12 @@ export interface IRendererShader {
 }
 /** Based on {@link lng.CoreShaderType} */
 export interface IRendererShaderType {}
-export type IRendererShaderProps = Record<string, unknown>;
+export type IRendererShaderProps = Partial<ShaderBorderPrefixedProps> &
+  Partial<ShaderShadowPrefixedProps> &
+  Partial<ShaderRoundedProps> &
+  Partial<ShaderHolePunchProps> &
+  Partial<ShaderRadialGradientProps> &
+  Partial<ShaderLinearGradientProps>;
 
 /** Based on {@link lng.Texture} */
 export interface IRendererTexture {
@@ -63,7 +76,7 @@ export interface IRendererNodeShaded extends IEventEmitter {
 
 /** Based on {@link lng.INodeProps} */
 export interface IRendererNodeProps
-  extends Omit<lng.INodeProps, 'shader' | 'parent'> {
+  extends Omit<lng.INodeProps<lng.CoreShaderNode>, 'shader' | 'parent'> {
   shader: IRendererShader | null;
   parent: IRendererNode | null;
 }
@@ -79,6 +92,8 @@ export interface IRendererTextNodeProps
   extends Omit<lng.ITextNodeProps, 'shader' | 'parent'> {
   shader: IRendererShader | null;
   parent: IRendererNode | null;
+  fontWeight?: string;
+  contain?: string;
 }
 /** Based on {@link lng.ITextNode} */
 export interface IRendererTextNode
@@ -100,11 +115,6 @@ export interface IRendererMain extends IEventEmitter {
     kind: keyof lng.TextureMap,
     props: IRendererTextureProps,
   ): IRendererTexture;
-  createEffect(
-    kind: keyof lng.EffectMap,
-    props: Record<string, any>,
-    name?: string,
-  ): lng.EffectDescUnion;
 }
 
 export let renderer: IRendererMain;
@@ -120,13 +130,7 @@ export function startLightningRenderer(
     : (new lng.RendererMain(options, rootId) as any as IRendererMain);
   return renderer;
 }
-
-export function loadFonts(
-  fonts: (
-    | lng.WebTrFontFaceOptions
-    | (Partial<lng.SdfTrFontFaceOptions> & { type: SdfFontType })
-  )[],
-) {
+export function loadFonts(fonts: any[]) {
   for (const font of fonts) {
     // WebGL — SDF
     if (
@@ -134,16 +138,11 @@ export function loadFonts(
       'type' in font &&
       (font.type === 'msdf' || font.type === 'ssdf')
     ) {
-      renderer.stage.fontManager.addFontFace(
-        new lng.SdfTrFontFace(font.type, {
-          ...font,
-          stage: renderer.stage as any,
-        } as lng.SdfTrFontFaceOptions),
-      );
+      renderer.stage.loadFont('sdf', font);
     }
     // Canvas — Web
-    else if ('fontUrl' in font) {
-      renderer.stage.fontManager.addFontFace(new lng.WebTrFontFace(font));
+    else if ('fontUrl' in font && renderer.stage.renderer.mode !== 'webgl') {
+      renderer.stage.loadFont('canvas', font);
     }
   }
 }

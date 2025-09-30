@@ -1,5 +1,5 @@
+// import { getTimingFunction, mergeColorProgress } from '@lightningjs/renderer/utils';
 import { getTimingFunction, mergeColorProgress } from './timings.js';
-//import { getTimingFunction, mergeColorProgress } from '@lightningjs/renderer/utils';
 import {
   type ElementNode,
   LightningRendererNumberProps,

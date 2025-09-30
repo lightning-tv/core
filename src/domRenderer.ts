@@ -5,6 +5,7 @@ Experimental DOM renderer
 */
 
 import * as lng from '@lightningjs/renderer';
+import { EventEmitter } from '@lightningjs/renderer/utils';
 
 import { Config } from './config.js';
 import {
@@ -19,7 +20,6 @@ import {
   IRendererTextNode,
   IRendererTextNodeProps,
 } from './lightningInit.js';
-import { EventEmitter } from '@lightningjs/renderer/utils';
 
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
@@ -276,11 +276,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     let { x, y } = props;
 
     if (props.mountX != null) {
-      x -= (props.width ?? 0) * props.mountX;
+      x -= (props.w ?? 0) * props.mountX;
     }
 
     if (props.mountY != null) {
-      y -= (props.height ?? 0) * props.mountY;
+      y -= (props.h ?? 0) * props.mountY;
     }
 
     if (x !== 0) transform += `translateX(${x}px)`;
@@ -320,9 +320,6 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     if (textProps.fontWeight !== 'normal') {
       style += `font-weight: ${textProps.fontWeight};`;
     }
-    if (textProps.fontStretch !== 'normal') {
-      style += `font-stretch: ${textProps.fontStretch};`;
-    }
     if (textProps.lineHeight != null) {
       style += `line-height: ${textProps.lineHeight}px;`;
     }
@@ -336,14 +333,14 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     let maxLines = textProps.maxLines || Infinity;
     switch (textProps.contain) {
       case 'width':
-        style += `width: ${props.width}px; overflow: hidden;`;
+        style += `width: ${props.w}px; overflow: hidden;`;
         break;
       case 'both': {
         let lineHeight = getNodeLineHeight(textProps);
-        maxLines = Math.min(maxLines, Math.floor(props.height / lineHeight));
+        maxLines = Math.min(maxLines, Math.floor(props.h / lineHeight));
         maxLines = Math.max(1, maxLines);
         let height = maxLines * lineHeight;
-        style += `width: ${props.width}px; height: ${height}px; overflow: hidden;`;
+        style += `width: ${props.w}px; height: ${height}px; overflow: hidden;`;
         break;
       }
       case 'none':
@@ -367,8 +364,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   }
   // <Node>
   else {
-    if (props.width !== 0) style += `width: ${props.width}px;`;
-    if (props.height !== 0) style += `height: ${props.height}px;`;
+    if (props.w !== 0) style += `width: ${props.w}px;`;
+    if (props.h !== 0) style += `height: ${props.h}px;`;
 
     let vGradient =
       props.colorBottom !== props.colorTop
@@ -445,39 +442,33 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       bgStyle += `background-color: ${colorToRgba(props.color)};`;
     }
 
-    if (props.shader != null) {
-      let effects = props.shader.props?.effects;
-      if (Array.isArray(effects)) {
-        for (let effect of effects) {
-          switch (effect.type) {
-            case 'radius': {
-              let radius = effect.props?.radius;
-              if (typeof radius === 'number' && radius > 0) {
-                radiusStyle += `border-radius: ${radius}px;`;
-              } else if (Array.isArray(radius) && radius.length === 4) {
-                radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
-              }
-              break;
-            }
-            case 'border': {
-              let borderWidth = effect.props?.width;
-              let borderColor = effect.props?.color;
-              if (
-                typeof borderWidth === 'number' &&
-                borderWidth !== 0 &&
-                typeof borderColor === 'number' &&
-                borderColor !== 0
-              ) {
-                // css border impacts the element's box size when box-shadow doesn't
-                borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
-              }
-              break;
-            }
-            default:
-              console.warn(`Unknown shader effect type: ${effect.type}`);
-              break;
-          }
-        }
+    if (props.shader?.props != null) {
+      let shader = props.shader.props;
+
+      let borderWidth = shader['border-w'];
+      let borderColor = shader['border-color'];
+      let borderGap = shader['border-gap'] ?? 0;
+      let borderInset = shader['border-inset'] ?? true;
+      let radius = shader['radius'];
+
+      // Border
+      if (
+        typeof borderWidth === 'number' &&
+        borderWidth !== 0 &&
+        typeof borderColor === 'number' &&
+        borderColor !== 0
+      ) {
+        // Handle inset borders by making gap negative
+        let gap = borderInset ? -(borderWidth + borderGap) : borderGap;
+
+        borderStyle += `outline: ${borderWidth}px solid ${colorToRgba(borderColor)};`;
+        borderStyle += `outline-offset: ${gap}px;`;
+      }
+      // Rounded
+      if (typeof radius === 'number' && radius > 0) {
+        radiusStyle += `border-radius: ${radius}px;`;
+      } else if (Array.isArray(radius) && radius.length === 4) {
+        radiusStyle += `border-radius: ${radius[0]}px ${radius[1]}px ${radius[2]}px ${radius[3]}px;`;
       }
     }
 
@@ -544,20 +535,17 @@ function updateDOMTextSize(node: DOMText): void {
   switch (node.contain) {
     case 'width':
       size = getElSize(node);
-      if (node.props.height !== size.height) {
-        node.props.height = size.height;
+      if (node.props.h !== size.height) {
+        node.props.h = size.height;
         updateNodeStyles(node);
         node.emit('loaded');
       }
       break;
     case 'none':
       size = getElSize(node);
-      if (
-        node.props.height !== size.height ||
-        node.props.width !== size.width
-      ) {
-        node.props.width = size.width;
-        node.props.height = size.height;
+      if (node.props.h !== size.height || node.props.w !== size.width) {
+        node.props.w = size.width;
+        node.props.h = size.height;
         updateNodeStyles(node);
         node.emit('loaded');
       }
@@ -609,8 +597,8 @@ function resolveNodeDefaults(
   return {
     x: props.x ?? 0,
     y: props.y ?? 0,
-    width: props.width ?? 0,
-    height: props.height ?? 0,
+    w: props.w ?? 0,
+    h: props.h ?? 0,
     alpha: props.alpha ?? 1,
     autosize: props.autosize ?? false,
     boundsMargin: props.boundsMargin ?? null,
@@ -650,8 +638,6 @@ function resolveNodeDefaults(
     rtt: props.rtt ?? false,
     data: {},
     imageType: props.imageType,
-    strictBounds: props.strictBounds ?? false,
-    preventCleanup: props.preventCleanup ?? false,
   };
 }
 
@@ -666,19 +652,19 @@ function resolveTextNodeDefaults(
     fontFamily: props.fontFamily ?? 'sans-serif',
     fontStyle: props.fontStyle ?? 'normal',
     fontWeight: props.fontWeight ?? 'normal',
-    fontStretch: props.fontStretch ?? 'normal',
+    forceLoad: props.forceLoad ?? false,
     textAlign: props.textAlign ?? 'left',
     contain: props.contain ?? 'none',
-    scrollable: props.scrollable ?? false,
-    scrollY: props.scrollY ?? 0,
     offsetY: props.offsetY ?? 0,
     letterSpacing: props.letterSpacing ?? 0,
-    lineHeight: props.lineHeight, // `undefined` is a valid value
+    lineHeight: props.lineHeight ?? 0,
     maxLines: props.maxLines ?? 0,
+    maxWidth: props.maxWidth ?? 0,
+    maxHeight: props.maxHeight ?? 0,
     textBaseline: props.textBaseline ?? 'alphabetic',
     verticalAlign: props.verticalAlign ?? 'middle',
     overflowSuffix: props.overflowSuffix ?? '...',
-    debug: props.debug ?? {},
+    wordBreak: props.wordBreak ?? 'normal',
   };
 }
 
@@ -697,8 +683,6 @@ class DOMNode extends EventEmitter implements IRendererNode {
   id = ++lastNodeId;
 
   renderState: lng.CoreNodeRenderState = 0 /* Init */;
-
-  preventCleanup = true;
 
   constructor(
     public stage: IRendererStage,
@@ -745,18 +729,32 @@ class DOMNode extends EventEmitter implements IRendererNode {
     this.props.y = v;
     updateNodeStyles(this);
   }
+  get w() {
+    return this.props.w;
+  }
+  set w(v) {
+    this.props.w = v;
+    updateNodeStyles(this);
+  }
+  get h() {
+    return this.props.h;
+  }
+  set h(v) {
+    this.props.h = v;
+    updateNodeStyles(this);
+  }
   get width() {
-    return this.props.width;
+    return this.props.w;
   }
   set width(v) {
-    this.props.width = v;
+    this.props.w = v;
     updateNodeStyles(this);
   }
   get height() {
-    return this.props.height;
+    return this.props.h;
   }
   set height(v) {
-    this.props.height = v;
+    this.props.h = v;
     updateNodeStyles(this);
   }
   get alpha() {
@@ -962,14 +960,6 @@ class DOMNode extends EventEmitter implements IRendererNode {
     this.props.shader = v;
     updateNodeStyles(this);
   }
-  get strictBounds() {
-    return this.props.strictBounds;
-  }
-  set strictBounds(v) {
-    this.props.strictBounds = v;
-    updateNodeStyles(this);
-  }
-
   get data(): IRendererNode['data'] {
     return this.props.data;
   }
@@ -1069,18 +1059,31 @@ class DOMText extends DOMNode {
     this.props.fontWeight = v;
     updateNodeStyles(this);
   }
-  get fontStretch() {
-    return this.props.fontStretch;
+  get forceLoad() {
+    return this.props.forceLoad;
   }
-  set fontStretch(v) {
-    this.props.fontStretch = v;
-    updateNodeStyles(this);
+  set forceLoad(v) {
+    this.props.forceLoad = v;
   }
   get lineHeight() {
     return this.props.lineHeight;
   }
   set lineHeight(v) {
     this.props.lineHeight = v;
+    updateNodeStyles(this);
+  }
+  get maxWidth() {
+    return this.props.maxWidth;
+  }
+  set maxWidth(v) {
+    this.props.maxWidth = v;
+    updateNodeStyles(this);
+  }
+  get maxHeight() {
+    return this.props.maxHeight;
+  }
+  set maxHeight(v) {
+    this.props.maxHeight = v;
     updateNodeStyles(this);
   }
   get letterSpacing() {
@@ -1139,20 +1142,6 @@ class DOMText extends DOMNode {
     this.props.textRendererOverride = v;
     updateNodeStyles(this);
   }
-  get scrollable() {
-    return this.props.scrollable;
-  }
-  set scrollable(v) {
-    this.props.scrollable = v;
-    updateNodeStyles(this);
-  }
-  get scrollY() {
-    return this.props.scrollY;
-  }
-  set scrollY(v) {
-    this.props.scrollY = v;
-    updateNodeStyles(this);
-  }
   get offsetY() {
     return this.props.offsetY;
   }
@@ -1160,11 +1149,11 @@ class DOMText extends DOMNode {
     this.props.offsetY = v;
     updateNodeStyles(this);
   }
-  get debug() {
-    return this.props.debug;
+  get wordBreak() {
+    return this.props.wordBreak;
   }
-  set debug(v) {
-    this.props.debug = v;
+  set wordBreak(v) {
+    this.props.wordBreak = v;
     updateNodeStyles(this);
   }
 }
@@ -1227,27 +1216,21 @@ export class DOMRendererMain implements IRendererMain {
       renderer: {
         mode: 'canvas',
       },
-      fontManager: {
-        addFontFace: () => {},
-      },
+      loadFont: async () => {},
       shManager: {
         registerShaderType() {},
       },
       animationManager: {
-        registerAnimation(anim) {
-          console.log('registerAnimation', anim);
-        },
-        unregisterAnimation(anim) {
-          console.log('unregisterAnimation', anim);
-        },
+        registerAnimation() {},
+        unregisterAnimation() {},
       },
     };
 
     this.root = new DOMNode(
       this.stage,
       resolveNodeDefaults({
-        width: settings.appWidth ?? 1920,
-        height: settings.appHeight ?? 1080,
+        w: settings.appWidth ?? 1920,
+        h: settings.appHeight ?? 1080,
         shader: defaultShader,
         zIndex: 65534,
       }),
@@ -1321,14 +1304,6 @@ export class DOMRendererMain implements IRendererMain {
         break;
     }
     return { type, props };
-  }
-
-  createEffect(
-    type: keyof lng.EffectMap,
-    props: Record<string, any>,
-    name?: string,
-  ): lng.EffectDescUnion {
-    return { type, props, name } as any;
   }
 
   on(name: string, callback: (target: any, data: any) => void) {

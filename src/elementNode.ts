@@ -35,17 +35,18 @@ import {
   isElementText,
   logRenderTree,
   isFunction,
+  spliceItem,
 } from './utils.js';
-import { Config, isDev, SHADERS_ENABLED } from './config.js';
+import { Config, DOM_RENDERING, isDev, SHADERS_ENABLED } from './config.js';
 import type {
   RendererMain,
   INode,
   INodeAnimateProps,
-  LinearGradientEffectProps,
   IAnimationController,
-  EffectDescUnion,
-  RadialGradientEffectProps,
-  RadialProgressEffectProps,
+  LinearGradientProps,
+  RadialGradientProps,
+  ShadowProps,
+  CoreShaderNode,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -54,6 +55,14 @@ import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 
 let layoutRunQueued = false;
 const layoutQueue = new Set<ElementNode>();
+
+function addToLayoutQueue(node: ElementNode) {
+  layoutQueue.add(node);
+  if (!layoutRunQueued) {
+    layoutRunQueued = true;
+    queueMicrotask(runLayout);
+  }
+}
 
 function runLayout() {
   layoutRunQueued = false;
@@ -65,53 +74,24 @@ function runLayout() {
   }
 }
 
-function addToLayoutQueue(node: ElementNode) {
-  layoutQueue.add(node);
-  if (!layoutRunQueued) {
-    layoutRunQueued = true;
-    queueMicrotask(runLayout);
-  }
-}
+const parseAndAssignShaderProps = (
+  prefix: string,
+  obj: Record<string, any>,
+  props: Record<string, any> = {},
+) => {
+  if (!obj) return;
+  props[prefix] = obj;
+  Object.entries(obj).forEach(([key, value]) => {
+    let transformedKey = key === 'width' ? 'w' : key;
+    props[`${prefix}-${transformedKey}`] = value;
+  });
+};
 
-function convertEffectsToShader(
-  node: ElementNode,
-  styleEffects: StyleEffects,
-): IRendererShader {
-  const effects: EffectDescUnion[] = [];
-  for (let type in styleEffects) {
-    const props = styleEffects[type as keyof StyleEffects];
-
-    if (type === 'rounded') {
-      type = 'radius';
-    }
-
-    if (typeof props === 'object') {
-      effects.push(renderer.createEffect(type as any, props, type));
-    }
-  }
-  return renderer.createShader('DynamicShader', { effects });
-}
-
-function borderAccessor(
-  direction: '' | 'Top' | 'Right' | 'Bottom' | 'Left' = '',
-) {
-  return {
-    set(this: ElementNode, value: BorderStyle) {
-      // Format: width || { width, color }
-      if (isNumber(value)) {
-        value = { width: value, color: 0x000000ff };
-      }
-      this.effects = this.effects
-        ? {
-            ...(this.effects || {}),
-            ...{ [`border${direction}`]: value },
-          }
-        : { [`border${direction}`]: value };
-    },
-    get(this: ElementNode): BorderStyle | undefined {
-      return this.effects?.[`border${direction}`];
-    },
-  };
+function convertToShader(_node: ElementNode, v: StyleEffects): IRendererShader {
+  let type = 'rounded';
+  if (v.border) type += 'WithBorder';
+  if (v.shadow) type += 'WithShadow';
+  return renderer.createShader(type, v as IRendererShaderProps);
 }
 
 export const LightningRendererNumberProps = [
@@ -125,7 +105,7 @@ export const LightningRendererNumberProps = [
   'colorTr',
   'colorBl',
   'colorBr',
-  'height',
+  'h',
   'fontSize',
   'lineHeight',
   'mount',
@@ -138,7 +118,7 @@ export const LightningRendererNumberProps = [
   'scale',
   'scaleX',
   'scaleY',
-  'width',
+  'w',
   'worldX',
   'worldY',
   'x',
@@ -161,7 +141,9 @@ const LightningRendererNonAnimatingProps = [
   'fontWeight',
   'imageType',
   'letterSpacing',
+  'maxHeight',
   'maxLines',
+  'maxWidth',
   'offsetY',
   'overflowSuffix',
   'preventCleanup',
@@ -199,7 +181,7 @@ export interface ElementNode extends RendererNode {
   // Properties
   _animationQueue?:
     | Array<{
-        props: Partial<INodeAnimateProps>;
+        props: Partial<INodeAnimateProps<CoreShaderNode>>;
         animationSettings?: AnimationSettings;
       }>
     | undefined;
@@ -243,11 +225,7 @@ export interface ElementNode extends RendererNode {
   alignItems?: 'flexStart' | 'flexEnd' | 'center';
   alignSelf?: 'flexStart' | 'flexEnd' | 'center';
   border?: BorderStyle;
-  borderBottom?: BorderStyle;
-  borderLeft?: BorderStyle;
   borderRadius?: BorderRadius;
-  borderRight?: BorderStyle;
-  borderTop?: BorderStyle;
   center?: boolean;
   centerX?: boolean;
   centerY?: boolean;
@@ -266,9 +244,8 @@ export interface ElementNode extends RendererNode {
     | 'spaceBetween'
     | 'spaceAround'
     | 'spaceEvenly';
-  linearGradient?: LinearGradientEffectProps;
-  radialGradient?: RadialGradientEffectProps;
-  radialProgress?: RadialProgressEffectProps;
+  linearGradient?: LinearGradientProps;
+  radialGradient?: RadialGradientProps;
   marginBottom?: number;
   marginLeft?: number;
   marginRight?: number;
@@ -277,8 +254,8 @@ export interface ElementNode extends RendererNode {
   x: number;
   y: number;
   throttleInput?: number;
-  width: number;
-  height: number;
+  w: number;
+  h: number;
   zIndex?: number;
   transition?:
     | Record<string, AnimationSettings | undefined | true | false>
@@ -354,17 +331,28 @@ export class ElementNode extends Object {
   }
 
   get effects(): StyleEffects | undefined {
-    return this._effects;
+    return this.lng.shader;
   }
 
   set effects(v: StyleEffects) {
-    this._effects = v;
-    if (SHADERS_ENABLED && this.rendered) {
-      this.lng.shader = convertEffectsToShader(this, v);
-      // if (this.lng.shader) {
-      //   updateShaderEffects(this, v);
-      // } else {
-      // }
+    if (!SHADERS_ENABLED) return;
+    let target = this.lng.shader || {};
+    if (this.lng.shader?.program) {
+      target = this.lng.shader.props;
+    }
+    if (v.rounded) target.radius = v.rounded.radius;
+    if (v.borderRadius) target.radius = v.borderRadius;
+    if (v.border) parseAndAssignShaderProps('border', v.border, target);
+    if (v.shadow) parseAndAssignShaderProps('shadow', v.shadow, target);
+
+    if (this.rendered) {
+      if (!this.lng.shader) {
+        this.lng.shader = convertToShader(this, target);
+      } else if (DOM_RENDERING) {
+        this.lng.shader = this.lng.shader; // lng.shader is a setter, force style update
+      }
+    } else {
+      this.lng.shader = target;
     }
   }
 
@@ -390,6 +378,31 @@ export class ElementNode extends Object {
     }
   }
 
+  get height() {
+    return this.h;
+  }
+
+  set height(h) {
+    this.h = h;
+  }
+
+  get width() {
+    return this.w;
+  }
+
+  set width(w) {
+    this.w = w;
+  }
+
+  set fontWeight(v) {
+    this._fontWeight = v;
+    this.fontFamily = `{${this.fontFamily}${v}`;
+  }
+
+  get fontWeight() {
+    return this._fontWeight;
+  }
+
   insertChild(
     node: ElementNode | ElementText | TextNode,
     beforeNode?: ElementNode | ElementText | TextNode | null,
@@ -410,21 +423,21 @@ export class ElementNode extends Object {
     if (beforeNode) {
       // SolidJS can move nodes around in the children array.
       // We need to insert following DOM insertBefore which moves elements.
-      this.removeChild(node);
-      const index = this.children.indexOf(beforeNode as ElementNode);
-      if (index >= 0) {
-        this.children.splice(index, 0, node as ElementNode);
+      spliceItem(this.children, node as ElementNode, 1);
+      if (spliceItem(this.children, beforeNode as ElementNode, 0, node) > -1) {
         return;
       }
     }
+
     this.children.push(node as ElementNode);
   }
 
   removeChild(node: ElementNode | ElementText | TextNode) {
-    const nodeIndexToRemove = this.children.indexOf(node as ElementNode);
-    if (nodeIndexToRemove >= 0) {
-      this.children.splice(nodeIndexToRemove, 1);
+    if (spliceItem(this.children, node, 1) > -1) {
       node.onRemove?.call(node, node);
+      if (this.requiresLayout()) {
+        addToLayoutQueue(this);
+      }
     }
   }
 
@@ -501,7 +514,7 @@ export class ElementNode extends Object {
   }
 
   animate(
-    props: Partial<INodeAnimateProps>,
+    props: Partial<INodeAnimateProps<CoreShaderNode>>,
     animationSettings?: AnimationSettings,
   ): IAnimationController {
     isDev &&
@@ -513,7 +526,7 @@ export class ElementNode extends Object {
   }
 
   chain(
-    props: Partial<INodeAnimateProps>,
+    props: Partial<INodeAnimateProps<CoreShaderNode>>,
     animationSettings?: AnimationSettings,
   ) {
     if (this._animationRunning) {
@@ -621,9 +634,6 @@ export class ElementNode extends Object {
   _destroy() {
     if (isINode(this.lng)) {
       this.lng.destroy();
-      if (this.parent?.requiresLayout()) {
-        this.parent.updateLayout();
-      }
     }
   }
 
@@ -884,8 +894,8 @@ export class ElementNode extends Object {
     }
 
     const props = node.lng;
-    const parentWidth = parent.width || 0;
-    const parentHeight = parent.height || 0;
+    const parentWidth = parent.w || 0;
+    const parentHeight = parent.h || 0;
 
     props.x = props.x || 0;
     props.y = props.y || 0;
@@ -932,28 +942,35 @@ export class ElementNode extends Object {
 
       // contain is either width or both
       if (textProps.contain) {
-        if (!textProps.width) {
-          textProps.width =
+        if (!textProps.w) {
+          textProps.w =
             parentWidth - textProps.x! - (textProps.marginRight || 0);
         }
 
         if (
           textProps.contain === 'both' &&
-          !textProps.height &&
+          !textProps.h &&
           !textProps.maxLines
         ) {
-          textProps.height =
+          textProps.h =
             parentHeight - textProps.y! - (textProps.marginBottom || 0);
         } else if (textProps.maxLines === 1) {
-          textProps.height = (textProps.height ||
+          textProps.h = (textProps.h ||
             textProps.lineHeight ||
             textProps.fontSize) as number;
+        }
+
+        if (textProps.contain === 'both') {
+          textProps.maxWidth = textProps.w;
+          textProps.maxHeight = textProps.h;
+        } else if (textProps.contain === 'width') {
+          textProps.maxWidth = textProps.w;
         }
       }
 
       // Can you put effects on Text nodes? Need to confirm...
-      if (SHADERS_ENABLED && node._effects) {
-        props.shader = convertEffectsToShader(node, node._effects);
+      if (SHADERS_ENABLED && props.shader && !props.shader.program) {
+        props.shader = convertToShader(node, props.shader);
       }
 
       isDev && log('Rendering: ', this, props);
@@ -961,7 +978,7 @@ export class ElementNode extends Object {
         props as unknown as IRendererTextNodeProps,
       );
       if (parent.requiresLayout()) {
-        if (!props.width || !props.height) {
+        if (!props.w || !props.h) {
           node._layoutOnLoad();
         }
       }
@@ -969,13 +986,13 @@ export class ElementNode extends Object {
       // If its not an image or texture apply some defaults
       if (!props.texture) {
         // Set width and height to parent less offset
-        if (isNaN(props.width as number)) {
-          props.width = node.flexGrow ? 0 : parentWidth - props.x;
+        if (isNaN(props.w as number)) {
+          props.w = node.flexGrow ? 0 : parentWidth - props.x;
           node._calcWidth = true;
         }
 
-        if (isNaN(props.height as number)) {
-          props.height = parentHeight - props.y;
+        if (isNaN(props.h as number)) {
+          props.h = parentHeight - props.y;
           node._calcHeight = true;
         }
 
@@ -990,8 +1007,8 @@ export class ElementNode extends Object {
         }
       }
 
-      if (SHADERS_ENABLED && node._effects) {
-        props.shader = convertEffectsToShader(node, node._effects);
+      if (SHADERS_ENABLED && props.shader && !props.shader.program) {
+        props.shader = convertToShader(node, props.shader);
       }
 
       isDev && log('Rendering: ', this, props);
@@ -1077,20 +1094,63 @@ for (const key of LightningRendererNonAnimatingProps) {
   });
 }
 
-// Add Border Helpers
-function createEffectAccessor<T>(key: keyof StyleEffects) {
+function createRawShaderAccessor<T>(key: keyof StyleEffects) {
   return {
     set(this: ElementNode, value: T) {
-      this.effects = this.effects
-        ? {
-            ...this.effects,
-            [key]: value,
-          }
-        : { [key]: value };
+      this.shader = [key, value as unknown as IRendererShaderProps];
     },
 
-    get(this: ElementNode): T | undefined {
-      return this.effects?.[key] as T | undefined;
+    get(this: ElementNode) {
+      return this.shader;
+    },
+  };
+}
+
+function shaderAccessor<T extends Record<string, any> | number>(
+  key: 'border' | 'shadow' | 'rounded',
+) {
+  return {
+    set(this: ElementNode, value: T) {
+      let target = this.lng.shader || {};
+
+      let animationSettings: AnimationSettings | undefined;
+      if (this.lng.shader?.program) {
+        target = this.lng.shader.props;
+        const transitionKey = key === 'rounded' ? 'borderRadius' : key;
+        if (
+          this.transition &&
+          (this.transition === true || this.transition[transitionKey])
+        ) {
+          target = {};
+          animationSettings =
+            this.transition === true || this.transition[transitionKey] === true
+              ? undefined
+              : (this.transition[transitionKey] as
+                  | undefined
+                  | AnimationSettings);
+        }
+      }
+
+      if (key === 'rounded' || typeof value === 'number') {
+        target.radius = value;
+      } else {
+        parseAndAssignShaderProps(key, value, target);
+      }
+
+      if (this.rendered) {
+        if (!this.lng.shader) {
+          this.lng.shader = convertToShader(this, target);
+        }
+      } else {
+        this.lng.shader = target;
+      }
+
+      if (animationSettings) {
+        this.animate({ shaderProps: target }, animationSettings).start();
+      }
+    },
+    get(this: ElementNode) {
+      return this.effects?.[key];
     },
   };
 }
@@ -1102,44 +1162,13 @@ if (isDev) {
 }
 
 Object.defineProperties(ElementNode.prototype, {
-  border: borderAccessor(),
-  borderLeft: borderAccessor('Left'),
-  borderRight: borderAccessor('Right'),
-  borderTop: borderAccessor('Top'),
-  borderBottom: borderAccessor('Bottom'),
+  border: shaderAccessor<BorderStyle>('border'),
+  shadow: shaderAccessor<ShadowProps>('shadow'),
+  rounded: shaderAccessor<BorderRadius>('rounded'),
+  // Alias for rounded
+  borderRadius: shaderAccessor<BorderRadius>('rounded'),
   linearGradient:
-    createEffectAccessor<LinearGradientEffectProps>('linearGradient'),
+    createRawShaderAccessor<LinearGradientProps>('linearGradient'),
   radialGradient:
-    createEffectAccessor<RadialGradientEffectProps>('radialGradient'),
-  radialProgress: createEffectAccessor<RadialProgressEffectProps>(
-    'radialProgressGradient',
-  ),
-  rounded: {
-    set(this: ElementNode, radius: BorderRadius) {
-      this.effects = this.effects
-        ? {
-            ...this.effects,
-            radius: { radius },
-          }
-        : { radius: { radius } };
-    },
-
-    get(this: ElementNode): BorderRadius | undefined {
-      return this.effects?.radius?.radius;
-    },
-  },
-  borderRadius: {
-    set(this: ElementNode, radius: BorderRadius) {
-      this.effects = this.effects
-        ? {
-            ...this.effects,
-            radius: { radius },
-          }
-        : { radius: { radius } };
-    },
-
-    get(this: ElementNode): BorderRadius | undefined {
-      return this.effects?.radius?.radius;
-    },
-  },
+    createRawShaderAccessor<RadialGradientProps>('radialGradient'),
 });
