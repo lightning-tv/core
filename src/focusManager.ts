@@ -111,13 +111,35 @@ const updateFocusPath = (
       current === currentFocusedElm
     ) {
       current.states.add(Config.focusStateKey);
-      current.onFocus?.call(current, currentFocusedElm, prevFocusedElm);
-      current.onFocusChanged?.call(
-        current,
-        true,
-        currentFocusedElm,
-        prevFocusedElm,
-      );
+      // Handle onFocus callback with proper this binding
+      if (current.onFocus && typeof current.onFocus === 'function') {
+        if (current.onFocus.prototype) {
+          // Regular function - can use call with this binding
+          current.onFocus.call(current, currentFocusedElm, prevFocusedElm);
+        } else {
+          // Arrow function - call directly without this binding
+          current.onFocus(currentFocusedElm, prevFocusedElm);
+        }
+      }
+
+      // Handle onFocusChanged callback with proper this binding
+      if (
+        current.onFocusChanged &&
+        typeof current.onFocusChanged === 'function'
+      ) {
+        if (current.onFocusChanged.prototype) {
+          // Regular function - can use call with this binding
+          current.onFocusChanged.call(
+            current,
+            true,
+            currentFocusedElm,
+            prevFocusedElm,
+          );
+        } else {
+          // Arrow function - call directly without this binding
+          current.onFocusChanged(true, currentFocusedElm, prevFocusedElm);
+        }
+      }
     }
     fp.push(current);
     current = current.parent!;
@@ -126,8 +148,32 @@ const updateFocusPath = (
   focusPath.forEach((elm) => {
     if (!fp.includes(elm)) {
       elm.states.remove(Config.focusStateKey);
-      elm.onBlur?.call(elm, currentFocusedElm, prevFocusedElm!);
-      elm.onFocusChanged?.call(elm, false, currentFocusedElm, prevFocusedElm);
+      // Handle onBlur callback with proper this binding
+      if (elm.onBlur && typeof elm.onBlur === 'function') {
+        if (elm.onBlur.prototype) {
+          // Regular function - can use call with this binding
+          elm.onBlur.call(elm, currentFocusedElm, prevFocusedElm!);
+        } else {
+          // Arrow function - call directly without this binding
+          elm.onBlur(currentFocusedElm, prevFocusedElm!);
+        }
+      }
+
+      // Handle onFocusChanged callback with proper this binding
+      if (elm.onFocusChanged && typeof elm.onFocusChanged === 'function') {
+        if (elm.onFocusChanged.prototype) {
+          // Regular function - can use call with this binding
+          elm.onFocusChanged.call(
+            elm,
+            false,
+            currentFocusedElm,
+            prevFocusedElm,
+          );
+        } else {
+          // Arrow function - call directly without this binding
+          elm.onFocusChanged(false, currentFocusedElm, prevFocusedElm);
+        }
+      }
     }
   });
 
