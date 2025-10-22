@@ -728,6 +728,22 @@ export class ElementNode extends Object {
     return this.alpha === 0;
   }
 
+  get h() {
+    return this.height;
+  }
+
+  set h(h) {
+    this.height = h;
+  }
+
+  get w() {
+    return this.width;
+  }
+
+  set w(w) {
+    this.width = w;
+  }
+
   /**
    * Sets the autofocus state of the element.
    * When set to a truthy value, the element will automatically gain focus.
