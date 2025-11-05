@@ -473,6 +473,129 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               }
               break;
             }
+            case 'borderTop': {
+              let borderWidth = effect.props?.width;
+              let borderColor = effect.props?.color;
+              if (
+                typeof borderWidth === 'number' &&
+                borderWidth !== 0 &&
+                typeof borderColor === 'number' &&
+                borderColor !== 0
+              ) {
+                borderStyle += `border-top: ${borderWidth}px ${colorToRgba(borderColor)};`;
+              }
+              break;
+            }
+            case 'borderBottom': {
+              let borderWidth = effect.props?.width;
+              let borderColor = effect.props?.color;
+              if (
+                typeof borderWidth === 'number' &&
+                borderWidth !== 0 &&
+                typeof borderColor === 'number' &&
+                borderColor !== 0
+              ) {
+                borderStyle += `border-bottom: ${borderWidth}px ${colorToRgba(borderColor)};`;
+              }
+              break;
+            }
+            case 'radialGradient': {
+              let stops = effect.props?.stops;
+              let centerX = effect.props?.centerX ?? 0.5;
+              let centerY = effect.props?.centerY ?? 0.5;
+              let radius = effect.props?.radius ?? 1;
+
+              if (Array.isArray(stops) && stops.length >= 2) {
+                let gradientStops = stops
+                  .map((stop: any) => {
+                    if (
+                      typeof stop.color === 'number' &&
+                      typeof stop.position === 'number'
+                    ) {
+                      return `${colorToRgba(stop.color)} ${stop.position * 100}%`;
+                    }
+                    return null;
+                  })
+                  .filter(Boolean)
+                  .join(', ');
+
+                if (gradientStops) {
+                  let centerXPercent = centerX * 100;
+                  let centerYPercent = centerY * 100;
+                  let radiusPercent = radius * 100;
+
+                  let radialGradient = `radial-gradient(circle ${radiusPercent}% at ${centerXPercent}% ${centerYPercent}%, ${gradientStops})`;
+
+                  if (srcImg || gradient) {
+                    // If there's already a background image or gradient, use the radial gradient as a mask
+                    maskStyle += `mask-image: ${radialGradient};`;
+                  } else {
+                    // Use as background if no other background
+                    bgStyle += `background-image: ${radialGradient};`;
+                    bgStyle += `background-repeat: no-repeat;`;
+                    bgStyle += `background-size: 100% 100%;`;
+                  }
+                }
+              }
+              break;
+            }
+            case 'linearGradient': {
+              let stops = effect.props?.stops;
+              let angle = effect.props?.angle ?? 0;
+              let startX = effect.props?.startX ?? 0;
+              let startY = effect.props?.startY ?? 0;
+              let endX = effect.props?.endX ?? 1;
+              let endY = effect.props?.endY ?? 1;
+
+              if (Array.isArray(stops) && stops.length >= 2) {
+                let gradientStops = stops
+                  .map((stop: any) => {
+                    if (
+                      typeof stop.color === 'number' &&
+                      typeof stop.position === 'number'
+                    ) {
+                      return `${colorToRgba(stop.color)} ${stop.position * 100}%`;
+                    }
+                    return null;
+                  })
+                  .filter(Boolean)
+                  .join(', ');
+
+                if (gradientStops) {
+                  let linearGradient: string;
+
+                  if (typeof angle === 'number') {
+                    // Use angle-based gradient
+                    linearGradient = `linear-gradient(${angle}deg, ${gradientStops})`;
+                  } else {
+                    // Use position-based gradient (from point to point)
+                    let startXPercent = startX * 100;
+                    let startYPercent = startY * 100;
+                    let endXPercent = endX * 100;
+                    let endYPercent = endY * 100;
+
+                    // Calculate angle from start and end points
+                    let deltaX = endX - startX;
+                    let deltaY = endY - startY;
+                    let angleRad = Math.atan2(deltaY, deltaX);
+                    let angleDeg = (angleRad * 180) / Math.PI + 90; // Convert to CSS angle format
+
+                    linearGradient = `linear-gradient(${angleDeg}deg, ${gradientStops})`;
+                  }
+
+                  if (srcImg || gradient) {
+                    // If there's already a background image or gradient, use the linear gradient as a mask
+                    maskStyle += `mask-image: ${linearGradient};`;
+                  } else {
+                    // Use as background if no other background
+                    bgStyle += `background-image: ${linearGradient};`;
+                    bgStyle += `background-repeat: no-repeat;`;
+                    bgStyle += `background-size: 100% 100%;`;
+                  }
+                }
+              }
+              break;
+            }
             default:
               console.warn(`Unknown shader effect type: ${effect.type}`);
               break;
