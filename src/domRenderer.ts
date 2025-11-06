@@ -13,11 +13,11 @@ import {
   IRendererShaderProps,
   IRendererTextureProps,
   IRendererTexture,
-  IRendererMain,
   IRendererNode,
   IRendererNodeProps,
   IRendererTextNode,
   IRendererTextNodeProps,
+  IRendererMain,
 } from './lightningInit.js';
 import { EventEmitter } from '@lightningjs/renderer/utils';
 
@@ -1317,7 +1317,6 @@ function updateRootPosition(this: DOMRendererMain) {
 export class DOMRendererMain implements IRendererMain {
   root: DOMNode;
   canvas: HTMLCanvasElement;
-
   stage: IRendererStage;
 
   constructor(

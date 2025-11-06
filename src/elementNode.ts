@@ -2,7 +2,6 @@ import {
   IRendererNode,
   IRendererNodeProps,
   IRendererShader,
-  IRendererShaderProps,
   IRendererTextNode,
   IRendererTextNodeProps,
   renderer,
@@ -46,6 +45,12 @@ import type {
   EffectDescUnion,
   RadialGradientEffectProps,
   RadialProgressEffectProps,
+  ShaderController,
+  ShaderRef,
+  ITextNode,
+  ITextNodeProps,
+  BaseShaderController,
+  INodeProps,
 } from '@lightningjs/renderer';
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import { NodeType } from './nodeTypes.js';
@@ -76,7 +81,7 @@ function addToLayoutQueue(node: ElementNode) {
 function convertEffectsToShader(
   node: ElementNode,
   styleEffects: StyleEffects,
-): IRendererShader {
+): IRendererShader | ShaderController<'DynamicShader'> {
   const effects: EffectDescUnion[] = [];
   for (let type in styleEffects) {
     const props = styleEffects[type as keyof StyleEffects];
@@ -89,6 +94,7 @@ function convertEffectsToShader(
       effects.push(renderer.createEffect(type as any, props, type));
     }
   }
+
   return renderer.createShader('DynamicShader', { effects });
 }
 
@@ -274,7 +280,9 @@ export interface ElementNode extends RendererNode {
    */
   lng:
     | Partial<ElementNode>
-    | IRendererNode
+    | Partial<IRendererNode>
+    | Partial<INode>
+    | Partial<ITextNode>
     | (IRendererTextNode & { shader?: any });
   /**
    * A reference to the `ElementNode` instance. Can be an object or a callback function.
@@ -702,11 +710,9 @@ export class ElementNode extends Object {
     return undefined;
   }
 
-  set shader(
-    shaderProps: IRendererShader | [kind: string, props: IRendererShaderProps],
-  ) {
+  set shader(shaderProps: ShaderRef | typeof renderer.createShader) {
     this.lng.shader = isArray(shaderProps)
-      ? renderer.createShader(...shaderProps)
+      ? renderer.createShader(shaderProps[0], shaderProps[1])
       : shaderProps;
   }
 
@@ -757,7 +763,8 @@ export class ElementNode extends Object {
       }
     }
 
-    (this.lng[name as keyof IRendererNode] as number | string) = value;
+    (this.lng[name as keyof (IRendererNode | INode)] as number | string) =
+      value;
   }
 
   animate(
@@ -1233,8 +1240,9 @@ export class ElementNode extends Object {
       }
 
       isDev && log('Rendering: ', this, props);
+
       node.lng = renderer.createTextNode(
-        props as unknown as IRendererTextNodeProps,
+        props as Partial<ITextNodeProps> & Partial<IRendererTextNodeProps>,
       );
       if (parent.requiresLayout()) {
         if (!props.width || !props.height) {
@@ -1271,7 +1279,11 @@ export class ElementNode extends Object {
       }
 
       isDev && log('Rendering: ', this, props);
-      node.lng = renderer.createNode(props as IRendererNodeProps);
+
+      node.lng = renderer.createNode(
+        props as Partial<INodeProps<BaseShaderController>> &
+          Partial<IRendererNodeProps>,
+      );
 
       if (node._hasRenderedChildren) {
         node._hasRenderedChildren = false;
@@ -1299,14 +1311,15 @@ export class ElementNode extends Object {
 
     if (node.onEvent) {
       for (const [name, handler] of Object.entries(node.onEvent)) {
-        node.lng.on(name, (_inode, data) => handler.call(node, node, data));
+        if (typeof node.lng.on === 'function') {
+          node.lng.on(name, (_inode, data) => handler.call(node, node, data));
+        }
       }
     }
 
     // L3 Inspector adds div to the lng object
-    if (node.lng?.div) {
-      node.lng.div.element = node;
-    }
+    const div: HTMLElement | undefined = (node.lng as any)?.div;
+    if (div) div.element = node;
 
     if (node._type === NodeType.Element) {
       // only element nodes will have children that need rendering

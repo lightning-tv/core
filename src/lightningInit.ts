@@ -19,10 +19,15 @@ export interface IRendererStage {
   fontManager: IRendererFontManager;
   shManager: IRendererShaderManager;
   animationManager: {
-    registerAnimation: (anim: any) => void;
-    unregisterAnimation: (anim: any) => void;
+    registerAnimation: (anim: CoreAnimation) => void;
+    unregisterAnimation: (anim: CoreAnimation) => void;
   };
 }
+
+/** Minimal animation interface used by the stage animationManager */
+export type CoreAnimation = Parameters<
+  lng.Stage['animationManager']['registerAnimation']
+>[0];
 
 /** Based on {@link lng.CoreShaderManager} */
 export interface IRendererShaderManager {
@@ -31,7 +36,7 @@ export interface IRendererShaderManager {
 
 /** Based on {@link lng.CoreShaderNode} */
 export interface IRendererShader {
-  shaderType: IRendererShaderType;
+  shaderType?: string;
   props?: IRendererShaderProps;
   program?: {};
 }
@@ -93,6 +98,7 @@ export interface IRendererTextNode
 export interface IRendererMain extends IEventEmitter {
   stage: IRendererStage;
   root: IRendererNode;
+  canvas: HTMLCanvasElement;
   createTextNode(props: Partial<IRendererTextNodeProps>): IRendererTextNode;
   createNode(props: Partial<IRendererNodeProps>): IRendererNode;
   createShader(kind: string, props: IRendererShaderProps): IRendererShader;
@@ -105,11 +111,23 @@ export interface IRendererMain extends IEventEmitter {
     props: Record<string, any>,
     name?: string,
   ): lng.EffectDescUnion;
+  on(name: string, callback: (target: any, data: any) => void): void;
 }
-
-export let renderer: IRendererMain;
+// Global renderer instance: can be either the Lightning or DOM implementation
+export let renderer: lng.RendererMain | IRendererMain;
 
 export const getRenderer = () => renderer;
+
+export function isDomRenderer(r: typeof renderer): r is IRendererMain {
+  // Heuristic: DOM renderer exposes our minimal stage shape (no txManager) and root.div exists early.
+  const anyR = r as any;
+  const hasMinimalStage =
+    anyR.stage && anyR.stage.renderer && !('txManager' in anyR.stage);
+  const hasCreateNode = typeof anyR.createNode === 'function';
+  const hasDomRootDiv =
+    !!anyR.root?.div && anyR.stage?.renderer?.mode === 'canvas';
+  return hasMinimalStage && hasCreateNode && hasDomRootDiv;
+}
 
 export function startLightningRenderer(
   options: lng.RendererMainSettings,
@@ -117,7 +135,7 @@ export function startLightningRenderer(
 ) {
   renderer = DOM_RENDERING
     ? new DOMRendererMain(options, rootId)
-    : (new lng.RendererMain(options, rootId) as any as IRendererMain);
+    : new lng.RendererMain(options, rootId);
   return renderer;
 }
 
