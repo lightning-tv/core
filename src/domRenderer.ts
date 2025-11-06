@@ -20,11 +20,19 @@ import {
   IRendererTextNode,
   IRendererTextNodeProps,
 } from './lightningInit.js';
+import { isFunc } from './utils.js';
 
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
 
-function applyEasing(easing: string, progress: number): number {
+function applyEasing(
+  easing: string | lng.TimingFunction,
+  progress: number,
+): number {
+  if (isFunc(easing)) {
+    return easing(progress);
+  }
+
   switch (easing) {
     case 'linear':
     default:
@@ -661,7 +669,6 @@ function resolveTextNodeDefaults(
     maxLines: props.maxLines ?? 0,
     maxWidth: props.maxWidth ?? 0,
     maxHeight: props.maxHeight ?? 0,
-    textBaseline: props.textBaseline ?? 'alphabetic',
     verticalAlign: props.verticalAlign ?? 'middle',
     overflowSuffix: props.overflowSuffix ?? '...',
     wordBreak: props.wordBreak ?? 'normal',
@@ -1126,13 +1133,6 @@ class DOMText extends DOMNode {
   }
   set verticalAlign(v) {
     this.props.verticalAlign = v;
-    updateNodeStyles(this);
-  }
-  get textBaseline() {
-    return this.props.textBaseline;
-  }
-  set textBaseline(v) {
-    this.props.textBaseline = v;
     updateNodeStyles(this);
   }
   get textRendererOverride() {

@@ -5,6 +5,8 @@ import {
   LightningRendererNumberProps,
 } from './elementNode.js';
 import { type IRendererStage } from './lightningInit.js';
+import { TimingFunction } from '@lightningjs/renderer';
+import { isFunc } from './utils.js';
 
 /**
  * Simplified Animation Settings
@@ -12,7 +14,7 @@ import { type IRendererStage } from './lightningInit.js';
 export interface SimpleAnimationSettings {
   duration?: number;
   delay?: number;
-  easing?: string;
+  easing?: string | TimingFunction;
 }
 
 /**
@@ -29,7 +31,7 @@ interface SimpleAnimationNodeConfig {
   node: ElementNode;
   duration: number;
   delay: number;
-  easing: string;
+  easing: string | TimingFunction;
   progress: number;
   delayFor: number;
   timingFunction: (t: number) => number | undefined;
@@ -74,8 +76,7 @@ export class SimpleAnimation {
     const duration = settings.duration ?? 0;
     const delay = settings.delay ?? 0;
     const easing = settings.easing || 'linear';
-    const timingFunction = getTimingFunction(easing);
-
+    const timingFunction = isFunc(easing) ? easing : getTimingFunction(easing);
     const targetValue = value;
     const startValue = node[key] as number;
 
