@@ -6,7 +6,7 @@ Experimental DOM renderer
 
 import * as lng from '@lightningjs/renderer';
 
-import { Config } from './config.js';
+import { Config } from '../config.js';
 import {
   IRendererShader,
   IRendererStage,
@@ -18,7 +18,8 @@ import {
   IRendererTextNode,
   IRendererTextNodeProps,
   IRendererMain,
-} from './lightningInit.js';
+  renderer,
+} from '../lightningInit.js';
 import { EventEmitter } from '@lightningjs/renderer/utils';
 
 const colorToRgba = (c: number) =>
@@ -1456,4 +1457,14 @@ export class DOMRendererMain implements IRendererMain {
   on(name: string, callback: (target: any, data: any) => void) {
     console.log('on', name, callback);
   }
+}
+export function isDomRenderer(r: typeof renderer): r is IRendererMain {
+  // Heuristic: DOM renderer exposes our minimal stage shape (no txManager) and root.div exists early.
+  const anyR = r as any;
+  const hasMinimalStage =
+    anyR.stage && anyR.stage.renderer && !('txManager' in anyR.stage);
+  const hasCreateNode = typeof anyR.createNode === 'function';
+  const hasDomRootDiv =
+    !!anyR.root?.div && anyR.stage?.renderer?.mode === 'canvas';
+  return hasMinimalStage && hasCreateNode && hasDomRootDiv;
 }

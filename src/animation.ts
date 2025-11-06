@@ -6,7 +6,8 @@ import {
   type ElementNode,
   LightningRendererNumberProps,
 } from './elementNode.js';
-import { CoreAnimation, renderer } from './lightningInit.js';
+import { renderer } from './lightningInit.js';
+import { CoreAnimation } from './intrinsicTypes.js';
 
 /**
  * Simplified Animation Settings

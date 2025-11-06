@@ -14,6 +14,7 @@ import {
 } from '@lightningjs/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import { NodeStates } from './states.js';
+import * as lng from '@lightningjs/renderer';
 
 export type AnimationSettings = Partial<RendererAnimationSettings>;
 
@@ -207,3 +208,7 @@ type EventHandler<E extends NodeEvents> = (
 export type OnEvent = Partial<{
   [K in NodeEvents]: EventHandler<K>;
 }>;
+
+export type CoreAnimation = Parameters<
+  lng.Stage['animationManager']['registerAnimation']
+>[0];
