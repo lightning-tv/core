@@ -601,20 +601,19 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     }
 
     style += radiusStyle;
-    bgStyle += radiusStyle;
-    borderStyle += radiusStyle;
 
     if (node.divBg == null) {
       style += bgStyle;
     } else {
       bgStyle += 'position: absolute; inset: 0; z-index: -1;';
-      node.divBg.setAttribute('style', bgStyle);
+      node.divBg.setAttribute('style', bgStyle + radiusStyle);
     }
+
     if (node.divBorder == null) {
       style += borderStyle;
     } else {
       borderStyle += 'position: absolute; inset: 0; z-index: -1;';
-      node.divBorder.setAttribute('style', borderStyle);
+      node.divBorder.setAttribute('style', borderStyle + radiusStyle);
     }
   }
 
