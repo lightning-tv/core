@@ -674,6 +674,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           });
 
           node.imgEl.addEventListener('error', (e) => {
+            node.props.src = null;
             const payload: lng.NodeTextureFailedPayload = {
               type: 'texture',
               error: new Error(`Failed to load image: ${rawImgSrc}`),
