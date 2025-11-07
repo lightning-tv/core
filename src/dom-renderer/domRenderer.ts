@@ -1545,13 +1545,8 @@ export function loadFontToDom(font: lng.WebTrFontFaceOptions): void {
   }
 }
 
-export function isDomRenderer(r: typeof renderer): r is IRendererMain {
-  // Heuristic: DOM renderer exposes our minimal stage shape (no txManager) and root.div exists early.
-  const anyR = r as any;
-  const hasMinimalStage =
-    anyR.stage && anyR.stage.renderer && !('txManager' in anyR.stage);
-  const hasCreateNode = typeof anyR.createNode === 'function';
-  const hasDomRootDiv =
-    !!anyR.root?.div && anyR.stage?.renderer?.mode === 'canvas';
-  return hasMinimalStage && hasCreateNode && hasDomRootDiv;
+export function isDomRenderer(
+  r: lng.RendererMain | IRendererMain,
+): r is IRendererMain {
+  return r instanceof DOMRendererMain;
 }
