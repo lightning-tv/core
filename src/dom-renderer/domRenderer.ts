@@ -22,6 +22,39 @@ import { ExtractProps, IRendererShader } from './domRendererTypes.js';
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
 
+function buildGradientStops(colors: number[], stops?: number[]): string {
+  if (!Array.isArray(colors) || colors.length === 0) return '';
+
+  const positions: number[] = [];
+  if (Array.isArray(stops) && stops.length === colors.length) {
+    for (let v of stops) {
+      if (typeof v !== 'number' || !isFinite(v)) {
+        positions.push(0);
+        continue;
+      }
+
+      let pct = v <= 1 ? v * 100 : v;
+      if (pct < 0) pct = 0;
+      if (pct > 100) pct = 100;
+      positions.push(pct);
+    }
+  } else {
+    const lastIndex = colors.length - 1;
+    for (let i = 0; i < colors.length; i++) {
+      positions.push(lastIndex === 0 ? 0 : (i / lastIndex) * 100);
+    }
+  }
+
+  if (positions.length !== colors.length) {
+    while (positions.length < colors.length)
+      positions.push(positions.length === 0 ? 0 : 100);
+  }
+
+  return colors
+    .map((color, idx) => `${colorToRgba(color)} ${positions[idx]!.toFixed(2)}%`)
+    .join(', ');
+}
+
 function applyEasing(easing: string, progress: number): number {
   switch (easing) {
     case 'linear':
@@ -553,67 +586,32 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               break;
             }
             case 'linearGradient': {
-              let stops = effect.props?.stops;
-              let angle = effect.props?.angle;
-              let startX = effect.props?.startX;
-              let startY = effect.props?.startY;
-              let endX = effect.props?.endX;
-              let endY = effect.props?.endY;
+              const lg = effect.props as
+                | Partial<lng.LinearGradientEffectProps>
+                | undefined;
+              const colors = Array.isArray(lg?.colors) ? lg!.colors! : [];
+              const stops = Array.isArray(lg?.stops) ? lg!.stops! : undefined;
+              const angleRad = typeof lg?.angle === 'number' ? lg!.angle! : 0; // radians
 
-              if (Array.isArray(stops) && stops.length >= 2) {
-                let gradientStops = stops
-                  .map((stop: any) => {
-                    if (
-                      typeof stop.color === 'number' &&
-                      typeof stop.position === 'number'
-                    ) {
-                      return `${colorToRgba(stop.color)} ${stop.position * 100}%`;
-                    }
-                    return null;
-                  })
-                  .filter(Boolean)
-                  .join(', ');
-
+              if (colors.length > 0) {
+                const gradientStops = buildGradientStops(colors, stops);
                 if (gradientStops) {
-                  let linearGradient: string;
-                  let hasCustomPoints =
-                    startX != null ||
-                    startY != null ||
-                    endX != null ||
-                    endY != null;
-
-                  if (typeof angle === 'number') {
-                    linearGradient = `linear-gradient(${angle}deg, ${gradientStops})`;
-                  } else if (
-                    typeof angle === 'string' &&
-                    angle.trim().length > 0
-                  ) {
-                    linearGradient = `linear-gradient(${angle.trim()}, ${gradientStops})`;
-                  } else if (hasCustomPoints) {
-                    let startXVal = startX ?? 0;
-                    let startYVal = startY ?? 0;
-                    let endXVal = endX ?? 1;
-                    let endYVal = endY ?? 1;
-
-                    let deltaX = endXVal - startXVal;
-                    let deltaY = endYVal - startYVal;
-                    let angleRad = Math.atan2(deltaY, deltaX);
-                    let angleDeg = (angleRad * 180) / Math.PI + 90; // Convert to CSS angle format
-
-                    linearGradient = `linear-gradient(${angleDeg}deg, ${gradientStops})`;
+                  if (colors.length === 1) {
+                    if (srcImg || gradient) {
+                      maskStyle += `mask-image: linear-gradient(${gradientStops});`;
+                    } else {
+                      bgStyle += `background-color: ${colorToRgba(colors[0]!)};`;
+                    }
                   } else {
-                    // Default to vertical gradient when no angle or points provided
-                    linearGradient = `linear-gradient(0deg, ${gradientStops})`;
-                  }
-
-                  if (srcImg || gradient) {
-                    // If there's already a background image or gradient, use the linear gradient as a mask
-                    maskStyle += `mask-image: ${linearGradient};`;
-                  } else {
-                    // Use as background if no other background
-                    bgStyle += `background-image: ${linearGradient};`;
-                    bgStyle += `background-repeat: no-repeat;`;
-                    bgStyle += `background-size: 100% 100%;`;
+                    const angleDeg = (angleRad * 180) / Math.PI;
+                    const linearGradient = `linear-gradient(${angleDeg.toFixed(2)}deg, ${gradientStops})`;
+                    if (srcImg || gradient) {
+                      maskStyle += `mask-image: ${linearGradient};`;
+                    } else {
+                      bgStyle += `background-image: ${linearGradient};`;
+                      bgStyle += `background-repeat: no-repeat;`;
+                      bgStyle += `background-size: 100% 100%;`;
+                    }
                   }
                 }
               }
