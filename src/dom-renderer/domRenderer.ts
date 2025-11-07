@@ -574,7 +574,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                     const pivotY = (pivot[1] ?? 0.5) * 100;
                     let sizePart = '';
                     if (width > 0 && height > 0) {
-                      sizePart = `${Math.round(width / 2)}px ${Math.round(height / 2)}px`;
+                      sizePart = `${Math.round(width)}px ${Math.round(height)}px`;
                     } else {
                       sizePart = 'closest-side';
                     }
@@ -609,7 +609,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                       bgStyle += `background-color: ${colorToRgba(colors[0]!)};`;
                     }
                   } else {
-                    const angleDeg = (angleRad * 180) / Math.PI;
+                    const angleDeg = (angleRad * 60) / Math.PI;
                     const linearGradient = `linear-gradient(${angleDeg.toFixed(2)}deg, ${gradientStops})`;
                     if (srcImg || gradient) {
                       maskStyle += `mask-image: ${linearGradient};`;
