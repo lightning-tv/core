@@ -7,7 +7,6 @@ export type {
   IRendererCoreRenderer,
   IRendererFontManager,
   IRendererStage,
-  IRendererShader,
   IRendererShaderManager,
   IRendererShaderProps,
   IRendererShaderType,

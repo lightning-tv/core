@@ -1,61 +1,61 @@
+import type {
+  BaseShaderController,
+  EffectDescUnion,
+  IAnimationController,
+  INode,
+  INodeAnimateProps,
+  INodeProps,
+  ITextNode,
+  ITextNodeProps,
+  LinearGradientEffectProps,
+  RadialGradientEffectProps,
+  RadialProgressEffectProps,
+  RendererMain,
+  ShaderController,
+  ShaderRef,
+} from '@lightningjs/renderer';
+import { assertTruthy } from '@lightningjs/renderer/utils';
+import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
+import { Config, isDev, SHADERS_ENABLED } from './config.js';
+import { IRendererShader } from './dom-renderer/domRendererTypes.js';
+import calculateFlex from './flex.js';
+import { ForwardFocusHandler, setActiveElement } from './focusManager.js';
+import {
+  type AnimationEventHandler,
+  type AnimationEvents,
+  type AnimationSettings,
+  type BorderRadius,
+  type BorderStyle,
+  type ElementText,
+  type OnEvent,
+  type StyleEffects,
+  type Styles,
+  AddColorString,
+  NewOmit,
+  TextNode,
+  TextProps,
+} from './intrinsicTypes.js';
 import {
   IRendererNode,
   IRendererNodeProps,
-  IRendererShader,
   IRendererTextNode,
   IRendererTextNodeProps,
   renderer,
 } from './lightningInit.js';
-import {
-  type BorderRadius,
-  type BorderStyle,
-  type StyleEffects,
-  type AnimationSettings,
-  type ElementText,
-  type Styles,
-  type AnimationEvents,
-  type AnimationEventHandler,
-  AddColorString,
-  TextProps,
-  TextNode,
-  type OnEvent,
-  NewOmit,
-} from './intrinsicTypes.js';
+import { NodeType } from './nodeTypes.js';
 import States, { type NodeStates } from './states.js';
-import calculateFlex from './flex.js';
 import {
-  log,
   isArray,
-  isNumber,
-  isFunc,
-  keyExists,
-  isINode,
   isElementNode,
   isElementText,
-  logRenderTree,
+  isFunc,
   isFunction,
+  isINode,
+  isNumber,
+  keyExists,
+  log,
+  logRenderTree,
 } from './utils.js';
-import { Config, isDev, SHADERS_ENABLED } from './config.js';
-import type {
-  RendererMain,
-  INode,
-  INodeAnimateProps,
-  LinearGradientEffectProps,
-  IAnimationController,
-  EffectDescUnion,
-  RadialGradientEffectProps,
-  RadialProgressEffectProps,
-  ShaderController,
-  ShaderRef,
-  ITextNode,
-  ITextNodeProps,
-  BaseShaderController,
-  INodeProps,
-} from '@lightningjs/renderer';
-import { assertTruthy } from '@lightningjs/renderer/utils';
-import { NodeType } from './nodeTypes.js';
-import { ForwardFocusHandler, setActiveElement } from './focusManager.js';
-import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 
 let layoutRunQueued = false;
 const layoutQueue = new Set<ElementNode>();

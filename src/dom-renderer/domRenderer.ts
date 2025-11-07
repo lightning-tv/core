@@ -8,11 +8,8 @@ import * as lng from '@lightningjs/renderer';
 
 import { Config } from '../config.js';
 import {
-  IRendererShader,
   IRendererStage,
-  IRendererShaderProps,
   IRendererTextureProps,
-  IRendererTexture,
   IRendererNode,
   IRendererNodeProps,
   IRendererTextNode,
@@ -21,6 +18,7 @@ import {
   renderer,
 } from '../lightningInit.js';
 import { EventEmitter } from '@lightningjs/renderer/utils';
+import { ExtractProps, IRendererShader } from './domRendererTypes.js';
 
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
@@ -426,6 +424,10 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         bgStyle += `background-size: ${props.textureOptions.resizeMode.type}; background-position: center;`;
       } else if (srcPos !== null) {
         bgStyle += `background-position: -${srcPos.x}px -${srcPos.y}px;`;
+      } else if (props.width && !props.height) {
+        bgStyle += 'background-size: 100% auto;';
+      } else if (props.height && !props.width) {
+        bgStyle += 'background-size: auto 100%;';
       } else {
         bgStyle += 'background-size: 100% 100%;';
       }
@@ -460,7 +462,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               }
               break;
             }
-            case 'border': {
+            case 'border':
+            case 'borderTop':
+            case 'borderBottom':
+            case 'borderLeft':
+            case 'borderRight': {
               let borderWidth = effect.props?.width;
               let borderColor = effect.props?.color;
               if (
@@ -469,34 +475,14 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                 typeof borderColor === 'number' &&
                 borderColor !== 0
               ) {
-                // css border impacts the element's box size when box-shadow doesn't
-                borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
-              }
-              break;
-            }
-            case 'borderTop': {
-              let borderWidth = effect.props?.width;
-              let borderColor = effect.props?.color;
-              if (
-                typeof borderWidth === 'number' &&
-                borderWidth !== 0 &&
-                typeof borderColor === 'number' &&
-                borderColor !== 0
-              ) {
-                borderStyle += `border-top: ${borderWidth}px ${colorToRgba(borderColor)};`;
-              }
-              break;
-            }
-            case 'borderBottom': {
-              let borderWidth = effect.props?.width;
-              let borderColor = effect.props?.color;
-              if (
-                typeof borderWidth === 'number' &&
-                borderWidth !== 0 &&
-                typeof borderColor === 'number' &&
-                borderColor !== 0
-              ) {
-                borderStyle += `border-bottom: ${borderWidth}px ${colorToRgba(borderColor)};`;
+                const rgbaColor = colorToRgba(borderColor);
+                if (effect.type === 'border') {
+                  // Avoid affecting layout sizing while applying uniform borders
+                  borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${rgbaColor};`;
+                } else {
+                  const side = effect.type.slice('border'.length).toLowerCase();
+                  borderStyle += `border-${side}: ${borderWidth}px solid ${rgbaColor};`;
+                }
               }
               break;
             }
@@ -728,7 +714,7 @@ function updateNodeData(node: DOMNode | DOMText) {
 function resolveNodeDefaults(
   props: Partial<IRendererNodeProps>,
 ): IRendererNodeProps {
-  const color = props.color ?? 0xffffffff;
+  const color = props.color ?? 0x00000000;
 
   return {
     x: props.x ?? 0,
@@ -1481,17 +1467,23 @@ export class DOMRendererMain implements IRendererMain {
     return new DOMText(this.stage, resolveTextNodeDefaults(props));
   }
 
-  createShader(
-    shaderType: string,
-    props?: IRendererShaderProps,
-  ): IRendererShader {
-    return { shaderType, props, program: {} };
+  createShader<ShType extends keyof lng.ShaderMap>(
+    shaderType: ShType,
+    props?: ExtractProps<lng.ShaderMap[ShType]>,
+  ): lng.ShaderController<ShType> {
+    // Minimal DOM implementation: we don't actually compile shaders, just return a stub matching the expected controller shape.
+    return {
+      // Cast to string because ShaderController internally uses the shader key name while our stub keeps it simple.
+      shaderType: shaderType as string,
+      props: props as any,
+      program: {},
+    } as unknown as lng.ShaderController<ShType>;
   }
 
-  createTexture(
+  createTexture<Type extends keyof lng.TextureMap>(
     textureType: keyof lng.TextureMap,
     props: IRendererTextureProps,
-  ): IRendererTexture {
+  ): InstanceType<lng.TextureMap[Type]> {
     let type = lng.TextureType.generic;
     switch (textureType) {
       case 'SubTexture':
@@ -1510,15 +1502,21 @@ export class DOMRendererMain implements IRendererMain {
         type = lng.TextureType.renderToTexture;
         break;
     }
-    return { type, props } as IRendererTexture;
+    return { type, props } as InstanceType<lng.TextureMap[Type]>;
   }
 
-  createEffect(
-    type: keyof lng.EffectMap,
-    props: Record<string, any>,
-    name?: string,
-  ): lng.EffectDescUnion {
-    return { type, props, name } as any;
+  createEffect<
+    Type extends keyof lng.EffectMap,
+    Name extends string | undefined = undefined,
+  >(
+    type: Type,
+    props: ExtractProps<lng.EffectMap[Type]>,
+    name?: Name,
+  ): lng.EffectDesc<{ name: Name; type: Type }> {
+    return { type, props, name: name as Name } as unknown as lng.EffectDesc<{
+      name: Name;
+      type: Type;
+    }>;
   }
 }
 

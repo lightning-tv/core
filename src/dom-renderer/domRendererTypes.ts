@@ -26,11 +26,10 @@ export interface IRendererShaderManager {
   registerShaderType: (name: string, shader: any) => void;
 }
 
-/** Based on {@link lng.CoreShaderNode} */
-export interface IRendererShader {
+/** Based on {@link lng.WebGlCoreShader} */
+export interface IRendererShader extends Partial<lng.WebGlCoreShader> {
   shaderType?: string;
   props?: IRendererShaderProps;
-  program?: {};
 }
 /** Based on {@link lng.CoreShaderType} */
 export interface IRendererShaderType {}
@@ -42,6 +41,10 @@ export interface IRendererTexture extends lng.Texture {
   type: lng.TextureType;
 }
 export interface IRendererTextureProps {}
+
+export type ExtractProps<Type> = Type extends { z$__type__Props: infer Props }
+  ? Props
+  : never;
 
 export interface IEventEmitter<
   T extends object = { [s: string]: (target: any, data: any) => void },
@@ -103,14 +106,7 @@ export interface IRendererMain extends IEventEmitter {
   canvas: HTMLCanvasElement;
   createTextNode(props: Partial<IRendererTextNodeProps>): IRendererTextNode;
   createNode(props: Partial<IRendererNodeProps>): IRendererNode;
-  createShader(kind: string, props: IRendererShaderProps): IRendererShader;
-  createTexture(
-    kind: keyof lng.TextureMap,
-    props: IRendererTextureProps,
-  ): IRendererTexture;
-  createEffect(
-    kind: keyof lng.EffectMap,
-    props: Record<string, any>,
-    name?: string,
-  ): lng.EffectDescUnion;
+  createShader: typeof lng.RendererMain.prototype.createShader;
+  createTexture: typeof lng.RendererMain.prototype.createTexture;
+  createEffect: typeof lng.RendererMain.prototype.createEffect;
 }
