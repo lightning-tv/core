@@ -37,14 +37,22 @@ export interface IRendererShaderType {}
 export type IRendererShaderProps = Record<string, unknown>;
 
 /** Based on {@link lng.Texture} */
-export interface IRendererTexture {
+export interface IRendererTexture extends lng.Texture {
   props: IRendererTextureProps;
   type: lng.TextureType;
 }
 export interface IRendererTextureProps {}
 
-export interface IEventEmitter {
-  on: (e: string, cb: (...a: any[]) => void) => void;
+export interface IEventEmitter<
+  T extends object = { [s: string]: (target: any, data: any) => void },
+> {
+  on<K extends keyof T>(event: Extract<K, string>, listener: T[K]): void;
+  once<K extends keyof T>(event: Extract<K, string>, listener: T[K]): void;
+  off<K extends keyof T>(event: Extract<K, string>, listener: T[K]): void;
+  emit<K extends keyof T>(
+    event: Extract<K, string>,
+    data: Parameters<any>[1],
+  ): void;
 }
 
 export interface IRendererNodeShaded extends IEventEmitter {
@@ -105,5 +113,4 @@ export interface IRendererMain extends IEventEmitter {
     props: Record<string, any>,
     name?: string,
   ): lng.EffectDescUnion;
-  on(name: string, callback: (target: any, data: any) => void): void;
 }

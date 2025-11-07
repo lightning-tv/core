@@ -1319,6 +1319,8 @@ export class DOMRendererMain implements IRendererMain {
   root: DOMNode;
   canvas: HTMLCanvasElement;
   stage: IRendererStage;
+  private eventListeners: Map<string, Set<(target: any, data: any) => void>> =
+    new Map();
 
   constructor(
     public settings: lng.RendererMainSettings,
@@ -1406,6 +1408,71 @@ export class DOMRendererMain implements IRendererMain {
     window.addEventListener('resize', updateRootPosition.bind(this));
   }
 
+  once<K extends string | number>(
+    event: Extract<K, string>,
+    listener: { [s: string]: (target: any, data: any) => void }[K],
+  ): void {
+    const wrappedListener = (target: any, data: any) => {
+      this.off(event, wrappedListener as any);
+      listener(target, data);
+    };
+    this.on(event, wrappedListener);
+  }
+
+  on(name: string, callback: (target: any, data: any) => void) {
+    let listeners = this.eventListeners.get(name);
+    if (!listeners) {
+      listeners = new Set();
+      this.eventListeners.set(name, listeners);
+    }
+    listeners.add(callback);
+  }
+
+  off<K extends string | number>(
+    event: Extract<K, string>,
+    listener: { [s: string]: (target: any, data: any) => void }[K],
+  ): void {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.delete(listener as any);
+      if (listeners.size === 0) {
+        this.eventListeners.delete(event);
+      }
+    }
+  }
+
+  emit<K extends string | number>(
+    event: Extract<K, string>,
+    data: Parameters<any>[1],
+  ): void;
+  emit<K extends string | number>(
+    event: Extract<K, string>,
+    target: any,
+    data: Parameters<any>[1],
+  ): void;
+  emit<K extends string | number>(
+    event: Extract<K, string>,
+    targetOrData: any,
+    maybeData?: Parameters<any>[1],
+  ): void {
+    const listeners = this.eventListeners.get(event);
+    if (!listeners || listeners.size === 0) {
+      return;
+    }
+
+    const hasExplicitTarget = arguments.length === 3;
+    const target = hasExplicitTarget ? targetOrData : this.root;
+    const data = hasExplicitTarget ? maybeData : targetOrData;
+
+    for (const listener of Array.from(listeners)) {
+      try {
+        listener(target, data);
+      } catch (error) {
+        console.error(`Error in listener for event "${event}"`, error);
+      }
+    }
+  }
+
   createNode(props: Partial<IRendererNodeProps>): IRendererNode {
     return new DOMNode(this.stage, resolveNodeDefaults(props));
   }
@@ -1443,7 +1510,7 @@ export class DOMRendererMain implements IRendererMain {
         type = lng.TextureType.renderToTexture;
         break;
     }
-    return { type, props };
+    return { type, props } as IRendererTexture;
   }
 
   createEffect(
@@ -1453,11 +1520,8 @@ export class DOMRendererMain implements IRendererMain {
   ): lng.EffectDescUnion {
     return { type, props, name } as any;
   }
-
-  on(name: string, callback: (target: any, data: any) => void) {
-    console.log('on', name, callback);
-  }
 }
+
 export function isDomRenderer(r: typeof renderer): r is IRendererMain {
   // Heuristic: DOM renderer exposes our minimal stage shape (no txManager) and root.div exists early.
   const anyR = r as any;
