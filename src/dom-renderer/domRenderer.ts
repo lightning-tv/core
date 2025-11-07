@@ -385,60 +385,87 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
     let srcImg: string | null = null;
     let srcPos: null | { x: number; y: number } = null;
+    let rawImgSrc: string | null = null;
 
     if (
       props.texture != null &&
       props.texture.type === lng.TextureType.subTexture
     ) {
       srcPos = (props.texture as any).props;
-      srcImg = `url(${(props.texture as any).props.texture.props.src})`;
+      rawImgSrc = (props.texture as any).props.texture.props.src;
     } else if (props.src) {
-      srcImg = `url(${props.src})`;
+      rawImgSrc = props.src;
+    }
+
+    if (rawImgSrc) {
+      srcImg = `url(${rawImgSrc})`;
     }
 
     let bgStyle = '';
     let borderStyle = '';
     let radiusStyle = '';
     let maskStyle = '';
+    let needsBackgroundLayer = false;
+    let imgStyle = '';
 
-    if (srcImg) {
-      if (props.color !== 0xffffffff && props.color !== 0x00000000) {
-        // use image as a mask
-        bgStyle += `background-color: ${colorToRgba(props.color)}; background-blend-mode: multiply;`;
-        maskStyle += `mask-image: ${srcImg};`;
-        if (srcPos !== null) {
-          maskStyle += `mask-position: -${srcPos.x}px -${srcPos.y}px;`;
-        } else {
-          maskStyle += `mask-size: 100% 100%;`;
+    if (rawImgSrc) {
+      needsBackgroundLayer = true;
+
+      const hasTint = props.color !== 0xffffffff && props.color !== 0x00000000;
+
+      if (hasTint) {
+        bgStyle += `background-color: ${colorToRgba(props.color)};`;
+        if (srcImg) {
+          maskStyle += `mask-image: ${srcImg};`;
+          if (srcPos !== null) {
+            maskStyle += `mask-position: -${srcPos.x}px -${srcPos.y}px;`;
+          } else {
+            maskStyle += `mask-size: 100% 100%;`;
+          }
         }
       } else if (gradient) {
-        // use gradient as a mask
+        // use gradient as a mask when no tint is applied
         maskStyle += `mask-image: ${gradient};`;
       }
 
-      bgStyle += `background-image: ${srcImg};`;
-      bgStyle += `background-repeat: no-repeat;`;
+      const imgStyleParts = [
+        'position: absolute',
+        'inset: 0',
+        'display: block',
+        'pointer-events: none',
+      ];
 
       if (props.textureOptions.resizeMode?.type) {
-        bgStyle += `background-size: ${props.textureOptions.resizeMode.type}; background-position: center;`;
+        const resizeMode = props.textureOptions.resizeMode;
+        imgStyleParts.push('width: 100%');
+        imgStyleParts.push('height: 100%');
+        imgStyleParts.push(`object-fit: ${resizeMode.type}`);
+
+        // Handle clipX and clipY for object-position
+        const clipX = (resizeMode as any).clipX ?? 0.5;
+        const clipY = (resizeMode as any).clipY ?? 0.5;
+        imgStyleParts.push(`object-position: ${clipX * 100}% ${clipY * 100}%`);
       } else if (srcPos !== null) {
-        bgStyle += `background-position: -${srcPos.x}px -${srcPos.y}px;`;
+        imgStyleParts.push('width: auto');
+        imgStyleParts.push('height: auto');
+        imgStyleParts.push('object-fit: none');
+        imgStyleParts.push(`object-position: -${srcPos.x}px -${srcPos.y}px`);
       } else if (props.width && !props.height) {
-        bgStyle += 'background-size: 100% auto;';
+        imgStyleParts.push('width: 100%');
+        imgStyleParts.push('height: auto');
       } else if (props.height && !props.width) {
-        bgStyle += 'background-size: auto 100%;';
+        imgStyleParts.push('width: auto');
+        imgStyleParts.push('height: 100%');
       } else {
-        bgStyle += 'background-size: 100% 100%;';
+        imgStyleParts.push('width: 100%');
+        imgStyleParts.push('height: 100%');
+        imgStyleParts.push('object-fit: fill');
+      }
+      if (hasTint) {
+        imgStyleParts.push('mix-blend-mode: multiply');
       }
 
-      if (maskStyle !== '') {
-        bgStyle += maskStyle;
-      }
-      // separate layers are needed for the mask
-      if (maskStyle !== '' && node.divBg == null) {
-        node.div.appendChild((node.divBg = document.createElement('div')));
-        node.div.appendChild((node.divBorder = document.createElement('div')));
-      }
+      imgStyle = imgStyleParts.join('; ') + ';';
     } else if (gradient) {
       bgStyle += `background-image: ${gradient};`;
       bgStyle += `background-repeat: no-repeat;`;
@@ -600,20 +627,99 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       }
     }
 
+    if (maskStyle !== '') {
+      needsBackgroundLayer = true;
+    }
+
     style += radiusStyle;
 
-    if (node.divBg == null) {
-      style += bgStyle;
+    if (needsBackgroundLayer) {
+      if (node.divBg == null) {
+        node.divBg = document.createElement('div');
+        node.div.insertBefore(node.divBg, node.div.firstChild);
+      } else if (node.divBg.parentElement !== node.div) {
+        node.div.insertBefore(node.divBg, node.div.firstChild);
+      }
+
+      let bgLayerStyle =
+        'position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;';
+      if (bgStyle) {
+        bgLayerStyle += bgStyle;
+      }
+      if (maskStyle) {
+        bgLayerStyle += maskStyle;
+      }
+
+      node.divBg.setAttribute('style', bgLayerStyle + radiusStyle);
+
+      if (rawImgSrc) {
+        if (!node.imgEl) {
+          node.imgEl = document.createElement('img');
+          node.imgEl.alt = '';
+          node.imgEl.setAttribute('aria-hidden', 'true');
+
+          node.imgEl.addEventListener('load', () => {
+            const payload: lng.NodeTextureLoadedPayload = {
+              type: 'texture',
+              dimensions: {
+                width: node.imgEl!.naturalWidth,
+                height: node.imgEl!.naturalHeight,
+              },
+            };
+            node.emit('loaded', payload);
+          });
+
+          node.imgEl.addEventListener('error', (e) => {
+            const payload: lng.NodeTextureFailedPayload = {
+              type: 'texture',
+              error: new Error(`Failed to load image: ${rawImgSrc}`),
+            };
+            node.emit('failed', payload);
+          });
+        }
+        if (node.imgEl.dataset.rawSrc !== rawImgSrc) {
+          node.imgEl.src = rawImgSrc;
+          node.imgEl.dataset.rawSrc = rawImgSrc;
+        }
+        if (node.imgEl.parentElement !== node.divBg) {
+          node.divBg.appendChild(node.imgEl);
+        }
+        node.imgEl.setAttribute('style', imgStyle);
+      } else if (node.imgEl) {
+        node.imgEl.remove();
+        node.imgEl = undefined;
+      }
     } else {
-      bgStyle += 'position: absolute; inset: 0; z-index: -1;';
-      node.divBg.setAttribute('style', bgStyle + radiusStyle);
+      if (node.imgEl) {
+        node.imgEl.remove();
+        node.imgEl = undefined;
+      }
+      if (node.divBg) {
+        node.divBg.remove();
+        node.divBg = undefined;
+      }
+      style += bgStyle;
+    }
+
+    const needsSeparateBorderLayer = needsBackgroundLayer && maskStyle !== '';
+
+    if (needsSeparateBorderLayer) {
+      if (node.divBorder == null) {
+        node.divBorder = document.createElement('div');
+        node.div.appendChild(node.divBorder);
+      }
+    } else if (node.divBorder) {
+      node.divBorder.remove();
+      node.divBorder = undefined;
     }
 
     if (node.divBorder == null) {
       style += borderStyle;
     } else {
-      borderStyle += 'position: absolute; inset: 0; z-index: -1;';
-      node.divBorder.setAttribute('style', borderStyle + radiusStyle);
+      let borderLayerStyle =
+        'position: absolute; inset: 0; z-index: -1; pointer-events: none;';
+      borderLayerStyle += borderStyle;
+      node.divBorder.setAttribute('style', borderLayerStyle + radiusStyle);
     }
   }
 
@@ -665,7 +771,14 @@ function updateDOMTextSize(node: DOMText): void {
       if (node.props.height !== size.height) {
         node.props.height = size.height;
         updateNodeStyles(node);
-        node.emit('loaded');
+        const payload: lng.NodeTextLoadedPayload = {
+          type: 'text',
+          dimensions: {
+            width: node.props.width,
+            height: node.props.height,
+          },
+        };
+        node.emit('loaded', payload);
       }
       break;
     case 'none':
@@ -677,7 +790,14 @@ function updateDOMTextSize(node: DOMText): void {
         node.props.width = size.width;
         node.props.height = size.height;
         updateNodeStyles(node);
-        node.emit('loaded');
+        const payload: lng.NodeTextLoadedPayload = {
+          type: 'text',
+          dimensions: {
+            width: node.props.width,
+            height: node.props.height,
+          },
+        };
+        node.emit('loaded', payload);
       }
       break;
   }
@@ -811,6 +931,7 @@ class DOMNode extends EventEmitter implements IRendererNode {
   div = document.createElement('div');
   divBg: HTMLElement | undefined;
   divBorder: HTMLElement | undefined;
+  imgEl: HTMLImageElement | undefined;
 
   id = ++lastNodeId;
 
