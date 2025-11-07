@@ -1,5 +1,9 @@
 import * as lng from '@lightningjs/renderer';
-import { DOMRendererMain } from './dom-renderer/domRenderer.js';
+import {
+  DOMRendererMain,
+  isDomRenderer,
+  loadFontToDom,
+} from './dom-renderer/domRenderer.js';
 import { DOM_RENDERING } from './config.js';
 import type { IRendererMain } from './dom-renderer/domRendererTypes.js';
 export type {
@@ -58,7 +62,11 @@ export function loadFonts(
     }
     // Canvas — Web
     else if ('fontUrl' in font) {
-      renderer.stage.fontManager.addFontFace(new lng.WebTrFontFace(font));
+      if (isDomRenderer(renderer)) {
+        loadFontToDom(font);
+      } else {
+        renderer.stage.fontManager.addFontFace(new lng.WebTrFontFace(font));
+      }
     }
   }
 }

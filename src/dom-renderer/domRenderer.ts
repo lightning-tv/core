@@ -1360,7 +1360,7 @@ export class DOMRendererMain implements IRendererMain {
         width: settings.appWidth ?? 1920,
         height: settings.appHeight ?? 1080,
         shader: defaultShader,
-        zIndex: 65534,
+        zIndex: 0,
       }),
     );
     this.stage.root = this.root;
@@ -1517,6 +1517,31 @@ export class DOMRendererMain implements IRendererMain {
       name: Name;
       type: Type;
     }>;
+  }
+}
+
+export function loadFontToDom(font: lng.WebTrFontFaceOptions): void {
+  const fontFaceDescriptors: FontFaceDescriptors | undefined = font.descriptors
+    ? {
+        ...font.descriptors,
+        weight:
+          typeof font.descriptors.weight === 'number'
+            ? String(font.descriptors.weight)
+            : font.descriptors.weight,
+      }
+    : undefined;
+
+  const fontFace = new FontFace(
+    font.fontFamily,
+    `url(${font.fontUrl})`,
+    fontFaceDescriptors,
+  );
+
+  if (typeof document !== 'undefined' && 'fonts' in document) {
+    const fontSet = document.fonts as FontFaceSet & {
+      add?: (font: FontFace) => FontFaceSet;
+    };
+    fontSet.add?.(fontFace);
   }
 }
 
