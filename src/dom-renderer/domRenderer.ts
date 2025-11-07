@@ -15,7 +15,6 @@ import {
   IRendererTextNode,
   IRendererTextNodeProps,
   IRendererMain,
-  renderer,
 } from '../lightningInit.js';
 import { EventEmitter } from '@lightningjs/renderer/utils';
 import { ExtractProps, IRendererShader } from './domRendererTypes.js';
@@ -528,11 +527,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
             }
             case 'linearGradient': {
               let stops = effect.props?.stops;
-              let angle = effect.props?.angle ?? 0;
-              let startX = effect.props?.startX ?? 0;
-              let startY = effect.props?.startY ?? 0;
-              let endX = effect.props?.endX ?? 1;
-              let endY = effect.props?.endY ?? 1;
+              let angle = effect.props?.angle;
+              let startX = effect.props?.startX;
+              let startY = effect.props?.startY;
+              let endX = effect.props?.endX;
+              let endY = effect.props?.endY;
 
               if (Array.isArray(stops) && stops.length >= 2) {
                 let gradientStops = stops
@@ -550,24 +549,34 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
                 if (gradientStops) {
                   let linearGradient: string;
+                  let hasCustomPoints =
+                    startX != null ||
+                    startY != null ||
+                    endX != null ||
+                    endY != null;
 
                   if (typeof angle === 'number') {
-                    // Use angle-based gradient
                     linearGradient = `linear-gradient(${angle}deg, ${gradientStops})`;
-                  } else {
-                    // Use position-based gradient (from point to point)
-                    let startXPercent = startX * 100;
-                    let startYPercent = startY * 100;
-                    let endXPercent = endX * 100;
-                    let endYPercent = endY * 100;
+                  } else if (
+                    typeof angle === 'string' &&
+                    angle.trim().length > 0
+                  ) {
+                    linearGradient = `linear-gradient(${angle.trim()}, ${gradientStops})`;
+                  } else if (hasCustomPoints) {
+                    let startXVal = startX ?? 0;
+                    let startYVal = startY ?? 0;
+                    let endXVal = endX ?? 1;
+                    let endYVal = endY ?? 1;
 
-                    // Calculate angle from start and end points
-                    let deltaX = endX - startX;
-                    let deltaY = endY - startY;
+                    let deltaX = endXVal - startXVal;
+                    let deltaY = endYVal - startYVal;
                     let angleRad = Math.atan2(deltaY, deltaX);
                     let angleDeg = (angleRad * 180) / Math.PI + 90; // Convert to CSS angle format
 
                     linearGradient = `linear-gradient(${angleDeg}deg, ${gradientStops})`;
+                  } else {
+                    // Default to vertical gradient when no angle or points provided
+                    linearGradient = `linear-gradient(0deg, ${gradientStops})`;
                   }
 
                   if (srcImg || gradient) {
@@ -1360,7 +1369,7 @@ export class DOMRendererMain implements IRendererMain {
         width: settings.appWidth ?? 1920,
         height: settings.appHeight ?? 1080,
         shader: defaultShader,
-        zIndex: 0,
+        zIndex: 1,
       }),
     );
     this.stage.root = this.root;
