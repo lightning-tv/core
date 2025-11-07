@@ -546,40 +546,46 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               break;
             }
             case 'radialGradient': {
-              let stops = effect.props?.stops;
-              let centerX = effect.props?.centerX ?? 0.5;
-              let centerY = effect.props?.centerY ?? 0.5;
-              let radius = effect.props?.radius ?? 1;
+              const rg = effect.props as
+                | Partial<lng.RadialGradientEffectProps>
+                | undefined;
+              const colors = Array.isArray(rg?.colors) ? rg!.colors! : [];
+              const stops = Array.isArray(rg?.stops) ? rg!.stops! : undefined;
+              const pivot = Array.isArray(rg?.pivot) ? rg!.pivot! : [0.5, 0.5];
+              const width =
+                typeof rg?.width === 'number' ? rg!.width! : props.width || 0;
+              const height =
+                typeof rg?.height === 'number' ? rg!.height! : width;
 
-              if (Array.isArray(stops) && stops.length >= 2) {
-                let gradientStops = stops
-                  .map((stop: any) => {
-                    if (
-                      typeof stop.color === 'number' &&
-                      typeof stop.position === 'number'
-                    ) {
-                      return `${colorToRgba(stop.color)} ${stop.position * 100}%`;
-                    }
-                    return null;
-                  })
-                  .filter(Boolean)
-                  .join(', ');
-
+              if (colors.length > 0) {
+                const gradientStops = buildGradientStops(colors, stops);
                 if (gradientStops) {
-                  let centerXPercent = centerX * 100;
-                  let centerYPercent = centerY * 100;
-                  let radiusPercent = radius * 100;
-
-                  let radialGradient = `radial-gradient(circle ${radiusPercent}% at ${centerXPercent}% ${centerYPercent}%, ${gradientStops})`;
-
-                  if (srcImg || gradient) {
-                    // If there's already a background image or gradient, use the radial gradient as a mask
-                    maskStyle += `mask-image: ${radialGradient};`;
+                  if (colors.length === 1) {
+                    // Single color -> solid fill
+                    if (srcImg || gradient) {
+                      maskStyle += `mask-image: linear-gradient(${gradientStops});`;
+                    } else {
+                      bgStyle += `background-color: ${colorToRgba(colors[0]!)};`;
+                    }
                   } else {
-                    // Use as background if no other background
-                    bgStyle += `background-image: ${radialGradient};`;
-                    bgStyle += `background-repeat: no-repeat;`;
-                    bgStyle += `background-size: 100% 100%;`;
+                    const isEllipse =
+                      width > 0 && height > 0 && width !== height;
+                    const pivotX = (pivot[0] ?? 0.5) * 100;
+                    const pivotY = (pivot[1] ?? 0.5) * 100;
+                    let sizePart = '';
+                    if (width > 0 && height > 0) {
+                      sizePart = `${Math.round(width / 2)}px ${Math.round(height / 2)}px`;
+                    } else {
+                      sizePart = 'closest-side';
+                    }
+                    const radialGradient = `radial-gradient(${isEllipse ? 'ellipse' : 'circle'} ${sizePart} at ${pivotX.toFixed(2)}% ${pivotY.toFixed(2)}%, ${gradientStops})`;
+                    if (srcImg || gradient) {
+                      maskStyle += `mask-image: ${radialGradient};`;
+                    } else {
+                      bgStyle += `background-image: ${radialGradient};`;
+                      bgStyle += `background-repeat: no-repeat;`;
+                      bgStyle += `background-size: 100% 100%;`;
+                    }
                   }
                 }
               }
