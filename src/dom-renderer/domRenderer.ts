@@ -1605,11 +1605,9 @@ export class DOMRendererMain implements IRendererMain {
     shaderType: ShType,
     props?: ExtractProps<lng.ShaderMap[ShType]>,
   ): lng.ShaderController<ShType> {
-    // Minimal DOM implementation: we don't actually compile shaders, just return a stub matching the expected controller shape.
     return {
-      // Cast to string because ShaderController internally uses the shader key name while our stub keeps it simple.
-      shaderType: shaderType as string,
-      props: props as any,
+      shaderType,
+      props,
       program: {},
     } as unknown as lng.ShaderController<ShType>;
   }
