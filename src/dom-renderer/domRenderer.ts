@@ -613,7 +613,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                       bgStyle += `background-color: ${colorToRgba(colors[0]!)};`;
                     }
                   } else {
-                    const angleDeg = (angleRad * 60) / Math.PI;
+                    const angleDeg = 180 * (angleRad / Math.PI - 1);
                     const linearGradient = `linear-gradient(${angleDeg.toFixed(2)}deg, ${gradientStops})`;
                     if (srcImg || gradient) {
                       maskStyle += `mask-image: ${linearGradient};`;
