@@ -574,7 +574,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                     const pivotY = (pivot[1] ?? 0.5) * 100;
                     let sizePart = '';
                     if (width > 0 && height > 0) {
-                      sizePart = `${Math.round(width)}px ${Math.round(height)}px`;
+                      if (!isEllipse && width === height) {
+                        sizePart = `${Math.round(width)}px`;
+                      } else {
+                        sizePart = `${Math.round(width)}px ${Math.round(height)}px`;
+                      }
                     } else {
                       sizePart = 'closest-side';
                     }
@@ -867,7 +871,7 @@ function resolveNodeDefaults(
     colorBr: props.colorBr ?? props.colorBottom ?? props.colorRight ?? color,
     colorTl: props.colorTl ?? props.colorTop ?? props.colorLeft ?? color,
     colorTr: props.colorTr ?? props.colorTop ?? props.colorRight ?? color,
-    zIndex: props.zIndex ?? 0,
+    zIndex: Math.ceil(props.zIndex ?? 0),
     zIndexLocked: props.zIndexLocked ?? 0,
     parent: props.parent ?? null,
     texture: props.texture ?? null,
@@ -1091,7 +1095,7 @@ class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.zIndex;
   }
   set zIndex(v) {
-    this.props.zIndex = v;
+    this.props.zIndex = Math.ceil(v);
     updateNodeStyles(this);
   }
   get texture() {
