@@ -6,18 +6,19 @@ Experimental DOM renderer
 
 import * as lng from '@lightningjs/renderer';
 
+import { EventEmitter } from '@lightningjs/renderer/utils';
 import { Config } from '../config.js';
-import {
-  IRendererStage,
-  IRendererTextureProps,
+import type {
+  ExtractProps,
+  IRendererMain,
   IRendererNode,
   IRendererNodeProps,
+  IRendererShader,
+  IRendererStage,
   IRendererTextNode,
   IRendererTextNodeProps,
-  IRendererMain,
-} from '../lightningInit.js';
-import { EventEmitter } from '@lightningjs/renderer/utils';
-import { ExtractProps, IRendererShader } from './domRendererTypes.js';
+  IRendererTextureProps,
+} from './domRendererTypes.js';
 
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
@@ -1680,12 +1681,18 @@ export class DOMRendererMain implements IRendererMain {
     window.addEventListener('resize', updateRootPosition.bind(this));
   }
 
+  removeAllListeners(): void {
+    if (this.eventListeners.size === 0) return;
+    this.eventListeners.forEach((listeners) => listeners.clear());
+    this.eventListeners.clear();
+  }
+
   once<K extends string | number>(
     event: Extract<K, string>,
     listener: { [s: string]: (target: any, data: any) => void }[K],
   ): void {
     const wrappedListener = (target: any, data: any) => {
-      this.off(event, wrappedListener as any);
+      this.off(event, wrappedListener);
       listener(target, data);
     };
     this.on(event, wrappedListener);
@@ -1706,7 +1713,7 @@ export class DOMRendererMain implements IRendererMain {
   ): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      listeners.delete(listener as any);
+      listeners.delete(listener);
       if (listeners.size === 0) {
         this.eventListeners.delete(event);
       }

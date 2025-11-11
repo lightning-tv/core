@@ -1,5 +1,6 @@
 import * as lng from '@lightningjs/renderer';
 import { CoreAnimation } from '../intrinsicTypes.js';
+import { EventEmitter } from '@lightningjs/renderer/utils';
 
 /** Based on {@link lng.CoreRenderer} */
 export interface IRendererCoreRenderer {
@@ -58,7 +59,7 @@ export interface IEventEmitter<
   ): void;
 }
 
-export interface IRendererNodeShaded extends IEventEmitter {
+export interface IRendererNodeShaded extends EventEmitter {
   stage: IRendererStage;
   id: number;
   animate: (

@@ -6,23 +6,6 @@ import {
 } from './dom-renderer/domRenderer.js';
 import { Config, DOM_RENDERING } from './config.js';
 import type { IRendererMain } from './dom-renderer/domRendererTypes.js';
-export type {
-  IEventEmitter,
-  IRendererCoreRenderer,
-  IRendererFontManager,
-  IRendererStage,
-  IRendererShaderManager,
-  IRendererShaderProps,
-  IRendererShaderType,
-  IRendererTexture,
-  IRendererTextureProps,
-  IRendererNodeShaded,
-  IRendererNodeProps,
-  IRendererNode,
-  IRendererTextNodeProps,
-  IRendererTextNode,
-  IRendererMain,
-} from './dom-renderer/domRendererTypes.js';
 
 export type SdfFontType = 'ssdf' | 'msdf';
 // Global renderer instance: can be either the Lightning or DOM implementation

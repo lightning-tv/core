@@ -17,7 +17,13 @@ import type {
 import { assertTruthy } from '@lightningjs/renderer/utils';
 import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 import { Config, isDev, SHADERS_ENABLED } from './config.js';
-import { IRendererShader } from './dom-renderer/domRendererTypes.js';
+import {
+  IRendererNode,
+  IRendererNodeProps,
+  IRendererShader,
+  IRendererTextNode,
+  IRendererTextNodeProps,
+} from './dom-renderer/domRendererTypes.js';
 import calculateFlex from './flex.js';
 import { ForwardFocusHandler, setActiveElement } from './focusManager.js';
 import {
@@ -35,13 +41,7 @@ import {
   TextNode,
   TextProps,
 } from './intrinsicTypes.js';
-import {
-  IRendererNode,
-  IRendererNodeProps,
-  IRendererTextNode,
-  IRendererTextNodeProps,
-  renderer,
-} from './lightningInit.js';
+import { renderer } from './lightningInit.js';
 import { NodeType } from './nodeTypes.js';
 import States, { type NodeStates } from './states.js';
 import {
@@ -279,10 +279,9 @@ export interface ElementNode extends RendererNode {
    * The underlying Lightning Renderer node object. This is where the properties are ultimately set for rendering.
    */
   lng:
+    | INode
+    | IRendererNode
     | Partial<ElementNode>
-    | Partial<IRendererNode>
-    | Partial<INode>
-    | Partial<ITextNode>
     | (IRendererTextNode & { shader?: any });
   /**
    * A reference to the `ElementNode` instance. Can be an object or a callback function.
