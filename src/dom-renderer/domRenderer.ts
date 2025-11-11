@@ -1595,7 +1595,7 @@ export class DOMRendererMain implements IRendererMain {
     new Map();
 
   constructor(
-    public settings: lng.RendererMainSettings,
+    public settings: Partial<lng.RendererMainSettings>,
     rawTarget: string | HTMLElement,
   ) {
     let target: HTMLElement;

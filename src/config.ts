@@ -37,17 +37,18 @@ export const SHADERS_ENABLED = !!(
   before running any Lightning modules to ensure consistent behavior across the application.
 */
 export interface Config {
-  debug: boolean;
-  focusDebug: boolean;
-  keyDebug: boolean;
-  simpleAnimationsEnabled?: boolean;
-  animationSettings?: AnimationSettings;
   animationsEnabled: boolean;
+  animationSettings?: AnimationSettings;
+  debug: boolean;
+  domRenderereEnabled?: boolean;
+  focusDebug: boolean;
+  focusStateKey: DollarString;
   fontSettings: Partial<TextProps>;
+  keyDebug: boolean;
+  lockStyles?: boolean;
   rendererOptions?: Partial<RendererMainSettings>;
   setActiveElement: (elm: ElementNode) => void;
-  focusStateKey: DollarString;
-  lockStyles?: boolean;
+  simpleAnimationsEnabled?: boolean;
   throttleInput?: number;
 }
 

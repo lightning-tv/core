@@ -4,7 +4,7 @@ import {
   isDomRenderer,
   loadFontToDom,
 } from './dom-renderer/domRenderer.js';
-import { DOM_RENDERING } from './config.js';
+import { Config, DOM_RENDERING } from './config.js';
 import type { IRendererMain } from './dom-renderer/domRendererTypes.js';
 export type {
   IEventEmitter,
@@ -34,7 +34,9 @@ export function startLightningRenderer(
   options: lng.RendererMainSettings,
   rootId: string | HTMLElement = 'app',
 ) {
-  renderer = DOM_RENDERING
+  const enableDomRenderer = DOM_RENDERING && Config.domRenderereEnabled;
+
+  renderer = enableDomRenderer
     ? new DOMRendererMain(options, rootId)
     : new lng.RendererMain(options, rootId);
   return renderer;
