@@ -2,6 +2,11 @@ import * as lng from '@lightningjs/renderer';
 import { CoreAnimation } from '../intrinsicTypes.js';
 import { EventEmitter } from '@lightningjs/renderer/utils';
 
+export interface DomNodeLike {
+  props: any;
+  divBg?: HTMLElement;
+}
+
 /** Based on {@link lng.CoreRenderer} */
 export interface IRendererCoreRenderer {
   mode: 'canvas' | 'webgl' | undefined;
@@ -110,4 +115,4 @@ export interface IRendererMain extends IEventEmitter {
   createShader: typeof lng.RendererMain.prototype.createShader;
   createTexture: typeof lng.RendererMain.prototype.createTexture;
   createEffect: typeof lng.RendererMain.prototype.createEffect;
-}
+} // Minimal shape used by helpers to avoid circular import of DOMNode
