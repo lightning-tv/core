@@ -5,11 +5,10 @@ import {
   loadFontToDom,
 } from './dom-renderer/domRenderer.js';
 import { Config, DOM_RENDERING } from './config.js';
-import type { IRendererMain } from './dom-renderer/domRendererTypes.js';
 
 export type SdfFontType = 'ssdf' | 'msdf';
 // Global renderer instance: can be either the Lightning or DOM implementation
-export let renderer: lng.RendererMain | IRendererMain;
+export let renderer: lng.RendererMain | DOMRendererMain;
 
 export const getRenderer = () => renderer;
 

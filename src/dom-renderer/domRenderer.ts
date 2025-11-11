@@ -131,6 +131,66 @@ function computeLegacyObjectFit(
   img.setAttribute('style', styleParts.join('; ') + ';');
 }
 
+/**
+ * Scale and position an <img> element so that a subTexture region (srcX/srcY/srcWidth/srcHeight)
+ * is displayed at the requested node width/height, rather than its intrinsic region size.
+ * Works in modern browsers supporting object-position. For legacy fallback we keep existing behavior.
+ */
+function applySubTextureScaling(
+  node: DOMNode,
+  img: HTMLImageElement,
+  srcPos: { x: number; y: number } | null,
+) {
+  if (!srcPos) return;
+  const regionW = (node.props as any).srcWidth ?? (srcPos as any).width;
+  const regionH = (node.props as any).srcHeight ?? (srcPos as any).height;
+  if (!regionW || !regionH) return; // nothing to scale
+  const targetW = node.props.width || regionW;
+  const targetH = node.props.height || regionH;
+  // If target matches region, default logic suffices.
+  if (targetW === regionW && targetH === regionH) return;
+
+  const naturalW = img.naturalWidth || regionW;
+  const naturalH = img.naturalHeight || regionH;
+  const scaleX = targetW / regionW;
+  const scaleY = targetH / regionH;
+
+  // Strategy: scale the image element so the selected region maps to target size.
+  // We don't rely on object-position because we also have to keep mask (if present) in sync.
+  img.style.width = naturalW + 'px';
+  img.style.height = naturalH + 'px';
+  img.style.objectFit = 'none';
+  img.style.objectPosition = '0 0';
+  img.style.transformOrigin = '0 0';
+  const translateX = -srcPos.x;
+  const translateY = -srcPos.y;
+  img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`;
+
+  // Adjust mask sizing/position if a mask is used on the background layer.
+  // (Mask is applied to node.divBg, not the image.)
+  if (node.divBg) {
+    const styleEl = node.divBg.style as any;
+    if (
+      styleEl.maskImage ||
+      styleEl.webkitMaskImage ||
+      /mask-image:/.test(node.divBg.getAttribute('style') || '')
+    ) {
+      const maskW = Math.round(naturalW * scaleX);
+      const maskH = Math.round(naturalH * scaleY);
+      const maskPosX = Math.round(translateX * scaleX);
+      const maskPosY = Math.round(translateY * scaleY);
+
+      styleEl.setProperty?.('mask-size', `${maskW}px ${maskH}px`);
+      styleEl.setProperty?.('mask-position', `${maskPosX}px ${maskPosY}px`);
+      styleEl.setProperty?.('-webkit-mask-size', `${maskW}px ${maskH}px`);
+      styleEl.setProperty?.(
+        '-webkit-mask-position',
+        `${maskPosX}px ${maskPosY}px`,
+      );
+    }
+  }
+}
+
 function buildGradientStops(colors: number[], stops?: number[]): string {
   if (!Array.isArray(colors) || colors.length === 0) return '';
 
@@ -797,8 +857,10 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                 height: node.imgEl!.naturalHeight,
               },
             };
-            node.emit('loaded', payload);
-            // Apply legacy fallback layout if needed
+            // SubTexture scaling (modern browsers). Executes before legacy fallback so fallback can override if needed.
+            applySubTextureScaling(node, node.imgEl!, srcPos);
+
+            // Apply legacy fallback layout if needed (older Safari). This may override scaling for unsupported engines.
             const resizeMode = (node.props.textureOptions as any)?.resizeMode;
             const clipX = (resizeMode as any)?.clipX ?? 0.5;
             const clipY = (resizeMode as any)?.clipY ?? 0.5;
@@ -810,6 +872,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               clipY,
               srcPos,
             );
+            node.emit('loaded', payload);
           });
 
           node.imgEl.addEventListener('error', (e) => {
@@ -1837,7 +1900,7 @@ export function loadFontToDom(font: lng.WebTrFontFaceOptions): void {
 }
 
 export function isDomRenderer(
-  r: lng.RendererMain | IRendererMain,
-): r is IRendererMain {
+  r: lng.RendererMain | DOMRendererMain,
+): r is DOMRendererMain {
   return r instanceof DOMRendererMain;
 }
