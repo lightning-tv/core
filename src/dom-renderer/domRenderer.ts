@@ -22,6 +22,114 @@ import { ExtractProps, IRendererShader } from './domRendererTypes.js';
 const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
 
+// Feature detection for legacy Safari (<9) which lacks object-fit / object-position
+const supportsObjectFit: boolean =
+  typeof document !== 'undefined'
+    ? 'objectFit' in (document.documentElement?.style || {})
+    : true;
+const supportsObjectPosition: boolean =
+  typeof document !== 'undefined'
+    ? 'objectPosition' in (document.documentElement?.style || {})
+    : true;
+// CSS Masking + blend-mode support detection (standard + webkit prefixes)
+const _styleRef: any =
+  typeof document !== 'undefined' ? document.documentElement?.style || {} : {};
+const supportsStandardMask = 'maskImage' in _styleRef;
+const supportsWebkitMask = 'webkitMaskImage' in _styleRef; // legacy Safari
+const supportsCssMask = supportsStandardMask || supportsWebkitMask;
+const supportsMixBlendMode = 'mixBlendMode' in _styleRef;
+
+/**
+ * Compute fallback layout for object-fit / object-position when not supported.
+ * Only executed after image load (natural dimensions known).
+ */
+function computeLegacyObjectFit(
+  node: DOMNode,
+  img: HTMLImageElement,
+  resizeMode: ({ type?: string } & Record<string, any>) | undefined,
+  clipX: number,
+  clipY: number,
+  srcPos: null | { x: number; y: number },
+): void {
+  if (supportsObjectFit && supportsObjectPosition) return; // No fallback needed
+  const containerW = node.props.width || img.naturalWidth;
+  const containerH = node.props.height || img.naturalHeight;
+  const naturalW = img.naturalWidth || 1;
+  const naturalH = img.naturalHeight || 1;
+
+  let fitType = resizeMode?.type || (srcPos ? 'none' : 'fill');
+
+  let drawW = naturalW;
+  let drawH = naturalH;
+
+  switch (fitType) {
+    case 'cover': {
+      const scale = Math.max(containerW / naturalW, containerH / naturalH);
+      drawW = naturalW * scale;
+      drawH = naturalH * scale;
+      break;
+    }
+    case 'contain': {
+      const scale = Math.min(containerW / naturalW, containerH / naturalH);
+      drawW = naturalW * scale;
+      drawH = naturalH * scale;
+      break;
+    }
+    case 'fill': {
+      drawW = containerW;
+      drawH = containerH;
+      break;
+    }
+    case 'none':
+    default: {
+      break;
+    }
+  }
+
+  // Positioning (clipX / clipY emulate object-position percentage center default 0.5)
+  // Negative offsets center the image inside container
+  let offsetX = (containerW - drawW) * clipX;
+  let offsetY = (containerH - drawH) * clipY;
+
+  // For subTexture cropping fallback: emulate object-position with translate
+  if (srcPos) {
+    // Using transform translate instead of object-position
+    offsetX = -srcPos.x;
+    offsetY = -srcPos.y;
+  }
+
+  // Apply calculated layout styles
+  const styleParts = [
+    'position: absolute',
+    `width: ${Math.round(drawW)}px`,
+    `height: ${Math.round(drawH)}px`,
+    `left: ${Math.round(offsetX)}px`,
+    `top: ${Math.round(offsetY)}px`,
+    'display: block',
+    'pointer-events: none',
+  ];
+
+  img.style.removeProperty('object-fit');
+  img.style.removeProperty('object-position');
+
+  if (resizeMode?.type === 'none') {
+    // explicit none: do not scale
+    styleParts[1] = `width: ${naturalW}px`;
+    styleParts[2] = `height: ${naturalH}px`;
+  }
+
+  // tint fallback still uses mix-blend-mode if relevant
+  if (
+    !supportsObjectFit &&
+    node.props.color !== 0xffffffff &&
+    node.props.color !== 0x00000000
+  ) {
+    styleParts.push('mix-blend-mode: multiply');
+  }
+
+  img.setAttribute('style', styleParts.join('; ') + ';');
+}
+
 function buildGradientStops(colors: number[], stops?: number[]): string {
   if (!Array.isArray(colors) || colors.length === 0) return '';
 
@@ -463,7 +571,10 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
       const imgStyleParts = [
         'position: absolute',
-        'inset: 0',
+        'top: 0',
+        'left: 0',
+        'right: 0',
+        'bottom: 0',
         'display: block',
         'pointer-events: none',
       ];
@@ -495,7 +606,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         imgStyleParts.push('object-fit: fill');
       }
       if (hasTint) {
-        imgStyleParts.push('mix-blend-mode: multiply');
+        if (supportsMixBlendMode) {
+          imgStyleParts.push('mix-blend-mode: multiply');
+        } else {
+          imgStyleParts.push('opacity: 0.9');
+        }
       }
 
       imgStyle = imgStyleParts.join('; ') + ';';
@@ -636,7 +751,14 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     }
 
     if (maskStyle !== '') {
-      needsBackgroundLayer = true;
+      if (!supportsStandardMask && supportsWebkitMask) {
+        maskStyle = maskStyle.replace(/mask-/g, '-webkit-mask-');
+      } else if (!supportsCssMask) {
+        maskStyle = '';
+      }
+      if (maskStyle !== '') {
+        needsBackgroundLayer = true;
+      }
     }
 
     style += radiusStyle;
@@ -650,7 +772,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       }
 
       let bgLayerStyle =
-        'position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;';
+        'position: absolute; top:0; left:0; right:0; bottom:0; z-index: -1; pointer-events: none; overflow: hidden;';
       if (bgStyle) {
         bgLayerStyle += bgStyle;
       }
@@ -675,6 +797,18 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               },
             };
             node.emit('loaded', payload);
+            // Apply legacy fallback layout if needed
+            const resizeMode = (node.props.textureOptions as any)?.resizeMode;
+            const clipX = (resizeMode as any)?.clipX ?? 0.5;
+            const clipY = (resizeMode as any)?.clipY ?? 0.5;
+            computeLegacyObjectFit(
+              node,
+              node.imgEl!,
+              resizeMode,
+              clipX,
+              clipY,
+              srcPos,
+            );
           });
 
           node.imgEl.addEventListener('error', (e) => {
@@ -694,6 +828,20 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           node.divBg.appendChild(node.imgEl);
         }
         node.imgEl.setAttribute('style', imgStyle);
+        // If object-fit unsupported, override with JS fallback after style assignment
+        if (!supportsObjectFit || !supportsObjectPosition) {
+          const resizeMode = (node.props.textureOptions as any)?.resizeMode;
+          const clipX = (resizeMode as any)?.clipX ?? 0.5;
+          const clipY = (resizeMode as any)?.clipY ?? 0.5;
+          computeLegacyObjectFit(
+            node,
+            node.imgEl,
+            resizeMode,
+            clipX,
+            clipY,
+            srcPos,
+          );
+        }
       } else if (node.imgEl) {
         node.imgEl.remove();
         node.imgEl = undefined;
@@ -726,7 +874,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       style += borderStyle;
     } else {
       let borderLayerStyle =
-        'position: absolute; inset: 0; z-index: -1; pointer-events: none;';
+        'position: absolute; top:0; left:0; right:0; bottom:0; z-index: -1; pointer-events: none;';
       borderLayerStyle += borderStyle;
       node.divBorder.setAttribute('style', borderLayerStyle + radiusStyle);
     }
