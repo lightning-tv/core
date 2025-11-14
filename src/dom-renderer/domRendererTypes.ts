@@ -107,12 +107,12 @@ export interface IRendererTextNode
 
 /** Based on {@link lng.RendererMain} */
 export interface IRendererMain extends IEventEmitter {
-  stage: IRendererStage;
   root: IRendererNode;
+  stage: IRendererStage;
   canvas: HTMLCanvasElement;
   createTextNode(props: Partial<IRendererTextNodeProps>): IRendererTextNode;
   createNode(props: Partial<IRendererNodeProps>): IRendererNode;
   createShader: typeof lng.RendererMain.prototype.createShader;
   createTexture: typeof lng.RendererMain.prototype.createTexture;
   createEffect: typeof lng.RendererMain.prototype.createEffect;
-} // Minimal shape used by helpers to avoid circular import of DOMNode
+}
