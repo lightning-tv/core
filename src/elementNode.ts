@@ -965,6 +965,7 @@ export class ElementNode extends Object {
           textProps.maxHeight = textProps.h;
         } else if (textProps.contain === 'width') {
           textProps.maxWidth = textProps.w;
+          textProps.maxLines = textProps.maxLines ?? 1;
         }
       }
 
