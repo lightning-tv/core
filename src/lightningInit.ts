@@ -46,7 +46,7 @@ export function loadFonts(
     }
     // Canvas — Web
     else if ('fontUrl' in font) {
-      if (isDomRenderer(renderer)) {
+      if (DOM_RENDERING && isDomRenderer(renderer)) {
         loadFontToDom(font);
       } else {
         renderer.stage.fontManager.addFontFace(new lng.WebTrFontFace(font));
