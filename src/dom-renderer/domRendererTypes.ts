@@ -2,11 +2,6 @@ import * as lng from '@lightningjs/renderer';
 import { CoreAnimation } from '../intrinsicTypes.js';
 import { EventEmitter } from '@lightningjs/renderer/utils';
 
-export interface DomNodeLike {
-  props: any;
-  divBg?: HTMLElement;
-}
-
 /** Based on {@link lng.CoreRenderer} */
 export interface IRendererCoreRenderer {
   mode: 'canvas' | 'webgl' | undefined;
@@ -40,13 +35,6 @@ export interface IRendererShader extends Partial<lng.WebGlCoreShader> {
 /** Based on {@link lng.CoreShaderType} */
 export interface IRendererShaderType {}
 export type IRendererShaderProps = Record<string, unknown>;
-
-/** Based on {@link lng.Texture} */
-export interface IRendererTexture extends lng.Texture {
-  props: IRendererTextureProps;
-  type: lng.TextureType;
-}
-export interface IRendererTextureProps {}
 
 export type ExtractProps<Type> = Type extends { z$__type__Props: infer Props }
   ? Props

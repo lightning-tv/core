@@ -17,7 +17,6 @@ import type {
   IRendererStage,
   IRendererTextNode,
   IRendererTextNodeProps,
-  IRendererTextureProps,
 } from './domRendererTypes.js';
 import {
   colorToRgba,
@@ -396,15 +395,19 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         : vGradient || hGradient;
 
     let srcImg: string | null = null;
-    let srcPos: null | { x: number; y: number } = null;
+    let srcPos: null | InstanceType<lng.TextureMap['SubTexture']>['props'] =
+      null;
     let rawImgSrc: string | null = null;
 
     if (
       props.texture != null &&
       props.texture.type === lng.TextureType.subTexture
     ) {
-      srcPos = (props.texture as any).props;
-      rawImgSrc = (props.texture as any).props.texture.props.src;
+      const texture = props.texture as InstanceType<
+        lng.TextureMap['SubTexture']
+      >;
+      srcPos = texture.props;
+      rawImgSrc = (texture.props.texture as any).props.src;
     } else if (props.src) {
       rawImgSrc = props.src;
     }
@@ -962,7 +965,7 @@ const defaultShader: IRendererShader = {
 
 let lastNodeId = 0;
 
-class DOMNode extends EventEmitter implements IRendererNode {
+export class DOMNode extends EventEmitter implements IRendererNode {
   div = document.createElement('div');
   divBg: HTMLElement | undefined;
   divBorder: HTMLElement | undefined;
@@ -1649,8 +1652,8 @@ export class DOMRendererMain implements IRendererMain {
   }
 
   createTexture<Type extends keyof lng.TextureMap>(
-    textureType: keyof lng.TextureMap,
-    props: IRendererTextureProps,
+    textureType: Type,
+    props: ExtractProps<lng.TextureMap[Type]>,
   ): InstanceType<lng.TextureMap[Type]> {
     let type = lng.TextureType.generic;
     switch (textureType) {

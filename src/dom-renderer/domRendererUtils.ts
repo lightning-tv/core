@@ -1,6 +1,7 @@
 // Utilities extracted from domRenderer.ts for clarity
+import { TextureMap } from '@lightningjs/renderer';
 import { Config } from '../config.js';
-import { DomNodeLike } from './domRendererTypes.js';
+import { DOMNode } from './domRenderer.js';
 
 export const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
@@ -45,7 +46,7 @@ export function getNodeLineHeight(props: {
 
 /** Legacy object-fit fall back for unsupported browsers */
 export function computeLegacyObjectFit(
-  node: DomNodeLike,
+  node: DOMNode,
   img: HTMLImageElement,
   resizeMode: ({ type?: string } & Record<string, any>) | undefined,
   clipX: number,
@@ -106,13 +107,13 @@ export function computeLegacyObjectFit(
 }
 
 export function applySubTextureScaling(
-  node: DomNodeLike,
+  node: DOMNode,
   img: HTMLImageElement,
-  srcPos: { x: number; y: number } | null,
+  srcPos: InstanceType<TextureMap['SubTexture']>['props'] | null,
 ) {
   if (!srcPos) return;
-  const regionW = (node.props as any).srcWidth ?? (srcPos as any).width;
-  const regionH = (node.props as any).srcHeight ?? (srcPos as any).height;
+  const regionW = node.props.srcWidth ?? srcPos.width;
+  const regionH = node.props.srcHeight ?? srcPos.height;
   if (!regionW || !regionH) return;
   const targetW = node.props.width || regionW;
   const targetH = node.props.height || regionH;
@@ -129,8 +130,9 @@ export function applySubTextureScaling(
   const translateX = -srcPos.x;
   const translateY = -srcPos.y;
   img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`;
+  img.style.setProperty('-webkit-transform', img.style.transform);
   if (node.divBg) {
-    const styleEl = node.divBg.style as any;
+    const styleEl = node.divBg.style;
     if (
       styleEl.maskImage ||
       styleEl.webkitMaskImage ||
