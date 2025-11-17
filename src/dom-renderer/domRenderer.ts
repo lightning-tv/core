@@ -670,23 +670,6 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                 height: node.imgEl!.naturalHeight,
               },
             };
-            // SubTexture scaling (modern browsers). Executes before legacy fallback so fallback can override if needed.
-            applySubTextureScaling(node, node.imgEl!, srcPos);
-
-            // Apply legacy fallback layout if needed (older Safari). This may override scaling for unsupported engines.
-            const resizeMode = (node.props.textureOptions as any)?.resizeMode;
-            const clipX = (resizeMode as any)?.clipX ?? 0.5;
-            const clipY = (resizeMode as any)?.clipY ?? 0.5;
-            computeLegacyObjectFit(
-              node,
-              node.imgEl!,
-              resizeMode,
-              clipX,
-              clipY,
-              srcPos,
-              supportsObjectFit,
-              supportsObjectPosition,
-            );
             node.emit('loaded', payload);
           });
 
@@ -707,8 +690,12 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           node.divBg.appendChild(node.imgEl);
         }
         node.imgEl.setAttribute('style', imgStyle);
-        // If object-fit unsupported, override with JS fallback after style assignment
-        if (!supportsObjectFit || !supportsObjectPosition) {
+
+        if (srcPos && node.imgEl.complete) {
+          applySubTextureScaling(node, node.imgEl, srcPos);
+        }
+        // Fallback legacy se necessario e non SubTexture.
+        if (!srcPos && (!supportsObjectFit || !supportsObjectPosition)) {
           const resizeMode = (node.props.textureOptions as any)?.resizeMode;
           const clipX = (resizeMode as any)?.clipX ?? 0.5;
           const clipY = (resizeMode as any)?.clipY ?? 0.5;

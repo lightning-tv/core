@@ -127,8 +127,8 @@ export function applySubTextureScaling(
   img.style.objectFit = 'none';
   img.style.objectPosition = '0 0';
   img.style.transformOrigin = '0 0';
-  const translateX = -srcPos.x;
-  const translateY = -srcPos.y;
+  const translateX = -srcPos.x * scaleX;
+  const translateY = -srcPos.y * scaleY;
   img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`;
   img.style.setProperty('-webkit-transform', img.style.transform);
   if (node.divBg) {
@@ -140,8 +140,8 @@ export function applySubTextureScaling(
     ) {
       const maskW = Math.round(naturalW * scaleX);
       const maskH = Math.round(naturalH * scaleY);
-      const maskPosX = Math.round(translateX * scaleX);
-      const maskPosY = Math.round(translateY * scaleY);
+      const maskPosX = Math.round(translateX);
+      const maskPosY = Math.round(translateY);
       styleEl.setProperty?.('mask-size', `${maskW}px ${maskH}px`);
       styleEl.setProperty?.('mask-position', `${maskPosX}px ${maskPosY}px`);
       styleEl.setProperty?.('-webkit-mask-size', `${maskW}px ${maskH}px`);
