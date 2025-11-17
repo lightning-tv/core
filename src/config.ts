@@ -40,7 +40,7 @@ export interface Config {
   animationsEnabled: boolean;
   animationSettings?: AnimationSettings;
   debug: boolean;
-  domRenderereEnabled?: boolean;
+  domRendererEnabled?: boolean;
   focusDebug: boolean;
   focusStateKey: DollarString;
   fontSettings: Partial<TextProps>;

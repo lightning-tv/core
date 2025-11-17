@@ -16,7 +16,7 @@ export function startLightningRenderer(
   options: lng.RendererMainSettings,
   rootId: string | HTMLElement = 'app',
 ) {
-  const enableDomRenderer = DOM_RENDERING && Config.domRenderereEnabled;
+  const enableDomRenderer = DOM_RENDERING && Config.domRendererEnabled;
 
   renderer = enableDomRenderer
     ? new DOMRendererMain(options, rootId)
