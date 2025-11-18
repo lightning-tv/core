@@ -672,6 +672,20 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               },
             };
             applySubTextureScaling(node, node.imgEl!, srcPos);
+            // Apply legacy fallback layout if needed (older Safari). This may override scaling for unsupported engines.
+            const resizeMode = (node.props.textureOptions as any)?.resizeMode;
+            const clipX = resizeMode?.clipX ?? 0.5;
+            const clipY = resizeMode?.clipY ?? 0.5;
+            computeLegacyObjectFit(
+              node,
+              node.imgEl!,
+              resizeMode,
+              clipX,
+              clipY,
+              srcPos,
+              supportsObjectFit,
+              supportsObjectPosition,
+            );
             node.emit('loaded', payload);
           });
 
@@ -703,8 +717,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         // Fallback legacy se necessario e non SubTexture.
         if (!supportsObjectFit || !supportsObjectPosition) {
           const resizeMode = (node.props.textureOptions as any)?.resizeMode;
-          const clipX = (resizeMode as any)?.clipX ?? 0.5;
-          const clipY = (resizeMode as any)?.clipY ?? 0.5;
+          const clipX = resizeMode?.clipX ?? 0.5;
+          const clipY = resizeMode?.clipY ?? 0.5;
           computeLegacyObjectFit(
             node,
             node.imgEl,
@@ -802,14 +816,6 @@ function updateDOMTextSize(node: DOMText): void {
       if (node.props.height !== size.height) {
         node.props.height = size.height;
         updateNodeStyles(node);
-        const payload: lng.NodeTextLoadedPayload = {
-          type: 'text',
-          dimensions: {
-            width: node.props.width,
-            height: node.props.height,
-          },
-        };
-        node.emit('loaded', payload);
       }
       break;
     case 'none':
@@ -821,17 +827,18 @@ function updateDOMTextSize(node: DOMText): void {
         node.props.width = size.width;
         node.props.height = size.height;
         updateNodeStyles(node);
-        const payload: lng.NodeTextLoadedPayload = {
-          type: 'text',
-          dimensions: {
-            width: node.props.width,
-            height: node.props.height,
-          },
-        };
-        node.emit('loaded', payload);
       }
       break;
   }
+
+  const payload: lng.NodeTextLoadedPayload = {
+    type: 'text',
+    dimensions: {
+      width: node.props.width,
+      height: node.props.height,
+    },
+  };
+  node.emit('loaded', payload);
 }
 
 function updateDOMTextMeasurements() {
