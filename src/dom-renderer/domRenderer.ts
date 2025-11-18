@@ -357,6 +357,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       }
       case 'none':
         style += `width: max-content;`;
+        style += `width: -webkit-max-content;`;
         break;
     }
 
@@ -672,7 +673,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               },
             };
             applySubTextureScaling(node, node.imgEl!, srcPos);
-            // Apply legacy fallback layout if needed (older Safari). This may override scaling for unsupported engines.
+
             const resizeMode = (node.props.textureOptions as any)?.resizeMode;
             const clipX = resizeMode?.clipX ?? 0.5;
             const clipY = resizeMode?.clipY ?? 0.5;
@@ -714,8 +715,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         if (srcPos && node.imgEl.complete) {
           applySubTextureScaling(node, node.imgEl, srcPos);
         }
-        // Fallback legacy se necessario e non SubTexture.
-        if (!supportsObjectFit || !supportsObjectPosition) {
+        if (!srcPos && (!supportsObjectFit || !supportsObjectPosition)) {
           const resizeMode = (node.props.textureOptions as any)?.resizeMode;
           const clipX = resizeMode?.clipX ?? 0.5;
           const clipY = resizeMode?.clipY ?? 0.5;
