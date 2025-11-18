@@ -856,10 +856,15 @@ function scheduleUpdateDOMTextMeasurement(node: DOMText) {
   }
 
   if (textNodesToMeasure.size === 0) {
+    const fonts = document.fonts;
     if (document.fonts.status === 'loaded') {
       setTimeout(updateDOMTextMeasurements);
     } else {
-      document.fonts.ready.then(updateDOMTextMeasurements);
+      if (fonts && fonts.ready && typeof fonts.ready.then === 'function') {
+        fonts.ready.then(updateDOMTextMeasurements);
+      } else {
+        setTimeout(updateDOMTextMeasurements);
+      }
     }
   }
 
