@@ -6,23 +6,36 @@ Experimental DOM renderer
 
 import * as lng from '@lightningjs/renderer';
 
-import { Config } from './config.js';
-import {
-  IRendererShader,
-  IRendererStage,
-  IRendererShaderProps,
-  IRendererTextureProps,
-  IRendererTexture,
+import { EventEmitter } from '@lightningjs/renderer/utils';
+import { Config } from '../config.js';
+import type {
+  ExtractProps,
   IRendererMain,
   IRendererNode,
   IRendererNodeProps,
+  IRendererShader,
+  IRendererStage,
   IRendererTextNode,
   IRendererTextNodeProps,
-} from './lightningInit.js';
-import { EventEmitter } from '@lightningjs/renderer/utils';
+} from './domRendererTypes.js';
+import {
+  colorToRgba,
+  buildGradientStops,
+  computeLegacyObjectFit,
+  applySubTextureScaling,
+  getNodeLineHeight,
+} from './domRendererUtils.js';
 
-const colorToRgba = (c: number) =>
-  `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
+// Feature detection for legacy brousers
+const _styleRef: any =
+  typeof document !== 'undefined' ? document.documentElement?.style || {} : {};
+
+const supportsObjectFit: boolean = 'objectFit' in _styleRef;
+const supportsObjectPosition: boolean = 'objectPosition' in _styleRef;
+const supportsMixBlendMode: boolean = 'mixBlendMode' in _styleRef;
+const supportsStandardMask: boolean = 'maskImage' in _styleRef;
+const supportsWebkitMask: boolean = 'webkitMaskImage' in _styleRef;
+const supportsCssMask: boolean = supportsStandardMask || supportsWebkitMask;
 
 function applyEasing(easing: string, progress: number): number {
   switch (easing) {
@@ -252,11 +265,7 @@ function updateNodeParent(node: DOMNode | DOMText) {
   }
 }
 
-function getNodeLineHeight(props: IRendererTextNodeProps): number {
-  return (
-    props.lineHeight ?? Config.fontSettings.lineHeight ?? 1.2 * props.fontSize
-  );
-}
+// getNodeLineHeight moved to domRendererUtils.ts
 
 function updateNodeStyles(node: DOMNode | DOMText) {
   let { props } = node;
@@ -348,6 +357,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       }
       case 'none':
         style += `width: max-content;`;
+        style += `width: -webkit-max-content;`;
         break;
     }
 
@@ -386,57 +396,99 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         : vGradient || hGradient;
 
     let srcImg: string | null = null;
-    let srcPos: null | { x: number; y: number } = null;
+    let srcPos: null | InstanceType<lng.TextureMap['SubTexture']>['props'] =
+      null;
+    let rawImgSrc: string | null = null;
 
     if (
       props.texture != null &&
       props.texture.type === lng.TextureType.subTexture
     ) {
-      srcPos = (props.texture as any).props;
-      srcImg = `url(${(props.texture as any).props.texture.props.src})`;
+      const texture = props.texture as InstanceType<
+        lng.TextureMap['SubTexture']
+      >;
+      srcPos = texture.props;
+      rawImgSrc = (texture.props.texture as any).props.src;
     } else if (props.src) {
-      srcImg = `url(${props.src})`;
+      rawImgSrc = props.src;
+    }
+
+    if (rawImgSrc) {
+      srcImg = `url(${rawImgSrc})`;
     }
 
     let bgStyle = '';
     let borderStyle = '';
     let radiusStyle = '';
     let maskStyle = '';
+    let needsBackgroundLayer = false;
+    let imgStyle = '';
 
-    if (srcImg) {
-      if (props.color !== 0xffffffff && props.color !== 0x00000000) {
-        // use image as a mask
-        bgStyle += `background-color: ${colorToRgba(props.color)}; background-blend-mode: multiply;`;
-        maskStyle += `mask-image: ${srcImg};`;
-        if (srcPos !== null) {
-          maskStyle += `mask-position: -${srcPos.x}px -${srcPos.y}px;`;
-        } else {
-          maskStyle += `mask-size: 100% 100%;`;
+    if (rawImgSrc) {
+      needsBackgroundLayer = true;
+
+      const hasTint = props.color !== 0xffffffff && props.color !== 0x00000000;
+
+      if (hasTint) {
+        bgStyle += `background-color: ${colorToRgba(props.color)};`;
+        if (srcImg) {
+          maskStyle += `mask-image: ${srcImg};`;
+          if (srcPos !== null) {
+            maskStyle += `mask-position: -${srcPos.x}px -${srcPos.y}px;`;
+          } else {
+            maskStyle += `mask-size: 100% 100%;`;
+          }
         }
       } else if (gradient) {
-        // use gradient as a mask
+        // use gradient as a mask when no tint is applied
         maskStyle += `mask-image: ${gradient};`;
       }
 
-      bgStyle += `background-image: ${srcImg};`;
-      bgStyle += `background-repeat: no-repeat;`;
+      const imgStyleParts = [
+        'position: absolute',
+        'top: 0',
+        'left: 0',
+        'right: 0',
+        'bottom: 0',
+        'display: block',
+        'pointer-events: none',
+      ];
 
       if (props.textureOptions.resizeMode?.type) {
-        bgStyle += `background-size: ${props.textureOptions.resizeMode.type}; background-position: center;`;
+        const resizeMode = props.textureOptions.resizeMode;
+        imgStyleParts.push('width: 100%');
+        imgStyleParts.push('height: 100%');
+        imgStyleParts.push(`object-fit: ${resizeMode.type}`);
+
+        // Handle clipX and clipY for object-position
+        const clipX = (resizeMode as any).clipX ?? 0.5;
+        const clipY = (resizeMode as any).clipY ?? 0.5;
+        imgStyleParts.push(`object-position: ${clipX * 100}% ${clipY * 100}%`);
       } else if (srcPos !== null) {
-        bgStyle += `background-position: -${srcPos.x}px -${srcPos.y}px;`;
+        imgStyleParts.push('width: auto');
+        imgStyleParts.push('height: auto');
+        imgStyleParts.push('object-fit: none');
+        imgStyleParts.push(`object-position: -${srcPos.x}px -${srcPos.y}px`);
+      } else if (props.width && !props.height) {
+        imgStyleParts.push('width: 100%');
+        imgStyleParts.push('height: auto');
+      } else if (props.height && !props.width) {
+        imgStyleParts.push('width: auto');
+        imgStyleParts.push('height: 100%');
       } else {
-        bgStyle += 'background-size: 100% 100%;';
+        imgStyleParts.push('width: 100%');
+        imgStyleParts.push('height: 100%');
+        imgStyleParts.push('object-fit: fill');
+      }
+      if (hasTint) {
+        if (supportsMixBlendMode) {
+          imgStyleParts.push('mix-blend-mode: multiply');
+        } else {
+          imgStyleParts.push('opacity: 0.9');
+        }
       }
 
-      if (maskStyle !== '') {
-        bgStyle += maskStyle;
-      }
-      // separate layers are needed for the mask
-      if (maskStyle !== '' && node.divBg == null) {
-        node.div.appendChild((node.divBg = document.createElement('div')));
-        node.div.appendChild((node.divBorder = document.createElement('div')));
-      }
+      imgStyle = imgStyleParts.join('; ') + ';';
     } else if (gradient) {
       bgStyle += `background-image: ${gradient};`;
       bgStyle += `background-repeat: no-repeat;`;
@@ -459,7 +511,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               }
               break;
             }
-            case 'border': {
+            case 'border':
+            case 'borderTop':
+            case 'borderBottom':
+            case 'borderLeft':
+            case 'borderRight': {
               let borderWidth = effect.props?.width;
               let borderColor = effect.props?.color;
               if (
@@ -468,8 +524,96 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                 typeof borderColor === 'number' &&
                 borderColor !== 0
               ) {
-                // css border impacts the element's box size when box-shadow doesn't
-                borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${colorToRgba(borderColor)};`;
+                const rgbaColor = colorToRgba(borderColor);
+                if (effect.type === 'border') {
+                  // Avoid affecting layout sizing while applying uniform borders
+                  borderStyle += `box-shadow: inset 0px 0px 0px ${borderWidth}px ${rgbaColor};`;
+                } else {
+                  const side = effect.type.slice('border'.length).toLowerCase();
+                  borderStyle += `border-${side}: ${borderWidth}px solid ${rgbaColor};`;
+                }
+              }
+              break;
+            }
+            case 'radialGradient': {
+              const rg = effect.props as
+                | Partial<lng.RadialGradientEffectProps>
+                | undefined;
+              const colors = Array.isArray(rg?.colors) ? rg!.colors! : [];
+              const stops = Array.isArray(rg?.stops) ? rg!.stops! : undefined;
+              const pivot = Array.isArray(rg?.pivot) ? rg!.pivot! : [0.5, 0.5];
+              const width =
+                typeof rg?.width === 'number' ? rg!.width! : props.width || 0;
+              const height =
+                typeof rg?.height === 'number' ? rg!.height! : width;
+
+              if (colors.length > 0) {
+                const gradientStops = buildGradientStops(colors, stops);
+                if (gradientStops) {
+                  if (colors.length === 1) {
+                    // Single color -> solid fill
+                    if (srcImg || gradient) {
+                      maskStyle += `mask-image: linear-gradient(${gradientStops});`;
+                    } else {
+                      bgStyle += `background-color: ${colorToRgba(colors[0]!)};`;
+                    }
+                  } else {
+                    const isEllipse =
+                      width > 0 && height > 0 && width !== height;
+                    const pivotX = (pivot[0] ?? 0.5) * 100;
+                    const pivotY = (pivot[1] ?? 0.5) * 100;
+                    let sizePart = '';
+                    if (width > 0 && height > 0) {
+                      if (!isEllipse && width === height) {
+                        sizePart = `${Math.round(width)}px`;
+                      } else {
+                        sizePart = `${Math.round(width)}px ${Math.round(height)}px`;
+                      }
+                    } else {
+                      sizePart = 'closest-side';
+                    }
+                    const radialGradient = `radial-gradient(${isEllipse ? 'ellipse' : 'circle'} ${sizePart} at ${pivotX.toFixed(2)}% ${pivotY.toFixed(2)}%, ${gradientStops})`;
+                    if (srcImg || gradient) {
+                      maskStyle += `mask-image: ${radialGradient};`;
+                    } else {
+                      bgStyle += `background-image: ${radialGradient};`;
+                      bgStyle += `background-repeat: no-repeat;`;
+                      bgStyle += `background-size: 100% 100%;`;
+                    }
+                  }
+                }
+              }
+              break;
+            }
+            case 'linearGradient': {
+              const lg = effect.props as
+                | Partial<lng.LinearGradientEffectProps>
+                | undefined;
+              const colors = Array.isArray(lg?.colors) ? lg!.colors! : [];
+              const stops = Array.isArray(lg?.stops) ? lg!.stops! : undefined;
+              const angleRad = typeof lg?.angle === 'number' ? lg!.angle! : 0; // radians
+
+              if (colors.length > 0) {
+                const gradientStops = buildGradientStops(colors, stops);
+                if (gradientStops) {
+                  if (colors.length === 1) {
+                    if (srcImg || gradient) {
+                      maskStyle += `mask-image: linear-gradient(${gradientStops});`;
+                    } else {
+                      bgStyle += `background-color: ${colorToRgba(colors[0]!)};`;
+                    }
+                  } else {
+                    const angleDeg = 180 * (angleRad / Math.PI - 1);
+                    const linearGradient = `linear-gradient(${angleDeg.toFixed(2)}deg, ${gradientStops})`;
+                    if (srcImg || gradient) {
+                      maskStyle += `mask-image: ${linearGradient};`;
+                    } else {
+                      bgStyle += `background-image: ${linearGradient};`;
+                      bgStyle += `background-repeat: no-repeat;`;
+                      bgStyle += `background-size: 100% 100%;`;
+                    }
+                  }
+                }
               }
               break;
             }
@@ -481,21 +625,146 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       }
     }
 
-    style += radiusStyle;
-    bgStyle += radiusStyle;
-    borderStyle += radiusStyle;
-
-    if (node.divBg == null) {
-      style += bgStyle;
-    } else {
-      bgStyle += 'position: absolute; inset: 0; z-index: -1;';
-      node.divBg.setAttribute('style', bgStyle);
+    if (maskStyle !== '') {
+      if (!supportsStandardMask && supportsWebkitMask) {
+        maskStyle = maskStyle.replace(/mask-/g, '-webkit-mask-');
+      } else if (!supportsCssMask) {
+        maskStyle = '';
+      }
+      if (maskStyle !== '') {
+        needsBackgroundLayer = true;
+      }
     }
+
+    style += radiusStyle;
+
+    if (needsBackgroundLayer) {
+      if (node.divBg == null) {
+        node.divBg = document.createElement('div');
+        node.div.insertBefore(node.divBg, node.div.firstChild);
+      } else if (node.divBg.parentElement !== node.div) {
+        node.div.insertBefore(node.divBg, node.div.firstChild);
+      }
+
+      let bgLayerStyle =
+        'position: absolute; top:0; left:0; right:0; bottom:0; z-index: -1; pointer-events: none; overflow: hidden;';
+      if (bgStyle) {
+        bgLayerStyle += bgStyle;
+      }
+      if (maskStyle) {
+        bgLayerStyle += maskStyle;
+      }
+
+      node.divBg.setAttribute('style', bgLayerStyle + radiusStyle);
+
+      if (rawImgSrc) {
+        if (!node.imgEl) {
+          node.imgEl = document.createElement('img');
+          node.imgEl.alt = '';
+          node.imgEl.setAttribute('aria-hidden', 'true');
+          node.imgEl.setAttribute('loading', 'lazy');
+
+          node.imgEl.addEventListener('load', () => {
+            const payload: lng.NodeTextureLoadedPayload = {
+              type: 'texture',
+              dimensions: {
+                width: node.imgEl!.naturalWidth,
+                height: node.imgEl!.naturalHeight,
+              },
+            };
+            applySubTextureScaling(node, node.imgEl!, srcPos);
+
+            const resizeMode = (node.props.textureOptions as any)?.resizeMode;
+            const clipX = resizeMode?.clipX ?? 0.5;
+            const clipY = resizeMode?.clipY ?? 0.5;
+            computeLegacyObjectFit(
+              node,
+              node.imgEl!,
+              resizeMode,
+              clipX,
+              clipY,
+              srcPos,
+              supportsObjectFit,
+              supportsObjectPosition,
+            );
+            node.emit('loaded', payload);
+          });
+
+          node.imgEl.addEventListener('error', () => {
+            if (node.imgEl) {
+              node.imgEl.src = '';
+              node.imgEl.style.display = 'none';
+            }
+
+            const payload: lng.NodeTextureFailedPayload = {
+              type: 'texture',
+              error: new Error(`Failed to load image: ${rawImgSrc}`),
+            };
+            node.emit('failed', payload);
+          });
+        }
+        if (node.imgEl.dataset.rawSrc !== rawImgSrc) {
+          node.imgEl.src = rawImgSrc;
+          node.imgEl.dataset.rawSrc = rawImgSrc;
+        }
+        if (node.imgEl.parentElement !== node.divBg) {
+          node.divBg.appendChild(node.imgEl);
+        }
+        node.imgEl.setAttribute('style', imgStyle);
+
+        if (srcPos && node.imgEl.complete) {
+          applySubTextureScaling(node, node.imgEl, srcPos);
+        }
+        if (!srcPos && (!supportsObjectFit || !supportsObjectPosition)) {
+          const resizeMode = (node.props.textureOptions as any)?.resizeMode;
+          const clipX = resizeMode?.clipX ?? 0.5;
+          const clipY = resizeMode?.clipY ?? 0.5;
+          computeLegacyObjectFit(
+            node,
+            node.imgEl,
+            resizeMode,
+            clipX,
+            clipY,
+            srcPos,
+            supportsObjectFit,
+            supportsObjectPosition,
+          );
+        }
+      } else if (node.imgEl) {
+        node.imgEl.remove();
+        node.imgEl = undefined;
+      }
+    } else {
+      if (node.imgEl) {
+        node.imgEl.remove();
+        node.imgEl = undefined;
+      }
+      if (node.divBg) {
+        node.divBg.remove();
+        node.divBg = undefined;
+      }
+      style += bgStyle;
+    }
+
+    const needsSeparateBorderLayer = needsBackgroundLayer && maskStyle !== '';
+
+    if (needsSeparateBorderLayer) {
+      if (node.divBorder == null) {
+        node.divBorder = document.createElement('div');
+        node.div.appendChild(node.divBorder);
+      }
+    } else if (node.divBorder) {
+      node.divBorder.remove();
+      node.divBorder = undefined;
+    }
+
     if (node.divBorder == null) {
       style += borderStyle;
     } else {
-      borderStyle += 'position: absolute; inset: 0; z-index: -1;';
-      node.divBorder.setAttribute('style', borderStyle);
+      let borderLayerStyle =
+        'position: absolute; top:0; left:0; right:0; bottom:0; z-index: -1; pointer-events: none;';
+      borderLayerStyle += borderStyle;
+      node.divBorder.setAttribute('style', borderLayerStyle + radiusStyle);
     }
   }
 
@@ -509,19 +778,19 @@ const textNodesToMeasure = new Set<DOMText>();
 type Size = { width: number; height: number };
 
 function getElSize(node: DOMNode): Size {
-  let rect = node.div.getBoundingClientRect();
+  const rawRect = node.div.getBoundingClientRect();
 
-  let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
-  rect.height /= dpr;
-  rect.width /= dpr;
+  const dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
+  let width = rawRect.width / dpr;
+  let height = rawRect.height / dpr;
 
   for (;;) {
     if (node.props.scale != null && node.props.scale !== 1) {
-      rect.height /= node.props.scale;
-      rect.width /= node.props.scale;
+      width /= node.props.scale;
+      height /= node.props.scale;
     } else {
-      rect.height /= node.props.scaleY;
-      rect.width /= node.props.scaleX;
+      width /= node.props.scaleX;
+      height /= node.props.scaleY;
     }
 
     if (node.parent instanceof DOMNode) {
@@ -531,7 +800,7 @@ function getElSize(node: DOMNode): Size {
     }
   }
 
-  return rect;
+  return { width, height };
 }
 
 /*
@@ -547,7 +816,6 @@ function updateDOMTextSize(node: DOMText): void {
       if (node.props.height !== size.height) {
         node.props.height = size.height;
         updateNodeStyles(node);
-        node.emit('loaded');
       }
       break;
     case 'none':
@@ -559,10 +827,18 @@ function updateDOMTextSize(node: DOMText): void {
         node.props.width = size.width;
         node.props.height = size.height;
         updateNodeStyles(node);
-        node.emit('loaded');
       }
       break;
   }
+
+  const payload: lng.NodeTextLoadedPayload = {
+    type: 'text',
+    dimensions: {
+      width: node.props.width,
+      height: node.props.height,
+    },
+  };
+  node.emit('loaded', payload);
 }
 
 function updateDOMTextMeasurements() {
@@ -580,10 +856,15 @@ function scheduleUpdateDOMTextMeasurement(node: DOMText) {
   }
 
   if (textNodesToMeasure.size === 0) {
+    const fonts = document.fonts;
     if (document.fonts.status === 'loaded') {
       setTimeout(updateDOMTextMeasurements);
     } else {
-      document.fonts.ready.then(updateDOMTextMeasurements);
+      if (fonts && fonts.ready && typeof fonts.ready.then === 'function') {
+        fonts.ready.then(updateDOMTextMeasurements);
+      } else {
+        setTimeout(updateDOMTextMeasurements);
+      }
     }
   }
 
@@ -604,7 +885,7 @@ function updateNodeData(node: DOMNode | DOMText) {
 function resolveNodeDefaults(
   props: Partial<IRendererNodeProps>,
 ): IRendererNodeProps {
-  const color = props.color ?? 0xffffffff;
+  const color = props.color ?? 0x00000000;
 
   return {
     x: props.x ?? 0,
@@ -624,7 +905,7 @@ function resolveNodeDefaults(
     colorBr: props.colorBr ?? props.colorBottom ?? props.colorRight ?? color,
     colorTl: props.colorTl ?? props.colorTop ?? props.colorLeft ?? color,
     colorTr: props.colorTr ?? props.colorTop ?? props.colorRight ?? color,
-    zIndex: props.zIndex ?? 0,
+    zIndex: Math.ceil(props.zIndex ?? 0),
     zIndexLocked: props.zIndexLocked ?? 0,
     parent: props.parent ?? null,
     texture: props.texture ?? null,
@@ -689,10 +970,11 @@ const defaultShader: IRendererShader = {
 
 let lastNodeId = 0;
 
-class DOMNode extends EventEmitter implements IRendererNode {
+export class DOMNode extends EventEmitter implements IRendererNode {
   div = document.createElement('div');
   divBg: HTMLElement | undefined;
   divBorder: HTMLElement | undefined;
+  imgEl: HTMLImageElement | undefined;
 
   id = ++lastNodeId;
 
@@ -847,7 +1129,7 @@ class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.zIndex;
   }
   set zIndex(v) {
-    this.props.zIndex = v;
+    this.props.zIndex = Math.ceil(v);
     updateNodeStyles(this);
   }
   get texture() {
@@ -1194,11 +1476,12 @@ function updateRootPosition(this: DOMRendererMain) {
 export class DOMRendererMain implements IRendererMain {
   root: DOMNode;
   canvas: HTMLCanvasElement;
-
   stage: IRendererStage;
+  private eventListeners: Map<string, Set<(target: any, data: any) => void>> =
+    new Map();
 
   constructor(
-    public settings: lng.RendererMainSettings,
+    public settings: Partial<lng.RendererMainSettings>,
     rawTarget: string | HTMLElement,
   ) {
     let target: HTMLElement;
@@ -1249,7 +1532,7 @@ export class DOMRendererMain implements IRendererMain {
         width: settings.appWidth ?? 1920,
         height: settings.appHeight ?? 1080,
         shader: defaultShader,
-        zIndex: 65534,
+        zIndex: 1,
       }),
     );
     this.stage.root = this.root;
@@ -1283,6 +1566,77 @@ export class DOMRendererMain implements IRendererMain {
     window.addEventListener('resize', updateRootPosition.bind(this));
   }
 
+  removeAllListeners(): void {
+    if (this.eventListeners.size === 0) return;
+    this.eventListeners.forEach((listeners) => listeners.clear());
+    this.eventListeners.clear();
+  }
+
+  once<K extends string | number>(
+    event: Extract<K, string>,
+    listener: { [s: string]: (target: any, data: any) => void }[K],
+  ): void {
+    const wrappedListener = (target: any, data: any) => {
+      this.off(event, wrappedListener);
+      listener(target, data);
+    };
+    this.on(event, wrappedListener);
+  }
+
+  on(name: string, callback: (target: any, data: any) => void) {
+    let listeners = this.eventListeners.get(name);
+    if (!listeners) {
+      listeners = new Set();
+      this.eventListeners.set(name, listeners);
+    }
+    listeners.add(callback);
+  }
+
+  off<K extends string | number>(
+    event: Extract<K, string>,
+    listener: { [s: string]: (target: any, data: any) => void }[K],
+  ): void {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        this.eventListeners.delete(event);
+      }
+    }
+  }
+
+  emit<K extends string | number>(
+    event: Extract<K, string>,
+    data: Parameters<any>[1],
+  ): void;
+  emit<K extends string | number>(
+    event: Extract<K, string>,
+    target: any,
+    data: Parameters<any>[1],
+  ): void;
+  emit<K extends string | number>(
+    event: Extract<K, string>,
+    targetOrData: any,
+    maybeData?: Parameters<any>[1],
+  ): void {
+    const listeners = this.eventListeners.get(event);
+    if (!listeners || listeners.size === 0) {
+      return;
+    }
+
+    const hasExplicitTarget = arguments.length === 3;
+    const target = hasExplicitTarget ? targetOrData : this.root;
+    const data = hasExplicitTarget ? maybeData : targetOrData;
+
+    for (const listener of Array.from(listeners)) {
+      try {
+        listener(target, data);
+      } catch (error) {
+        console.error(`Error in listener for event "${event}"`, error);
+      }
+    }
+  }
+
   createNode(props: Partial<IRendererNodeProps>): IRendererNode {
     return new DOMNode(this.stage, resolveNodeDefaults(props));
   }
@@ -1291,17 +1645,21 @@ export class DOMRendererMain implements IRendererMain {
     return new DOMText(this.stage, resolveTextNodeDefaults(props));
   }
 
-  createShader(
-    shaderType: string,
-    props?: IRendererShaderProps,
-  ): IRendererShader {
-    return { shaderType, props, program: {} };
+  createShader<ShType extends keyof lng.ShaderMap>(
+    shaderType: ShType,
+    props?: ExtractProps<lng.ShaderMap[ShType]>,
+  ): lng.ShaderController<ShType> {
+    return {
+      shaderType,
+      props,
+      program: {},
+    } as unknown as lng.ShaderController<ShType>;
   }
 
-  createTexture(
-    textureType: keyof lng.TextureMap,
-    props: IRendererTextureProps,
-  ): IRendererTexture {
+  createTexture<Type extends keyof lng.TextureMap>(
+    textureType: Type,
+    props: ExtractProps<lng.TextureMap[Type]>,
+  ): InstanceType<lng.TextureMap[Type]> {
     let type = lng.TextureType.generic;
     switch (textureType) {
       case 'SubTexture':
@@ -1320,18 +1678,51 @@ export class DOMRendererMain implements IRendererMain {
         type = lng.TextureType.renderToTexture;
         break;
     }
-    return { type, props };
+    return { type, props } as InstanceType<lng.TextureMap[Type]>;
   }
 
-  createEffect(
-    type: keyof lng.EffectMap,
-    props: Record<string, any>,
-    name?: string,
-  ): lng.EffectDescUnion {
-    return { type, props, name } as any;
+  createEffect<
+    Type extends keyof lng.EffectMap,
+    Name extends string | undefined = undefined,
+  >(
+    type: Type,
+    props: ExtractProps<lng.EffectMap[Type]>,
+    name?: Name,
+  ): lng.EffectDesc<{ name: Name; type: Type }> {
+    return { type, props, name: name as Name } as unknown as lng.EffectDesc<{
+      name: Name;
+      type: Type;
+    }>;
   }
+}
 
-  on(name: string, callback: (target: any, data: any) => void) {
-    console.log('on', name, callback);
+export function loadFontToDom(font: lng.WebTrFontFaceOptions): void {
+  const fontFaceDescriptors: FontFaceDescriptors | undefined = font.descriptors
+    ? {
+        ...font.descriptors,
+        weight:
+          typeof font.descriptors.weight === 'number'
+            ? String(font.descriptors.weight)
+            : font.descriptors.weight,
+      }
+    : undefined;
+
+  const fontFace = new FontFace(
+    font.fontFamily,
+    `url(${font.fontUrl})`,
+    fontFaceDescriptors,
+  );
+
+  if (typeof document !== 'undefined' && 'fonts' in document) {
+    const fontSet = document.fonts as FontFaceSet & {
+      add?: (font: FontFace) => FontFaceSet;
+    };
+    fontSet.add?.(fontFace);
   }
+}
+
+export function isDomRenderer(
+  r: lng.RendererMain | DOMRendererMain,
+): r is DOMRendererMain {
+  return r instanceof DOMRendererMain;
 }

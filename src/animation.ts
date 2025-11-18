@@ -6,7 +6,8 @@ import {
   type ElementNode,
   LightningRendererNumberProps,
 } from './elementNode.js';
-import { type IRendererStage } from './lightningInit.js';
+import { renderer } from './lightningInit.js';
+import { CoreAnimation } from './intrinsicTypes.js';
 
 /**
  * Simplified Animation Settings
@@ -43,15 +44,15 @@ interface SimpleAnimationNodeConfig {
 export class SimpleAnimation {
   private nodeConfigs: SimpleAnimationNodeConfig[] = [];
   private isRegistered = false;
-  private stage: IRendererStage | undefined;
+  private stage: typeof renderer.stage | undefined;
 
-  register(stage: IRendererStage) {
+  register(stage: typeof renderer.stage) {
     if (this.isRegistered) {
       return;
     }
     this.isRegistered = true;
     this.stage = stage;
-    stage.animationManager.registerAnimation(this);
+    stage.animationManager.registerAnimation(this as unknown as CoreAnimation);
   }
 
   /**
@@ -173,7 +174,9 @@ export class SimpleAnimation {
         this.nodeConfigs.splice(i, 1);
       }
       if (this.nodeConfigs.length === 0) {
-        this.stage?.animationManager.unregisterAnimation(this);
+        this.stage?.animationManager.unregisterAnimation(
+          this as unknown as CoreAnimation,
+        );
         this.isRegistered = false;
       }
     }

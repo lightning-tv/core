@@ -1,56 +1,61 @@
+import type {
+  BaseShaderController,
+  EffectDescUnion,
+  IAnimationController,
+  INode,
+  INodeAnimateProps,
+  INodeProps,
+  ITextNode,
+  ITextNodeProps,
+  LinearGradientEffectProps,
+  RadialGradientEffectProps,
+  RadialProgressEffectProps,
+  RendererMain,
+  ShaderController,
+  ShaderRef,
+} from '@lightningjs/renderer';
+import { assertTruthy } from '@lightningjs/renderer/utils';
+import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
+import { Config, isDev, SHADERS_ENABLED } from './config.js';
 import {
   IRendererNode,
   IRendererNodeProps,
   IRendererShader,
-  IRendererShaderProps,
   IRendererTextNode,
   IRendererTextNodeProps,
-  renderer,
-} from './lightningInit.js';
+} from './dom-renderer/domRendererTypes.js';
+import calculateFlex from './flex.js';
+import { ForwardFocusHandler, setActiveElement } from './focusManager.js';
 import {
+  type AnimationEventHandler,
+  type AnimationEvents,
+  type AnimationSettings,
   type BorderRadius,
   type BorderStyle,
-  type StyleEffects,
-  type AnimationSettings,
   type ElementText,
-  type Styles,
-  type AnimationEvents,
-  type AnimationEventHandler,
-  AddColorString,
-  TextProps,
-  TextNode,
   type OnEvent,
+  type StyleEffects,
+  type Styles,
+  AddColorString,
   NewOmit,
+  TextNode,
+  TextProps,
 } from './intrinsicTypes.js';
+import { renderer } from './lightningInit.js';
+import { NodeType } from './nodeTypes.js';
 import States, { type NodeStates } from './states.js';
-import calculateFlex from './flex.js';
 import {
-  log,
   isArray,
-  isNumber,
-  isFunc,
-  keyExists,
-  isINode,
   isElementNode,
   isElementText,
-  logRenderTree,
+  isFunc,
   isFunction,
+  isINode,
+  isNumber,
+  keyExists,
+  log,
+  logRenderTree,
 } from './utils.js';
-import { Config, isDev, SHADERS_ENABLED } from './config.js';
-import type {
-  RendererMain,
-  INode,
-  INodeAnimateProps,
-  LinearGradientEffectProps,
-  IAnimationController,
-  EffectDescUnion,
-  RadialGradientEffectProps,
-  RadialProgressEffectProps,
-} from '@lightningjs/renderer';
-import { assertTruthy } from '@lightningjs/renderer/utils';
-import { NodeType } from './nodeTypes.js';
-import { ForwardFocusHandler, setActiveElement } from './focusManager.js';
-import simpleAnimation, { SimpleAnimationSettings } from './animation.js';
 
 let layoutRunQueued = false;
 const layoutQueue = new Set<ElementNode>();
@@ -76,7 +81,7 @@ function addToLayoutQueue(node: ElementNode) {
 function convertEffectsToShader(
   node: ElementNode,
   styleEffects: StyleEffects,
-): IRendererShader {
+): IRendererShader | ShaderController<'DynamicShader'> {
   const effects: EffectDescUnion[] = [];
   for (let type in styleEffects) {
     const props = styleEffects[type as keyof StyleEffects];
@@ -89,6 +94,7 @@ function convertEffectsToShader(
       effects.push(renderer.createEffect(type as any, props, type));
     }
   }
+
   return renderer.createShader('DynamicShader', { effects });
 }
 
@@ -273,8 +279,9 @@ export interface ElementNode extends RendererNode {
    * The underlying Lightning Renderer node object. This is where the properties are ultimately set for rendering.
    */
   lng:
-    | Partial<ElementNode>
+    | INode
     | IRendererNode
+    | Partial<ElementNode>
     | (IRendererTextNode & { shader?: any });
   /**
    * A reference to the `ElementNode` instance. Can be an object or a callback function.
@@ -702,11 +709,9 @@ export class ElementNode extends Object {
     return undefined;
   }
 
-  set shader(
-    shaderProps: IRendererShader | [kind: string, props: IRendererShaderProps],
-  ) {
+  set shader(shaderProps: ShaderRef | typeof renderer.createShader) {
     this.lng.shader = isArray(shaderProps)
-      ? renderer.createShader(...shaderProps)
+      ? renderer.createShader(shaderProps[0], shaderProps[1])
       : shaderProps;
   }
 
@@ -757,7 +762,8 @@ export class ElementNode extends Object {
       }
     }
 
-    (this.lng[name as keyof IRendererNode] as number | string) = value;
+    (this.lng[name as keyof (IRendererNode | INode)] as number | string) =
+      value;
   }
 
   animate(
@@ -1233,8 +1239,9 @@ export class ElementNode extends Object {
       }
 
       isDev && log('Rendering: ', this, props);
+
       node.lng = renderer.createTextNode(
-        props as unknown as IRendererTextNodeProps,
+        props as Partial<ITextNodeProps> & Partial<IRendererTextNodeProps>,
       );
       if (parent.requiresLayout()) {
         if (!props.width || !props.height) {
@@ -1271,7 +1278,11 @@ export class ElementNode extends Object {
       }
 
       isDev && log('Rendering: ', this, props);
-      node.lng = renderer.createNode(props as IRendererNodeProps);
+
+      node.lng = renderer.createNode(
+        props as Partial<INodeProps<BaseShaderController>> &
+          Partial<IRendererNodeProps>,
+      );
 
       if (node._hasRenderedChildren) {
         node._hasRenderedChildren = false;
@@ -1299,14 +1310,15 @@ export class ElementNode extends Object {
 
     if (node.onEvent) {
       for (const [name, handler] of Object.entries(node.onEvent)) {
-        node.lng.on(name, (_inode, data) => handler.call(node, node, data));
+        if (typeof node.lng.on === 'function') {
+          node.lng.on(name, (_inode, data) => handler.call(node, node, data));
+        }
       }
     }
 
     // L3 Inspector adds div to the lng object
-    if (node.lng?.div) {
-      node.lng.div.element = node;
-    }
+    const div: HTMLElement | undefined = (node.lng as any)?.div;
+    if (div) div.element = node;
 
     if (node._type === NodeType.Element) {
       // only element nodes will have children that need rendering
