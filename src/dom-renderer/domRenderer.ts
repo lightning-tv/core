@@ -661,6 +661,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           node.imgEl = document.createElement('img');
           node.imgEl.alt = '';
           node.imgEl.setAttribute('aria-hidden', 'true');
+          node.imgEl.setAttribute('loading', 'lazy');
 
           node.imgEl.addEventListener('load', () => {
             const payload: lng.NodeTextureLoadedPayload = {
@@ -670,6 +671,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                 height: node.imgEl!.naturalHeight,
               },
             };
+            applySubTextureScaling(node, node.imgEl!, srcPos);
             node.emit('loaded', payload);
           });
 
@@ -699,7 +701,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           applySubTextureScaling(node, node.imgEl, srcPos);
         }
         // Fallback legacy se necessario e non SubTexture.
-        if (!srcPos && (!supportsObjectFit || !supportsObjectPosition)) {
+        if (!supportsObjectFit || !supportsObjectPosition) {
           const resizeMode = (node.props.textureOptions as any)?.resizeMode;
           const clipX = (resizeMode as any)?.clipX ?? 0.5;
           const clipY = (resizeMode as any)?.clipY ?? 0.5;
