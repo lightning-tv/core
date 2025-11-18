@@ -778,19 +778,19 @@ const textNodesToMeasure = new Set<DOMText>();
 type Size = { width: number; height: number };
 
 function getElSize(node: DOMNode): Size {
-  let rect = node.div.getBoundingClientRect();
+  const rawRect = node.div.getBoundingClientRect();
 
-  let dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
-  rect.height /= dpr;
-  rect.width /= dpr;
+  const dpr = Config.rendererOptions?.deviceLogicalPixelRatio ?? 1;
+  let width = rawRect.width / dpr;
+  let height = rawRect.height / dpr;
 
   for (;;) {
     if (node.props.scale != null && node.props.scale !== 1) {
-      rect.height /= node.props.scale;
-      rect.width /= node.props.scale;
+      width /= node.props.scale;
+      height /= node.props.scale;
     } else {
-      rect.height /= node.props.scaleY;
-      rect.width /= node.props.scaleX;
+      width /= node.props.scaleX;
+      height /= node.props.scaleY;
     }
 
     if (node.parent instanceof DOMNode) {
@@ -800,7 +800,7 @@ function getElSize(node: DOMNode): Size {
     }
   }
 
-  return rect;
+  return { width, height };
 }
 
 /*
