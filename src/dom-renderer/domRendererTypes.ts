@@ -70,7 +70,7 @@ export interface IRendererNodeProps
   parent: IRendererNode | null;
 }
 
-/** Based on {@link lng.INode} */
+/** Based on {@link lng.CoreNode} */
 export interface IRendererNode extends IRendererNodeShaded, IRendererNodeProps {
   div?: HTMLElement;
   props: IRendererNodeProps;

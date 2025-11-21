@@ -356,8 +356,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         break;
       }
       case 'none':
-        style += `width: max-content;`;
         style += `width: -webkit-max-content;`;
+        style += `width: max-content;`;
         break;
     }
 
@@ -377,7 +377,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   }
   // <Node>
   else {
-    if (props.width !== 0) style += `width: ${props.width}px;`;
+    if (props.width !== 0)
+      style += `width: ${props.width < 0 ? 0 : props.width}px;`;
     if (props.height !== 0) style += `height: ${props.height}px;`;
 
     let vGradient =
@@ -769,6 +770,39 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   }
 
   node.div.setAttribute('style', style);
+
+  if (node instanceof DOMNode && node !== node.stage.root) {
+    const textureType = props.texture?.type;
+    const hasTextureSrc =
+      !!props.src ||
+      textureType === lng.TextureType.image ||
+      textureType === lng.TextureType.subTexture;
+    if (hasTextureSrc) {
+      try {
+        const rootDiv = (node.stage.root as DOMNode).div;
+        const rootRect = rootDiv.getBoundingClientRect();
+        const nodeRect = node.div.getBoundingClientRect();
+        const inBounds =
+          nodeRect.right >= rootRect.left &&
+          nodeRect.left <= rootRect.right &&
+          nodeRect.bottom >= rootRect.top &&
+          nodeRect.top <= rootRect.bottom;
+        const fullyInside =
+          nodeRect.left >= rootRect.left &&
+          nodeRect.right <= rootRect.right &&
+          nodeRect.top >= rootRect.top &&
+          nodeRect.bottom <= rootRect.bottom;
+        const OUT = 2,
+          IN = 4,
+          VIEW = 8;
+        let next: lng.CoreNodeRenderState;
+        if (!inBounds) next = OUT;
+        else if (fullyInside) next = VIEW;
+        else next = IN;
+        node.updateRenderState(next);
+      } catch {}
+    }
+  }
 }
 
 const fontFamiliesToLoad = new Set<string>();
@@ -970,6 +1004,13 @@ const defaultShader: IRendererShader = {
 
 let lastNodeId = 0;
 
+const CoreNodeRenderStateMap = new Map<number, string>([
+  [0, 'init'],
+  [2, 'outOfBounds'],
+  [4, 'inBounds'],
+  [8, 'inViewport'],
+]);
+
 export class DOMNode extends EventEmitter implements IRendererNode {
   div = document.createElement('div');
   divBg: HTMLElement | undefined;
@@ -1012,6 +1053,17 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   }
 
   animate = animate;
+
+  updateRenderState(renderState: lng.CoreNodeRenderState) {
+    if (renderState === this.renderState) return;
+    const previous = this.renderState;
+    this.renderState = renderState;
+    const event = CoreNodeRenderStateMap.get(renderState);
+    debugger;
+    if (event && event !== 'init') {
+      this.emit(event, { previous, current: renderState });
+    }
+  }
 
   get x() {
     return this.props.x;
