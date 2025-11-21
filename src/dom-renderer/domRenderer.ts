@@ -24,6 +24,8 @@ import {
   computeLegacyObjectFit,
   applySubTextureScaling,
   getNodeLineHeight,
+  applyEasing,
+  interpolateProp,
 } from './domRendererUtils.js';
 
 // Feature detection for legacy brousers
@@ -36,46 +38,6 @@ const supportsMixBlendMode: boolean = 'mixBlendMode' in _styleRef;
 const supportsStandardMask: boolean = 'maskImage' in _styleRef;
 const supportsWebkitMask: boolean = 'webkitMaskImage' in _styleRef;
 const supportsCssMask: boolean = supportsStandardMask || supportsWebkitMask;
-
-function applyEasing(easing: string, progress: number): number {
-  switch (easing) {
-    case 'linear':
-    default:
-      return progress;
-    case 'ease-in':
-      return progress * progress;
-    case 'ease-out':
-      return progress * (2 - progress);
-    case 'ease-in-out':
-      return progress < 0.5
-        ? 2 * progress * progress
-        : -1 + (4 - 2 * progress) * progress;
-  }
-}
-
-function interpolate(start: number, end: number, t: number): number {
-  return start + (end - start) * t;
-}
-
-function interpolateColor(start: number, end: number, t: number): number {
-  return (
-    (interpolate((start >> 24) & 0xff, (end >> 24) & 0xff, t) << 24) |
-    (interpolate((start >> 16) & 0xff, (end >> 16) & 0xff, t) << 16) |
-    (interpolate((start >> 8) & 0xff, (end >> 8) & 0xff, t) << 8) |
-    interpolate(start & 0xff, end & 0xff, t)
-  );
-}
-
-function interpolateProp(
-  name: string,
-  start: number,
-  end: number,
-  t: number,
-): number {
-  return name.startsWith('color')
-    ? interpolateColor(start, end, t)
-    : interpolate(start, end, t);
-}
 
 /*
  Animations
