@@ -1,7 +1,9 @@
 // Utilities extracted from domRenderer.ts for clarity
-import { TextureMap } from '@lightningjs/renderer';
+import * as lng from '@lightningjs/renderer';
 import { Config } from '../config.js';
 import { DOMNode } from './domRenderer.js';
+
+// #region Color & Gradient Utils
 
 export const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
@@ -109,7 +111,7 @@ export function computeLegacyObjectFit(
 export function applySubTextureScaling(
   node: DOMNode,
   img: HTMLImageElement,
-  srcPos: InstanceType<TextureMap['SubTexture']>['props'] | null,
+  srcPos: InstanceType<lng.TextureMap['SubTexture']>['props'] | null,
 ) {
   if (!srcPos) return;
   const regionW = node.props.srcWidth ?? srcPos.width;
@@ -190,4 +192,76 @@ export function interpolateProp(
   return name.startsWith('color')
     ? interpolateColor(start, end, t)
     : interpolate(start, end, t);
+}
+
+// #region Renderer State Utils
+
+export function isRenderStateInBounds(state: lng.CoreNodeRenderState): boolean {
+  return state === 4 || state === 8;
+}
+
+export function nodeHasTextureSource(node: DOMNode): boolean {
+  const textureType = node.props.texture?.type;
+  return (
+    !!node.props.src ||
+    textureType === lng.TextureType.image ||
+    textureType === lng.TextureType.subTexture
+  );
+}
+
+export function normalizeBoundsMargin(
+  margin: number | [number, number, number, number] | null | undefined,
+): [number, number, number, number] {
+  if (margin == null) return [0, 0, 0, 0];
+  if (typeof margin === 'number') {
+    return [margin, margin, margin, margin];
+  }
+  if (Array.isArray(margin) && margin.length === 4) {
+    return [margin[0] ?? 0, margin[1] ?? 0, margin[2] ?? 0, margin[3] ?? 0];
+  }
+  return [0, 0, 0, 0];
+}
+
+export function computeRenderStateForNode(
+  node: DOMNode,
+): lng.CoreNodeRenderState | null {
+  const stageRoot = node.stage.root as DOMNode | undefined;
+  if (!stageRoot || stageRoot === node) return null;
+
+  const rootWidth = stageRoot.props.width ?? 0;
+  const rootHeight = stageRoot.props.height ?? 0;
+  if (rootWidth <= 0 || rootHeight <= 0) return 4;
+
+  const [marginTop, marginRight, marginBottom, marginLeft] =
+    normalizeBoundsMargin(
+      node.props.boundsMargin ?? node.stage.renderer.boundsMargin,
+    );
+
+  const width = node.props.width ?? 0;
+  const height = node.props.height ?? 0;
+
+  const left = node.absX;
+  const top = node.absY;
+  const right = left + width;
+  const bottom = top + height;
+
+  const expandedLeft = -marginLeft;
+  const expandedTop = -marginTop;
+  const expandedRight = rootWidth + marginRight;
+  const expandedBottom = rootHeight + marginBottom;
+
+  const intersects =
+    right >= expandedLeft &&
+    left <= expandedRight &&
+    bottom >= expandedTop &&
+    top <= expandedBottom;
+
+  if (!intersects) {
+    return 2;
+  }
+
+  const fullyInside =
+    left >= 0 && right <= rootWidth && top >= 0 && bottom <= rootHeight;
+
+  return fullyInside ? 8 : 4;
 }
