@@ -87,6 +87,8 @@ function updateAnimations(time: number) {
       // Animation complete
       else {
         Object.assign(task.node.props, task.propsEnd);
+        task.node.boundsDirty = true;
+        task.node.markChildrenBoundsDirty();
         updateNodeStyles(task.node);
 
         task.stop();
@@ -222,8 +224,9 @@ function animate(
 let elMap = new WeakMap<DOMNode, HTMLElement>();
 
 function updateNodeParent(node: DOMNode | DOMText) {
-  if (node.parent != null) {
-    elMap.get(node.parent as DOMNode)!.appendChild(node.div);
+  const parent = node.props.parent;
+  if (parent instanceof DOMNode) {
+    elMap.get(parent)!.appendChild(node.div);
   }
 }
 
@@ -626,6 +629,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           node.imgEl.alt = '';
           node.imgEl.setAttribute('aria-hidden', 'true');
           node.imgEl.setAttribute('loading', 'lazy');
+          node.imgEl.removeAttribute('src');
 
           node.imgEl.addEventListener('load', () => {
             const payload: lng.NodeTextureLoadedPayload = {
@@ -635,7 +639,12 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                 height: node.imgEl!.naturalHeight,
               },
             };
-            applySubTextureScaling(node, node.imgEl!, srcPos);
+            node.imgEl!.style.display = '';
+            applySubTextureScaling(
+              node,
+              node.imgEl!,
+              node.lazyImageSubTextureProps,
+            );
 
             const resizeMode = (node.props.textureOptions as any)?.resizeMode;
             const clipX = resizeMode?.clipX ?? 0.5;
@@ -646,7 +655,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               resizeMode,
               clipX,
               clipY,
-              srcPos,
+              node.lazyImageSubTextureProps,
               supportsObjectFit,
               supportsObjectPosition,
             );
@@ -655,30 +664,50 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
           node.imgEl.addEventListener('error', () => {
             if (node.imgEl) {
-              node.imgEl.src = '';
+              node.imgEl.removeAttribute('src');
               node.imgEl.style.display = 'none';
+              delete node.imgEl.dataset.rawSrc;
             }
+
+            const failedSrc =
+              node.imgEl?.dataset.pendingSrc || node.lazyImagePendingSrc || '';
 
             const payload: lng.NodeTextureFailedPayload = {
               type: 'texture',
-              error: new Error(`Failed to load image: ${rawImgSrc}`),
+              error: new Error(`Failed to load image: ${failedSrc}`),
             };
             node.emit('failed', payload);
           });
         }
-        if (node.imgEl.dataset.rawSrc !== rawImgSrc) {
-          node.imgEl.src = rawImgSrc;
-          node.imgEl.dataset.rawSrc = rawImgSrc;
-        }
+
+        node.lazyImagePendingSrc = rawImgSrc;
+        node.lazyImageSubTextureProps = srcPos;
+        node.imgEl.dataset.pendingSrc = rawImgSrc;
+
         if (node.imgEl.parentElement !== node.divBg) {
           node.divBg.appendChild(node.imgEl);
         }
         node.imgEl.setAttribute('style', imgStyle);
 
-        if (srcPos && node.imgEl.complete) {
+        if (isRenderStateInBounds(node.renderState)) {
+          node.applyPendingImageSrc();
+        } else if (!node.imgEl.dataset.rawSrc) {
+          node.imgEl.removeAttribute('src');
+        }
+
+        if (
+          srcPos &&
+          node.imgEl.complete &&
+          node.imgEl.dataset.rawSrc === rawImgSrc
+        ) {
           applySubTextureScaling(node, node.imgEl, srcPos);
         }
-        if (!srcPos && (!supportsObjectFit || !supportsObjectPosition)) {
+        if (
+          !srcPos &&
+          node.imgEl.complete &&
+          (!supportsObjectFit || !supportsObjectPosition) &&
+          node.imgEl.dataset.rawSrc === rawImgSrc
+        ) {
           const resizeMode = (node.props.textureOptions as any)?.resizeMode;
           const clipX = resizeMode?.clipX ?? 0.5;
           const clipY = resizeMode?.clipY ?? 0.5;
@@ -693,11 +722,17 @@ function updateNodeStyles(node: DOMNode | DOMText) {
             supportsObjectPosition,
           );
         }
-      } else if (node.imgEl) {
-        node.imgEl.remove();
-        node.imgEl = undefined;
+      } else {
+        node.lazyImagePendingSrc = null;
+        node.lazyImageSubTextureProps = null;
+        if (node.imgEl) {
+          node.imgEl.remove();
+          node.imgEl = undefined;
+        }
       }
     } else {
+      node.lazyImagePendingSrc = null;
+      node.lazyImageSubTextureProps = null;
       if (node.imgEl) {
         node.imgEl.remove();
         node.imgEl = undefined;
@@ -734,35 +769,15 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   node.div.setAttribute('style', style);
 
   if (node instanceof DOMNode && node !== node.stage.root) {
-    const textureType = props.texture?.type;
-    const hasTextureSrc =
-      !!props.src ||
-      textureType === lng.TextureType.image ||
-      textureType === lng.TextureType.subTexture;
-    if (hasTextureSrc) {
-      try {
-        const rootDiv = (node.stage.root as DOMNode).div;
-        const rootRect = rootDiv.getBoundingClientRect();
-        const nodeRect = node.div.getBoundingClientRect();
-        const inBounds =
-          nodeRect.right >= rootRect.left &&
-          nodeRect.left <= rootRect.right &&
-          nodeRect.bottom >= rootRect.top &&
-          nodeRect.top <= rootRect.bottom;
-        const fullyInside =
-          nodeRect.left >= rootRect.left &&
-          nodeRect.right <= rootRect.right &&
-          nodeRect.top >= rootRect.top &&
-          nodeRect.bottom <= rootRect.bottom;
-        const OUT = 2,
-          IN = 4,
-          VIEW = 8;
-        let next: lng.CoreNodeRenderState;
-        if (!inBounds) next = OUT;
-        else if (fullyInside) next = VIEW;
-        else next = IN;
+    const hasTextureSrc = nodeHasTextureSource(node);
+    if (hasTextureSrc && node.boundsDirty) {
+      const next = computeRenderStateForNode(node);
+      if (next != null) {
         node.updateRenderState(next);
-      } catch {}
+      }
+      node.boundsDirty = false;
+    } else if (!hasTextureSrc) {
+      node.boundsDirty = false;
     }
   }
 }
@@ -973,11 +988,87 @@ const CoreNodeRenderStateMap = new Map<number, string>([
   [8, 'inViewport'],
 ]);
 
+function isRenderStateInBounds(state: lng.CoreNodeRenderState): boolean {
+  return state === 4 || state === 8;
+}
+
+function nodeHasTextureSource(node: DOMNode): boolean {
+  const textureType = node.props.texture?.type;
+  return (
+    !!node.props.src ||
+    textureType === lng.TextureType.image ||
+    textureType === lng.TextureType.subTexture
+  );
+}
+
+function normalizeBoundsMargin(
+  margin: number | [number, number, number, number] | null | undefined,
+): [number, number, number, number] {
+  if (margin == null) return [0, 0, 0, 0];
+  if (typeof margin === 'number') {
+    return [margin, margin, margin, margin];
+  }
+  if (Array.isArray(margin) && margin.length === 4) {
+    return [margin[0] ?? 0, margin[1] ?? 0, margin[2] ?? 0, margin[3] ?? 0];
+  }
+  return [0, 0, 0, 0];
+}
+
+function computeRenderStateForNode(
+  node: DOMNode,
+): lng.CoreNodeRenderState | null {
+  const stageRoot = node.stage.root as DOMNode | undefined;
+  if (!stageRoot || stageRoot === node) return null;
+
+  const rootWidth = stageRoot.props.width ?? 0;
+  const rootHeight = stageRoot.props.height ?? 0;
+  if (rootWidth <= 0 || rootHeight <= 0) return 4;
+
+  const [marginTop, marginRight, marginBottom, marginLeft] =
+    normalizeBoundsMargin(
+      node.props.boundsMargin ?? node.stage.renderer.boundsMargin,
+    );
+
+  const width = node.props.width ?? 0;
+  const height = node.props.height ?? 0;
+
+  const left = node.absX;
+  const top = node.absY;
+  const right = left + width;
+  const bottom = top + height;
+
+  const expandedLeft = -marginLeft;
+  const expandedTop = -marginTop;
+  const expandedRight = rootWidth + marginRight;
+  const expandedBottom = rootHeight + marginBottom;
+
+  const intersects =
+    right >= expandedLeft &&
+    left <= expandedRight &&
+    bottom >= expandedTop &&
+    top <= expandedBottom;
+
+  if (!intersects) {
+    return 2;
+  }
+
+  const fullyInside =
+    left >= 0 && right <= rootWidth && top >= 0 && bottom <= rootHeight;
+
+  return fullyInside ? 8 : 4;
+}
+
 export class DOMNode extends EventEmitter implements IRendererNode {
   div = document.createElement('div');
   divBg: HTMLElement | undefined;
   divBorder: HTMLElement | undefined;
   imgEl: HTMLImageElement | undefined;
+  lazyImagePendingSrc: string | null = null;
+  lazyImageSubTextureProps:
+    | InstanceType<lng.TextureMap['SubTexture']>['props']
+    | null = null;
+  boundsDirty = true;
+  children = new Set<DOMNode>();
 
   id = ++lastNodeId;
 
@@ -996,6 +1087,11 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     this.div.setAttribute('data-id', String(this.id));
     elMap.set(this, this.div);
 
+    const parent = this.props.parent;
+    if (parent instanceof DOMNode) {
+      parent.children.add(this);
+    }
+
     updateNodeParent(this);
     updateNodeStyles(this);
     updateNodeData(this);
@@ -1003,6 +1099,10 @@ export class DOMNode extends EventEmitter implements IRendererNode {
 
   destroy(): void {
     elMap.delete(this);
+    const parent = this.props.parent;
+    if (parent instanceof DOMNode) {
+      parent.children.delete(this);
+    }
     this.div.parentNode!.removeChild(this.div);
   }
 
@@ -1010,8 +1110,42 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.parent;
   }
   set parent(value: IRendererNode | null) {
+    if (this.props.parent === value) return;
+
+    const prevParent = this.props.parent;
+    if (prevParent instanceof DOMNode) {
+      prevParent.children.delete(this);
+      prevParent.markChildrenBoundsDirty();
+    }
+
     this.props.parent = value;
+
+    if (value instanceof DOMNode) {
+      value.children.add(this);
+      value.markChildrenBoundsDirty();
+    }
+
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeParent(this);
+  }
+
+  public markChildrenBoundsDirty() {
+    for (const child of this.children) {
+      child.boundsDirty = true;
+
+      if (child !== child.stage.root) {
+        if (nodeHasTextureSource(child)) {
+          const nextState = computeRenderStateForNode(child);
+          if (nextState != null) {
+            child.updateRenderState(nextState);
+          }
+        }
+        child.boundsDirty = false;
+      }
+
+      child.markChildrenBoundsDirty();
+    }
   }
 
   animate = animate;
@@ -1021,38 +1155,63 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     const previous = this.renderState;
     this.renderState = renderState;
     const event = CoreNodeRenderStateMap.get(renderState);
-    debugger;
+    if (isRenderStateInBounds(renderState)) {
+      this.applyPendingImageSrc();
+    }
     if (event && event !== 'init') {
       this.emit(event, { previous, current: renderState });
     }
+  }
+
+  applyPendingImageSrc() {
+    if (!this.imgEl) return;
+    const pendingSrc = this.lazyImagePendingSrc;
+    if (!pendingSrc) return;
+    if (this.imgEl.dataset.rawSrc === pendingSrc) return;
+    this.imgEl.style.display = '';
+    this.imgEl.dataset.pendingSrc = pendingSrc;
+    this.imgEl.src = pendingSrc;
+    this.imgEl.dataset.rawSrc = pendingSrc;
   }
 
   get x() {
     return this.props.x;
   }
   set x(v) {
+    if (this.props.x === v) return;
     this.props.x = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get y() {
     return this.props.y;
   }
   set y(v) {
+    if (this.props.y === v) return;
     this.props.y = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get width() {
     return this.props.width;
   }
   set width(v) {
+    if (this.props.width === v) return;
     this.props.width = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get height() {
     return this.props.height;
   }
   set height(v) {
+    if (this.props.height === v) return;
     this.props.height = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get alpha() {
@@ -1150,7 +1309,9 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.texture;
   }
   set texture(v) {
+    if (this.props.texture === v) return;
     this.props.texture = v;
+    this.boundsDirty = true;
     updateNodeStyles(this);
   }
   get textureOptions(): IRendererNode['textureOptions'] {
@@ -1164,7 +1325,9 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.src;
   }
   set src(v) {
+    if (this.props.src === v) return;
     this.props.src = v;
+    this.boundsDirty = true;
     updateNodeStyles(this);
   }
   get zIndexLocked() {
@@ -1310,13 +1473,25 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   }
   set boundsMargin(value: number | [number, number, number, number] | null) {
     this.props.boundsMargin = value;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
   }
 
   get absX(): number {
-    return this.x + -this.width * this.mountX + (this.parent?.absX ?? 0);
+    const parent = this.props.parent;
+    return (
+      this.x +
+      -this.width * this.mountX +
+      (parent instanceof DOMNode ? parent.absX : 0)
+    );
   }
   get absY(): number {
-    return this.y + -this.height * this.mountY + (this.parent?.absY ?? 0);
+    const parent = this.props.parent;
+    return (
+      this.y +
+      -this.height * this.mountY +
+      (parent instanceof DOMNode ? parent.absY : 0)
+    );
   }
 }
 
@@ -1523,6 +1698,7 @@ export class DOMRendererMain implements IRendererMain {
       root: null!,
       renderer: {
         mode: 'canvas',
+        boundsMargin: settings.boundsMargin,
       },
       fontManager: {
         addFontFace: () => {},

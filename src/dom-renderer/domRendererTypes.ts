@@ -5,6 +5,7 @@ import { EventEmitter } from '@lightningjs/renderer/utils';
 /** Based on {@link lng.CoreRenderer} */
 export interface IRendererCoreRenderer {
   mode: 'canvas' | 'webgl' | undefined;
+  boundsMargin?: number | [number, number, number, number];
 }
 /** Based on {@link lng.TrFontManager} */
 export interface IRendererFontManager {
