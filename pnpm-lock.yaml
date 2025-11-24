@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@lightningjs/renderer':
-        specifier: ^3.0.0-beta15
-        version: 3.0.0-beta15
+        specifier: ^3.0.0-beta16
+        version: 3.0.0-beta16
     devDependencies:
       '@eslint/js':
         specifier: ^9.15.0
@@ -406,8 +406,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
-  '@lightningjs/renderer@3.0.0-beta15':
-    resolution: {integrity: sha512-vG0ZZc7u9mXWJaSmMfJo1DgVTq14z8slQ3ZAugsHjUmKpmd5MUwxzCmK70jd29kuP07PwPcOwBQZIMd2DBa5+w==}
+  '@lightningjs/renderer@3.0.0-beta16':
+    resolution: {integrity: sha512-5hhDPpHKIAAsgEe1TEBqf+FV71F3xz5/jpYr2hoNB/pawHp4gnvCiZ3gqQWHZ2We2uOA61Nq6QPC3HpR2XwBfQ==}
     engines: {node: '>= 18.0.0', npm: '>= 10.0.0', pnpm: '>= 10.17.0'}
 
   '@nodelib/fs.scandir@2.1.5':
@@ -2406,7 +2406,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@lightningjs/renderer@3.0.0-beta15': {}
+  '@lightningjs/renderer@3.0.0-beta16': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:

@@ -112,9 +112,6 @@ function updateAnimations(time: number) {
       if (task.settings.loop || task.iteration < task.settings.repeat - 1) {
         task.iteration++;
         task.timeStart = time - task.settings.delay;
-        if (task.settings.repeatDelay > 0) {
-          task.timeStart += task.settings.repeatDelay;
-        }
         requestAnimationUpdate();
       }
       // Animation complete
@@ -171,7 +168,6 @@ class AnimationController implements lng.IAnimationController {
       easing: rawSettings.easing ?? 'linear',
       loop: rawSettings.loop ?? false,
       repeat: rawSettings.repeat ?? 1,
-      repeatDelay: rawSettings.repeatDelay ?? 0,
       stopMethod: false,
     };
 
