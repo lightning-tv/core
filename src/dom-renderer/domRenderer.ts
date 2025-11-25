@@ -340,8 +340,6 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
     // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
-
-    scheduleUpdateDOMTextMeasurement(node);
   }
   // <Node>
   else {
@@ -792,8 +790,6 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   }
 }
 
-const fontFamiliesToLoad = new Set<string>();
-
 const textNodesToMeasure = new Set<DOMText>();
 
 type Size = { width: number; height: number };
@@ -852,14 +848,17 @@ function updateDOMTextSize(node: DOMText): void {
       break;
   }
 
-  const payload: lng.NodeTextLoadedPayload = {
-    type: 'text',
-    dimensions: {
-      width: node.props.width,
-      height: node.props.height,
-    },
-  };
-  node.emit('loaded', payload);
+  if (!node.loaded) {
+    const payload: lng.NodeTextLoadedPayload = {
+      type: 'text',
+      dimensions: {
+        width: node.props.width,
+        height: node.props.height,
+      },
+    };
+    node.emit('loaded', payload);
+    node.loaded = true;
+  }
 }
 
 function updateDOMTextMeasurements() {
@@ -871,10 +870,6 @@ function scheduleUpdateDOMTextMeasurement(node: DOMText) {
   /*
     Make sure the font is loaded before measuring
   */
-  if (node.fontFamily && !fontFamiliesToLoad.has(node.fontFamily)) {
-    fontFamiliesToLoad.add(node.fontFamily);
-    document.fonts.load(`16px ${node.fontFamily}`);
-  }
 
   if (textNodesToMeasure.size === 0) {
     const fonts = document.fonts;
@@ -884,7 +879,7 @@ function scheduleUpdateDOMTextMeasurement(node: DOMText) {
       if (fonts && fonts.ready && typeof fonts.ready.then === 'function') {
         fonts.ready.then(updateDOMTextMeasurements);
       } else {
-        setTimeout(updateDOMTextMeasurements);
+        setTimeout(updateDOMTextMeasurements, 500);
       }
     }
   }
@@ -1247,6 +1242,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.zIndex;
   }
   set zIndex(v) {
+    if (this.props.zIndex === v) return;
     this.props.zIndex = Math.ceil(v);
     updateNodeStyles(this);
   }
@@ -1286,6 +1282,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.scale ?? 1;
   }
   set scale(v) {
+    if (this.props.scale === v) return;
     this.props.scale = v;
     updateNodeStyles(this);
   }
@@ -1441,18 +1438,22 @@ export class DOMNode extends EventEmitter implements IRendererNode {
 }
 
 class DOMText extends DOMNode {
+  public loaded = false;
+
   constructor(
     stage: IRendererStage,
     public override props: IRendererTextNodeProps,
   ) {
     super(stage, props);
     this.div.innerText = props.text;
+    scheduleUpdateDOMTextMeasurement(this);
   }
 
   get text() {
     return this.props.text;
   }
   set text(v) {
+    if (this.props.text === v) return;
     this.props.text = v;
     this.div.innerText = v;
     scheduleUpdateDOMTextMeasurement(this);
@@ -1461,55 +1462,70 @@ class DOMText extends DOMNode {
     return this.props.fontFamily;
   }
   set fontFamily(v) {
+    if (this.props.fontFamily === v) return;
     this.props.fontFamily = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontSize() {
     return this.props.fontSize;
   }
   set fontSize(v) {
+    if (this.props.fontSize === v) return;
     this.props.fontSize = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontStyle() {
     return this.props.fontStyle;
   }
   set fontStyle(v) {
+    if (this.props.fontStyle === v) return;
     this.props.fontStyle = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontWeight() {
     return this.props.fontWeight;
   }
   set fontWeight(v) {
+    if (this.props.fontWeight === v) return;
     this.props.fontWeight = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontStretch() {
     return this.props.fontStretch;
   }
   set fontStretch(v) {
+    if (this.props.fontStretch === v) return;
     this.props.fontStretch = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get lineHeight() {
     return this.props.lineHeight;
   }
   set lineHeight(v) {
+    if (this.props.lineHeight === v) return;
     this.props.lineHeight = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get letterSpacing() {
     return this.props.letterSpacing;
   }
   set letterSpacing(v) {
+    if (this.props.letterSpacing === v) return;
     this.props.letterSpacing = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get textAlign() {
     return this.props.textAlign;
   }
   set textAlign(v) {
+    if (this.props.textAlign === v) return;
     this.props.textAlign = v;
     updateNodeStyles(this);
   }
@@ -1517,6 +1533,7 @@ class DOMText extends DOMNode {
     return this.props.overflowSuffix;
   }
   set overflowSuffix(v) {
+    if (this.props.overflowSuffix === v) return;
     this.props.overflowSuffix = v;
     updateNodeStyles(this);
   }
@@ -1524,15 +1541,19 @@ class DOMText extends DOMNode {
     return this.props.maxLines;
   }
   set maxLines(v) {
+    if (this.props.maxLines === v) return;
     this.props.maxLines = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get contain() {
     return this.props.contain;
   }
   set contain(v) {
+    if (this.props.contain === v) return;
     this.props.contain = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get verticalAlign() {
     return this.props.verticalAlign;
@@ -1580,6 +1601,7 @@ class DOMText extends DOMNode {
     return this.props.debug;
   }
   set debug(v) {
+    if (this.props.debug === v) return;
     this.props.debug = v;
     updateNodeStyles(this);
   }
