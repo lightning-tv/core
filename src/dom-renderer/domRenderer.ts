@@ -886,12 +886,13 @@ function scheduleUpdateDOMTextMeasurement(node: DOMText) {
 }
 
 function updateNodeData(node: DOMNode | DOMText) {
-  for (let key in node.data) {
-    let keyValue: unknown = node.data[key];
+  const data = node.data;
+  for (let key in data) {
+    let keyValue: unknown = data[key];
     if (keyValue === undefined) {
-      node.div.removeAttribute('data-' + key);
+      delete node.div.dataset['data-' + key];
     } else {
-      node.div.setAttribute('data-' + key, String(keyValue));
+      node.div.dataset[key] = String(keyValue);
     }
   }
 }
@@ -1094,6 +1095,9 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     if (event && event !== 'init') {
       this.emit(event, { previous, current: renderState });
     }
+    if (this.imgEl) {
+      this.imgEl.dataset.state = event;
+    }
   }
 
   applyPendingImageSrc() {
@@ -1105,6 +1109,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     this.imgEl.dataset.pendingSrc = pendingSrc;
     this.imgEl.src = pendingSrc;
     this.imgEl.dataset.rawSrc = pendingSrc;
+    this.imgEl.dataset.pendingSrc = '';
   }
 
   get x() {
