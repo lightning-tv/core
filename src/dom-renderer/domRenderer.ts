@@ -392,6 +392,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     let maskStyle = '';
     let needsBackgroundLayer = false;
     let imgStyle = '';
+    let hasDivBgTint = false;
 
     if (rawImgSrc) {
       needsBackgroundLayer = true;
@@ -407,6 +408,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           } else {
             maskStyle += `mask-size: 100% 100%;`;
           }
+          hasDivBgTint = true;
         }
       } else if (gradient) {
         // use gradient as a mask when no tint is applied
@@ -690,7 +692,12 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         if (node.imgEl.parentElement !== node.divBg) {
           node.divBg.appendChild(node.imgEl);
         }
+
         node.imgEl.setAttribute('style', imgStyle);
+
+        if (hasDivBgTint) {
+          node.imgEl.style.visibility = 'hidden';
+        }
 
         if (isRenderStateInBounds(node.renderState)) {
           node.applyPendingImageSrc();
