@@ -232,6 +232,11 @@ export function computeRenderStateForNode(
   const rootHeight = stageRoot.props.height ?? 0;
   if (rootWidth <= 0 || rootHeight <= 0) return 4;
 
+  const rootLeft = stageRoot.absX;
+  const rootTop = stageRoot.absY;
+  const rootRight = rootLeft + rootWidth;
+  const rootBottom = rootTop + rootHeight;
+
   const [marginTop, marginRight, marginBottom, marginLeft] =
     normalizeBoundsMargin(
       node.props.boundsMargin ?? node.stage.renderer.boundsMargin,
@@ -245,23 +250,30 @@ export function computeRenderStateForNode(
   const right = left + width;
   const bottom = top + height;
 
-  const expandedLeft = -marginLeft;
-  const expandedTop = -marginTop;
-  const expandedRight = rootWidth + marginRight;
-  const expandedBottom = rootHeight + marginBottom;
+  const expandedLeft = rootLeft - marginLeft;
+  const expandedTop = rootTop - marginTop;
+  const expandedRight = rootRight + marginRight;
+  const expandedBottom = rootBottom + marginBottom;
 
-  const intersects =
+  const intersectsBounds =
     right >= expandedLeft &&
     left <= expandedRight &&
     bottom >= expandedTop &&
     top <= expandedBottom;
 
-  if (!intersects) {
+  if (!intersectsBounds) {
     return 2;
   }
 
-  const fullyInside =
-    left >= 0 && right <= rootWidth && top >= 0 && bottom <= rootHeight;
+  const intersectsViewport =
+    right >= rootLeft &&
+    left <= rootRight &&
+    bottom >= rootTop &&
+    top <= rootBottom;
 
-  return fullyInside ? 8 : 4;
+  if (intersectsViewport) {
+    return 8;
+  }
+
+  return 4;
 }
