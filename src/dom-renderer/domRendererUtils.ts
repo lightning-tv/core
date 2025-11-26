@@ -1,7 +1,9 @@
 // Utilities extracted from domRenderer.ts for clarity
-import { TextureMap } from '@lightningjs/renderer';
+import * as lng from '@lightningjs/renderer';
 import { Config } from '../config.js';
 import { DOMNode } from './domRenderer.js';
+
+// #region Color & Gradient Utils
 
 export const colorToRgba = (c: number) =>
   `rgba(${(c >> 24) & 0xff},${(c >> 16) & 0xff},${(c >> 8) & 0xff},${(c & 0xff) / 255})`;
@@ -109,7 +111,7 @@ export function computeLegacyObjectFit(
 export function applySubTextureScaling(
   node: DOMNode,
   img: HTMLImageElement,
-  srcPos: InstanceType<TextureMap['SubTexture']>['props'] | null,
+  srcPos: InstanceType<lng.TextureMap['SubTexture']>['props'] | null,
 ) {
   if (!srcPos) return;
   const regionW = node.props.srcWidth ?? srcPos.width;
@@ -152,4 +154,126 @@ export function applySubTextureScaling(
       );
     }
   }
+}
+export function applyEasing(easing: string, progress: number): number {
+  switch (easing) {
+    case 'linear':
+    default:
+      return progress;
+    case 'ease-in':
+      return progress * progress;
+    case 'ease-out':
+      return progress * (2 - progress);
+    case 'ease-in-out':
+      return progress < 0.5
+        ? 2 * progress * progress
+        : -1 + (4 - 2 * progress) * progress;
+  }
+}
+function interpolate(start: number, end: number, t: number): number {
+  return start + (end - start) * t;
+}
+
+function interpolateColor(start: number, end: number, t: number): number {
+  return (
+    (interpolate((start >> 24) & 0xff, (end >> 24) & 0xff, t) << 24) |
+    (interpolate((start >> 16) & 0xff, (end >> 16) & 0xff, t) << 16) |
+    (interpolate((start >> 8) & 0xff, (end >> 8) & 0xff, t) << 8) |
+    interpolate(start & 0xff, end & 0xff, t)
+  );
+}
+
+export function interpolateProp(
+  name: string,
+  start: number,
+  end: number,
+  t: number,
+): number {
+  return name.startsWith('color')
+    ? interpolateColor(start, end, t)
+    : interpolate(start, end, t);
+}
+
+// #region Renderer State Utils
+
+export function isRenderStateInBounds(state: lng.CoreNodeRenderState): boolean {
+  return state === 4 || state === 8;
+}
+
+export function nodeHasTextureSource(node: DOMNode): boolean {
+  const textureType = node.props.texture?.type;
+  return (
+    !!node.props.src ||
+    textureType === lng.TextureType.image ||
+    textureType === lng.TextureType.subTexture
+  );
+}
+
+export function normalizeBoundsMargin(
+  margin: number | [number, number, number, number] | null | undefined,
+): [number, number, number, number] {
+  if (margin == null) return [0, 0, 0, 0];
+  if (typeof margin === 'number') {
+    return [margin, margin, margin, margin];
+  }
+  if (Array.isArray(margin) && margin.length === 4) {
+    return [margin[0] ?? 0, margin[1] ?? 0, margin[2] ?? 0, margin[3] ?? 0];
+  }
+  return [0, 0, 0, 0];
+}
+
+export function computeRenderStateForNode(
+  node: DOMNode,
+): lng.CoreNodeRenderState | null {
+  const stageRoot = node.stage.root as DOMNode | undefined;
+  if (!stageRoot || stageRoot === node) return null;
+
+  const rootWidth = stageRoot.props.width ?? 0;
+  const rootHeight = stageRoot.props.height ?? 0;
+  if (rootWidth <= 0 || rootHeight <= 0) return 4;
+
+  const rootLeft = stageRoot.absX;
+  const rootTop = stageRoot.absY;
+  const rootRight = rootLeft + rootWidth;
+  const rootBottom = rootTop + rootHeight;
+
+  const [marginTop, marginRight, marginBottom, marginLeft] =
+    normalizeBoundsMargin(
+      node.props.boundsMargin ?? node.stage.renderer.boundsMargin,
+    );
+
+  const width = node.props.width ?? 0;
+  const height = node.props.height ?? 0;
+
+  const left = node.absX;
+  const top = node.absY;
+  const right = left + width;
+  const bottom = top + height;
+
+  const expandedLeft = rootLeft - marginLeft;
+  const expandedTop = rootTop - marginTop;
+  const expandedRight = rootRight + marginRight;
+  const expandedBottom = rootBottom + marginBottom;
+
+  const intersectsBounds =
+    right >= expandedLeft &&
+    left <= expandedRight &&
+    bottom >= expandedTop &&
+    top <= expandedBottom;
+
+  if (!intersectsBounds) {
+    return 2;
+  }
+
+  const intersectsViewport =
+    right >= rootLeft &&
+    left <= rootRight &&
+    bottom >= rootTop &&
+    top <= rootBottom;
+
+  if (intersectsViewport) {
+    return 8;
+  }
+
+  return 4;
 }

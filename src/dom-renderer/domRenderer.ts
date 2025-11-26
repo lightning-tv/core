@@ -24,6 +24,11 @@ import {
   computeLegacyObjectFit,
   applySubTextureScaling,
   getNodeLineHeight,
+  applyEasing,
+  interpolateProp,
+  isRenderStateInBounds,
+  nodeHasTextureSource,
+  computeRenderStateForNode,
 } from './domRendererUtils.js';
 
 // Feature detection for legacy brousers
@@ -36,46 +41,6 @@ const supportsMixBlendMode: boolean = 'mixBlendMode' in _styleRef;
 const supportsStandardMask: boolean = 'maskImage' in _styleRef;
 const supportsWebkitMask: boolean = 'webkitMaskImage' in _styleRef;
 const supportsCssMask: boolean = supportsStandardMask || supportsWebkitMask;
-
-function applyEasing(easing: string, progress: number): number {
-  switch (easing) {
-    case 'linear':
-    default:
-      return progress;
-    case 'ease-in':
-      return progress * progress;
-    case 'ease-out':
-      return progress * (2 - progress);
-    case 'ease-in-out':
-      return progress < 0.5
-        ? 2 * progress * progress
-        : -1 + (4 - 2 * progress) * progress;
-  }
-}
-
-function interpolate(start: number, end: number, t: number): number {
-  return start + (end - start) * t;
-}
-
-function interpolateColor(start: number, end: number, t: number): number {
-  return (
-    (interpolate((start >> 24) & 0xff, (end >> 24) & 0xff, t) << 24) |
-    (interpolate((start >> 16) & 0xff, (end >> 16) & 0xff, t) << 16) |
-    (interpolate((start >> 8) & 0xff, (end >> 8) & 0xff, t) << 8) |
-    interpolate(start & 0xff, end & 0xff, t)
-  );
-}
-
-function interpolateProp(
-  name: string,
-  start: number,
-  end: number,
-  t: number,
-): number {
-  return name.startsWith('color')
-    ? interpolateColor(start, end, t)
-    : interpolate(start, end, t);
-}
 
 /*
  Animations
@@ -125,6 +90,8 @@ function updateAnimations(time: number) {
       // Animation complete
       else {
         Object.assign(task.node.props, task.propsEnd);
+        task.node.boundsDirty = true;
+        task.node.markChildrenBoundsDirty();
         updateNodeStyles(task.node);
 
         task.stop();
@@ -260,8 +227,9 @@ function animate(
 let elMap = new WeakMap<DOMNode, HTMLElement>();
 
 function updateNodeParent(node: DOMNode | DOMText) {
-  if (node.parent != null) {
-    elMap.get(node.parent as DOMNode)!.appendChild(node.div);
+  const parent = node.props.parent;
+  if (parent instanceof DOMNode) {
+    elMap.get(parent)!.appendChild(node.div);
   }
 }
 
@@ -356,8 +324,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         break;
       }
       case 'none':
-        style += `width: max-content;`;
         style += `width: -webkit-max-content;`;
+        style += `width: max-content;`;
         break;
     }
 
@@ -372,12 +340,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
     // if (node.overflowSuffix) style += `overflow-suffix: ${node.overflowSuffix};`
     // if (node.verticalAlign) style += `vertical-align: ${node.verticalAlign};`
-
-    scheduleUpdateDOMTextMeasurement(node);
   }
   // <Node>
   else {
-    if (props.width !== 0) style += `width: ${props.width}px;`;
+    if (props.width !== 0)
+      style += `width: ${props.width < 0 ? 0 : props.width}px;`;
     if (props.height !== 0) style += `height: ${props.height}px;`;
 
     let vGradient =
@@ -423,6 +390,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     let maskStyle = '';
     let needsBackgroundLayer = false;
     let imgStyle = '';
+    let hasDivBgTint = false;
 
     if (rawImgSrc) {
       needsBackgroundLayer = true;
@@ -438,6 +406,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           } else {
             maskStyle += `mask-size: 100% 100%;`;
           }
+          hasDivBgTint = true;
         }
       } else if (gradient) {
         // use gradient as a mask when no tint is applied
@@ -663,6 +632,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           node.imgEl.alt = '';
           node.imgEl.setAttribute('aria-hidden', 'true');
           node.imgEl.setAttribute('loading', 'lazy');
+          node.imgEl.removeAttribute('src');
 
           node.imgEl.addEventListener('load', () => {
             const payload: lng.NodeTextureLoadedPayload = {
@@ -672,7 +642,12 @@ function updateNodeStyles(node: DOMNode | DOMText) {
                 height: node.imgEl!.naturalHeight,
               },
             };
-            applySubTextureScaling(node, node.imgEl!, srcPos);
+            node.imgEl!.style.display = '';
+            applySubTextureScaling(
+              node,
+              node.imgEl!,
+              node.lazyImageSubTextureProps,
+            );
 
             const resizeMode = (node.props.textureOptions as any)?.resizeMode;
             const clipX = resizeMode?.clipX ?? 0.5;
@@ -683,7 +658,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               resizeMode,
               clipX,
               clipY,
-              srcPos,
+              node.lazyImageSubTextureProps,
               supportsObjectFit,
               supportsObjectPosition,
             );
@@ -692,30 +667,55 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 
           node.imgEl.addEventListener('error', () => {
             if (node.imgEl) {
-              node.imgEl.src = '';
+              node.imgEl.removeAttribute('src');
               node.imgEl.style.display = 'none';
+              node.imgEl.removeAttribute('data-rawSrc');
             }
+
+            const failedSrc =
+              node.imgEl?.dataset.pendingSrc || node.lazyImagePendingSrc || '';
 
             const payload: lng.NodeTextureFailedPayload = {
               type: 'texture',
-              error: new Error(`Failed to load image: ${rawImgSrc}`),
+              error: new Error(`Failed to load image: ${failedSrc}`),
             };
             node.emit('failed', payload);
           });
         }
-        if (node.imgEl.dataset.rawSrc !== rawImgSrc) {
-          node.imgEl.src = rawImgSrc;
-          node.imgEl.dataset.rawSrc = rawImgSrc;
-        }
+
+        node.lazyImagePendingSrc = rawImgSrc;
+        node.lazyImageSubTextureProps = srcPos;
+        node.imgEl.dataset.pendingSrc = rawImgSrc;
+
         if (node.imgEl.parentElement !== node.divBg) {
           node.divBg.appendChild(node.imgEl);
         }
+
         node.imgEl.setAttribute('style', imgStyle);
 
-        if (srcPos && node.imgEl.complete) {
+        if (hasDivBgTint) {
+          node.imgEl.style.visibility = 'hidden';
+        }
+
+        if (isRenderStateInBounds(node.renderState)) {
+          node.applyPendingImageSrc();
+        } else if (!node.imgEl.dataset.rawSrc) {
+          node.imgEl.removeAttribute('src');
+        }
+
+        if (
+          srcPos &&
+          node.imgEl.complete &&
+          node.imgEl.dataset.rawSrc === rawImgSrc
+        ) {
           applySubTextureScaling(node, node.imgEl, srcPos);
         }
-        if (!srcPos && (!supportsObjectFit || !supportsObjectPosition)) {
+        if (
+          !srcPos &&
+          node.imgEl.complete &&
+          (!supportsObjectFit || !supportsObjectPosition) &&
+          node.imgEl.dataset.rawSrc === rawImgSrc
+        ) {
           const resizeMode = (node.props.textureOptions as any)?.resizeMode;
           const clipX = resizeMode?.clipX ?? 0.5;
           const clipY = resizeMode?.clipY ?? 0.5;
@@ -730,11 +730,17 @@ function updateNodeStyles(node: DOMNode | DOMText) {
             supportsObjectPosition,
           );
         }
-      } else if (node.imgEl) {
-        node.imgEl.remove();
-        node.imgEl = undefined;
+      } else {
+        node.lazyImagePendingSrc = null;
+        node.lazyImageSubTextureProps = null;
+        if (node.imgEl) {
+          node.imgEl.remove();
+          node.imgEl = undefined;
+        }
       }
     } else {
+      node.lazyImagePendingSrc = null;
+      node.lazyImageSubTextureProps = null;
       if (node.imgEl) {
         node.imgEl.remove();
         node.imgEl = undefined;
@@ -769,9 +775,20 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   }
 
   node.div.setAttribute('style', style);
-}
 
-const fontFamiliesToLoad = new Set<string>();
+  if (node instanceof DOMNode && node !== node.stage.root) {
+    const hasTextureSrc = nodeHasTextureSource(node);
+    if (hasTextureSrc && node.boundsDirty) {
+      const next = computeRenderStateForNode(node);
+      if (next != null) {
+        node.updateRenderState(next);
+      }
+      node.boundsDirty = false;
+    } else if (!hasTextureSrc) {
+      node.boundsDirty = false;
+    }
+  }
+}
 
 const textNodesToMeasure = new Set<DOMText>();
 
@@ -831,14 +848,17 @@ function updateDOMTextSize(node: DOMText): void {
       break;
   }
 
-  const payload: lng.NodeTextLoadedPayload = {
-    type: 'text',
-    dimensions: {
-      width: node.props.width,
-      height: node.props.height,
-    },
-  };
-  node.emit('loaded', payload);
+  if (!node.loaded) {
+    const payload: lng.NodeTextLoadedPayload = {
+      type: 'text',
+      dimensions: {
+        width: node.props.width,
+        height: node.props.height,
+      },
+    };
+    node.emit('loaded', payload);
+    node.loaded = true;
+  }
 }
 
 function updateDOMTextMeasurements() {
@@ -850,10 +870,6 @@ function scheduleUpdateDOMTextMeasurement(node: DOMText) {
   /*
     Make sure the font is loaded before measuring
   */
-  if (node.fontFamily && !fontFamiliesToLoad.has(node.fontFamily)) {
-    fontFamiliesToLoad.add(node.fontFamily);
-    document.fonts.load(`16px ${node.fontFamily}`);
-  }
 
   if (textNodesToMeasure.size === 0) {
     const fonts = document.fonts;
@@ -863,7 +879,7 @@ function scheduleUpdateDOMTextMeasurement(node: DOMText) {
       if (fonts && fonts.ready && typeof fonts.ready.then === 'function') {
         fonts.ready.then(updateDOMTextMeasurements);
       } else {
-        setTimeout(updateDOMTextMeasurements);
+        setTimeout(updateDOMTextMeasurements, 500);
       }
     }
   }
@@ -872,12 +888,13 @@ function scheduleUpdateDOMTextMeasurement(node: DOMText) {
 }
 
 function updateNodeData(node: DOMNode | DOMText) {
-  for (let key in node.data) {
-    let keyValue: unknown = node.data[key];
+  const data = node.data;
+  for (let key in data) {
+    let keyValue: unknown = data[key];
     if (keyValue === undefined) {
       node.div.removeAttribute('data-' + key);
     } else {
-      node.div.setAttribute('data-' + key, String(keyValue));
+      node.div.dataset[key] = String(keyValue);
     }
   }
 }
@@ -970,11 +987,24 @@ const defaultShader: IRendererShader = {
 
 let lastNodeId = 0;
 
+const CoreNodeRenderStateMap = new Map<number, string>([
+  [0, 'init'],
+  [2, 'outOfBounds'],
+  [4, 'inBounds'],
+  [8, 'inViewport'],
+]);
+
 export class DOMNode extends EventEmitter implements IRendererNode {
   div = document.createElement('div');
   divBg: HTMLElement | undefined;
   divBorder: HTMLElement | undefined;
   imgEl: HTMLImageElement | undefined;
+  lazyImagePendingSrc: string | null = null;
+  lazyImageSubTextureProps:
+    | InstanceType<lng.TextureMap['SubTexture']>['props']
+    | null = null;
+  boundsDirty = true;
+  children = new Set<DOMNode>();
 
   id = ++lastNodeId;
 
@@ -993,6 +1023,11 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     this.div.setAttribute('data-id', String(this.id));
     elMap.set(this, this.div);
 
+    const parent = this.props.parent;
+    if (parent instanceof DOMNode) {
+      parent.children.add(this);
+    }
+
     updateNodeParent(this);
     updateNodeStyles(this);
     updateNodeData(this);
@@ -1000,6 +1035,10 @@ export class DOMNode extends EventEmitter implements IRendererNode {
 
   destroy(): void {
     elMap.delete(this);
+    const parent = this.props.parent;
+    if (parent instanceof DOMNode) {
+      parent.children.delete(this);
+    }
     this.div.parentNode!.removeChild(this.div);
   }
 
@@ -1007,38 +1046,112 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.parent;
   }
   set parent(value: IRendererNode | null) {
+    if (this.props.parent === value) return;
+
+    const prevParent = this.props.parent;
+    if (prevParent instanceof DOMNode) {
+      prevParent.children.delete(this);
+      prevParent.markChildrenBoundsDirty();
+    }
+
     this.props.parent = value;
+
+    if (value instanceof DOMNode) {
+      value.children.add(this);
+      value.markChildrenBoundsDirty();
+    }
+
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeParent(this);
   }
 
+  public markChildrenBoundsDirty() {
+    for (const child of this.children) {
+      child.boundsDirty = true;
+
+      if (child !== child.stage.root) {
+        if (nodeHasTextureSource(child)) {
+          const nextState = computeRenderStateForNode(child);
+          if (nextState != null) {
+            child.updateRenderState(nextState);
+          }
+        }
+        child.boundsDirty = false;
+      }
+
+      child.markChildrenBoundsDirty();
+    }
+  }
+
   animate = animate;
+
+  updateRenderState(renderState: lng.CoreNodeRenderState) {
+    if (renderState === this.renderState) return;
+    const previous = this.renderState;
+    this.renderState = renderState;
+    const event = CoreNodeRenderStateMap.get(renderState);
+    if (isRenderStateInBounds(renderState)) {
+      this.applyPendingImageSrc();
+    }
+    if (event && event !== 'init') {
+      this.emit(event, { previous, current: renderState });
+    }
+    if (this.imgEl) {
+      this.imgEl.dataset.state = event;
+    }
+  }
+
+  applyPendingImageSrc() {
+    if (!this.imgEl) return;
+    const pendingSrc = this.lazyImagePendingSrc;
+    if (!pendingSrc) return;
+    if (this.imgEl.dataset.rawSrc === pendingSrc) return;
+    this.imgEl.style.display = '';
+    this.imgEl.dataset.pendingSrc = pendingSrc;
+    this.imgEl.src = pendingSrc;
+    this.imgEl.dataset.rawSrc = pendingSrc;
+    this.imgEl.dataset.pendingSrc = '';
+  }
 
   get x() {
     return this.props.x;
   }
   set x(v) {
+    if (this.props.x === v) return;
     this.props.x = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get y() {
     return this.props.y;
   }
   set y(v) {
+    if (this.props.y === v) return;
     this.props.y = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get width() {
     return this.props.width;
   }
   set width(v) {
+    if (this.props.width === v) return;
     this.props.width = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get height() {
     return this.props.height;
   }
   set height(v) {
+    if (this.props.height === v) return;
     this.props.height = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get alpha() {
@@ -1129,6 +1242,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.zIndex;
   }
   set zIndex(v) {
+    if (this.props.zIndex === v) return;
     this.props.zIndex = Math.ceil(v);
     updateNodeStyles(this);
   }
@@ -1136,7 +1250,9 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.texture;
   }
   set texture(v) {
+    if (this.props.texture === v) return;
     this.props.texture = v;
+    this.boundsDirty = true;
     updateNodeStyles(this);
   }
   get textureOptions(): IRendererNode['textureOptions'] {
@@ -1150,7 +1266,9 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.src;
   }
   set src(v) {
+    if (this.props.src === v) return;
     this.props.src = v;
+    this.boundsDirty = true;
     updateNodeStyles(this);
   }
   get zIndexLocked() {
@@ -1164,6 +1282,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     return this.props.scale ?? 1;
   }
   set scale(v) {
+    if (this.props.scale === v) return;
     this.props.scale = v;
     updateNodeStyles(this);
   }
@@ -1296,29 +1415,45 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   }
   set boundsMargin(value: number | [number, number, number, number] | null) {
     this.props.boundsMargin = value;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
   }
 
   get absX(): number {
-    return this.x + -this.width * this.mountX + (this.parent?.absX ?? 0);
+    const parent = this.props.parent;
+    return (
+      this.x +
+      -this.width * this.mountX +
+      (parent instanceof DOMNode ? parent.absX : 0)
+    );
   }
   get absY(): number {
-    return this.y + -this.height * this.mountY + (this.parent?.absY ?? 0);
+    const parent = this.props.parent;
+    return (
+      this.y +
+      -this.height * this.mountY +
+      (parent instanceof DOMNode ? parent.absY : 0)
+    );
   }
 }
 
 class DOMText extends DOMNode {
+  public loaded = false;
+
   constructor(
     stage: IRendererStage,
     public override props: IRendererTextNodeProps,
   ) {
     super(stage, props);
     this.div.innerText = props.text;
+    scheduleUpdateDOMTextMeasurement(this);
   }
 
   get text() {
     return this.props.text;
   }
   set text(v) {
+    if (this.props.text === v) return;
     this.props.text = v;
     this.div.innerText = v;
     scheduleUpdateDOMTextMeasurement(this);
@@ -1327,55 +1462,70 @@ class DOMText extends DOMNode {
     return this.props.fontFamily;
   }
   set fontFamily(v) {
+    if (this.props.fontFamily === v) return;
     this.props.fontFamily = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontSize() {
     return this.props.fontSize;
   }
   set fontSize(v) {
+    if (this.props.fontSize === v) return;
     this.props.fontSize = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontStyle() {
     return this.props.fontStyle;
   }
   set fontStyle(v) {
+    if (this.props.fontStyle === v) return;
     this.props.fontStyle = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontWeight() {
     return this.props.fontWeight;
   }
   set fontWeight(v) {
+    if (this.props.fontWeight === v) return;
     this.props.fontWeight = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get fontStretch() {
     return this.props.fontStretch;
   }
   set fontStretch(v) {
+    if (this.props.fontStretch === v) return;
     this.props.fontStretch = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get lineHeight() {
     return this.props.lineHeight;
   }
   set lineHeight(v) {
+    if (this.props.lineHeight === v) return;
     this.props.lineHeight = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get letterSpacing() {
     return this.props.letterSpacing;
   }
   set letterSpacing(v) {
+    if (this.props.letterSpacing === v) return;
     this.props.letterSpacing = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get textAlign() {
     return this.props.textAlign;
   }
   set textAlign(v) {
+    if (this.props.textAlign === v) return;
     this.props.textAlign = v;
     updateNodeStyles(this);
   }
@@ -1383,6 +1533,7 @@ class DOMText extends DOMNode {
     return this.props.overflowSuffix;
   }
   set overflowSuffix(v) {
+    if (this.props.overflowSuffix === v) return;
     this.props.overflowSuffix = v;
     updateNodeStyles(this);
   }
@@ -1390,15 +1541,19 @@ class DOMText extends DOMNode {
     return this.props.maxLines;
   }
   set maxLines(v) {
+    if (this.props.maxLines === v) return;
     this.props.maxLines = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get contain() {
     return this.props.contain;
   }
   set contain(v) {
+    if (this.props.contain === v) return;
     this.props.contain = v;
     updateNodeStyles(this);
+    scheduleUpdateDOMTextMeasurement(this);
   }
   get verticalAlign() {
     return this.props.verticalAlign;
@@ -1446,6 +1601,7 @@ class DOMText extends DOMNode {
     return this.props.debug;
   }
   set debug(v) {
+    if (this.props.debug === v) return;
     this.props.debug = v;
     updateNodeStyles(this);
   }
@@ -1509,6 +1665,7 @@ export class DOMRendererMain implements IRendererMain {
       root: null!,
       renderer: {
         mode: 'canvas',
+        boundsMargin: settings.boundsMargin,
       },
       fontManager: {
         addFontFace: () => {},
