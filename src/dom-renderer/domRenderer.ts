@@ -669,7 +669,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
             if (node.imgEl) {
               node.imgEl.removeAttribute('src');
               node.imgEl.style.display = 'none';
-              delete node.imgEl.dataset.rawSrc;
+              node.imgEl.removeAttribute('data-rawSrc');
             }
 
             const failedSrc =
@@ -892,7 +892,7 @@ function updateNodeData(node: DOMNode | DOMText) {
   for (let key in data) {
     let keyValue: unknown = data[key];
     if (keyValue === undefined) {
-      delete node.div.dataset['data-' + key];
+      node.div.removeAttribute('data-' + key);
     } else {
       node.div.dataset[key] = String(keyValue);
     }
