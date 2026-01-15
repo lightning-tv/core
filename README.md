@@ -1,3 +1,7 @@
+# DEPRECATED: This repo has been merged into the lightning-tv/solid repo
+
+Future changes will be made there and released with the solid package.
+
 # Lightning TV Core for Universal Renderers
 
 Provides an abstraction layer for Lightning Renderer which Universal renders like Solid & Vue can use.
