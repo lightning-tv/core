@@ -1,9 +1,5 @@
 import * as lng from '@lightningjs/renderer';
-import {
-  DOMRendererMain,
-  isDomRenderer,
-  loadFontToDom,
-} from './dom-renderer/domRenderer.js';
+import { DOMRendererMain, loadFontToDom } from './dom-renderer/domRenderer.js';
 import { Config, DOM_RENDERING } from './config.js';
 import { DomRendererMainSettings } from './dom-renderer/domRendererTypes.js';
 
