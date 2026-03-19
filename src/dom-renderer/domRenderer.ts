@@ -9,6 +9,7 @@ import * as lng from '@lightningjs/renderer';
 import { EventEmitter } from '@lightningjs/renderer/utils';
 import { Config } from '../config.js';
 import type {
+  DomRendererMainSettings,
   ExtractProps,
   IRendererMain,
   IRendererNode,
@@ -29,6 +30,7 @@ import {
   isRenderStateInBounds,
   nodeHasTextureSource,
   computeRenderStateForNode,
+  compactString,
 } from './domRendererUtils.js';
 
 // Feature detection for legacy brousers
@@ -297,7 +299,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     if (textProps.fontWeight !== 'normal') {
       style += `font-weight: ${textProps.fontWeight};`;
     }
-    if (textProps.fontStretch !== 'normal') {
+    if (textProps.fontStretch && textProps.fontStretch !== 'normal') {
       style += `font-stretch: ${textProps.fontStretch};`;
     }
     if (textProps.lineHeight != null) {
@@ -774,7 +776,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     }
   }
 
-  node.div.setAttribute('style', style);
+  node.div.setAttribute('style', compactString(style));
 
   if (node instanceof DOMNode && node !== node.stage.root) {
     const hasTextureSrc = nodeHasTextureSource(node);
@@ -791,6 +793,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
 }
 
 const textNodesToMeasure = new Set<DOMText>();
+const containTextNodes = new Set<DOMText>();
+let fontLoadingListenerSetup = false;
 
 type Size = { width: number; height: number };
 
@@ -827,12 +831,17 @@ function getElSize(node: DOMNode): Size {
 */
 function updateDOMTextSize(node: DOMText): void {
   let size: Size;
+  let dimensionsChanged = false;
   switch (node.contain) {
     case 'width':
       size = getElSize(node);
+      if (node.props.width !== size.width) {
+        node.width = size.width;
+        dimensionsChanged = true;
+      }
       if (node.props.height !== size.height) {
-        node.props.height = size.height;
-        updateNodeStyles(node);
+        node.height = size.height;
+        dimensionsChanged = true;
       }
       break;
     case 'none':
@@ -841,19 +850,19 @@ function updateDOMTextSize(node: DOMText): void {
         node.props.height !== size.height ||
         node.props.width !== size.width
       ) {
-        node.props.width = size.width;
-        node.props.height = size.height;
-        updateNodeStyles(node);
+        node.width = size.width;
+        node.height = size.height;
+        dimensionsChanged = true;
       }
       break;
   }
 
-  if (!node.loaded) {
+  if (!node.loaded || dimensionsChanged) {
     const payload: lng.NodeTextLoadedPayload = {
       type: 'text',
       dimensions: {
-        width: node.props.width,
-        height: node.props.height,
+        width: node.width,
+        height: node.height,
       },
     };
     node.emit('loaded', payload);
@@ -866,21 +875,69 @@ function updateDOMTextMeasurements() {
   textNodesToMeasure.clear();
 }
 
+function shouldTrackContainTextNode(node: DOMText): boolean {
+  return node.contain === 'width' || node.contain === 'none';
+}
+
+function syncContainTextNodeTracking(node: DOMText): void {
+  if (shouldTrackContainTextNode(node)) {
+    containTextNodes.add(node);
+  } else {
+    containTextNodes.delete(node);
+  }
+}
+
+function scheduleContainTextNodesMeasurement(): void {
+  if (containTextNodes.size === 0) return;
+
+  containTextNodes.forEach((node) => {
+    if (node.div.isConnected) {
+      textNodesToMeasure.add(node);
+    }
+  });
+
+  if (textNodesToMeasure.size > 0) {
+    setTimeout(updateDOMTextMeasurements);
+  }
+}
+
+function setupFontLoadingListeners(): void {
+  if (fontLoadingListenerSetup) return;
+  if (
+    typeof document === 'undefined' ||
+    !(document.fonts as FontFaceSet | undefined)
+  ) {
+    return;
+  }
+
+  const fonts = document.fonts;
+  if (typeof fonts.addEventListener === 'function') {
+    fonts.addEventListener('loadingdone', scheduleContainTextNodesMeasurement);
+  }
+
+  fontLoadingListenerSetup = true;
+}
+
 function scheduleUpdateDOMTextMeasurement(node: DOMText) {
   /*
     Make sure the font is loaded before measuring
   */
 
+  setupFontLoadingListeners();
+
   if (textNodesToMeasure.size === 0) {
-    const fonts = document.fonts;
-    if (document.fonts.status === 'loaded') {
-      setTimeout(updateDOMTextMeasurements);
-    } else {
-      if (fonts && fonts.ready && typeof fonts.ready.then === 'function') {
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      const fonts = document.fonts;
+      if (fonts.status === 'loaded') {
+        setTimeout(updateDOMTextMeasurements);
+      } else if (fonts.ready && typeof fonts.ready.then === 'function') {
         fonts.ready.then(updateDOMTextMeasurements);
       } else {
         setTimeout(updateDOMTextMeasurements, 500);
       }
+    } else {
+      // Fallback for devices without FontFaceSet.ready()
+      setTimeout(updateDOMTextMeasurements, 500);
     }
   }
 
@@ -1284,69 +1341,98 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   set scale(v) {
     if (this.props.scale === v) return;
     this.props.scale = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get scaleX() {
     return this.props.scaleX;
   }
   set scaleX(v) {
+    if (this.props.scaleX === v) return;
     this.props.scaleX = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get scaleY() {
     return this.props.scaleY;
   }
   set scaleY(v) {
+    if (this.props.scaleY === v) return;
     this.props.scaleY = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get mount() {
     return this.props.mount;
   }
   set mount(v) {
+    if (this.props.mount === v) return;
     this.props.mount = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get mountX() {
     return this.props.mountX;
   }
   set mountX(v) {
+    if (this.props.mountX === v) return;
     this.props.mountX = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get mountY() {
     return this.props.mountY;
   }
   set mountY(v) {
+    if (this.props.mountY === v) return;
     this.props.mountY = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get pivot() {
     return this.props.pivot;
   }
   set pivot(v) {
+    if (this.props.pivot === v) return;
     this.props.pivot = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get pivotX() {
     return this.props.pivotX;
   }
   set pivotX(v) {
+    if (this.props.pivotX === v) return;
     this.props.pivotX = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get pivotY() {
     return this.props.pivotY;
   }
   set pivotY(v) {
+    if (this.props.pivotY === v) return;
     this.props.pivotY = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get rotation() {
     return this.props.rotation;
   }
   set rotation(v) {
+    if (this.props.rotation === v) return;
     this.props.rotation = v;
+    this.boundsDirty = true;
+    this.markChildrenBoundsDirty();
     updateNodeStyles(this);
   }
   get rtt() {
@@ -1446,7 +1532,14 @@ class DOMText extends DOMNode {
   ) {
     super(stage, props);
     this.div.innerText = props.text;
+    syncContainTextNodeTracking(this);
     scheduleUpdateDOMTextMeasurement(this);
+  }
+
+  override destroy(): void {
+    textNodesToMeasure.delete(this);
+    containTextNodes.delete(this);
+    super.destroy();
   }
 
   get text() {
@@ -1552,6 +1645,7 @@ class DOMText extends DOMNode {
   set contain(v) {
     if (this.props.contain === v) return;
     this.props.contain = v;
+    syncContainTextNodeTracking(this);
     updateNodeStyles(this);
     scheduleUpdateDOMTextMeasurement(this);
   }
@@ -1637,7 +1731,7 @@ export class DOMRendererMain implements IRendererMain {
     new Map();
 
   constructor(
-    public settings: Partial<lng.RendererMainSettings>,
+    public settings: DomRendererMainSettings,
     rawTarget: string | HTMLElement,
   ) {
     let target: HTMLElement;
