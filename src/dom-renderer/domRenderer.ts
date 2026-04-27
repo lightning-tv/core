@@ -421,6 +421,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         'bottom: 0',
         'display: block',
         'pointer-events: none',
+        `opacity: ${node.imageLoading ? 0 : 1}`,
+        'transition: opacity 100ms linear',
       ];
 
       if (props.textureOptions.resizeMode?.type) {
@@ -663,10 +665,17 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               supportsObjectFit,
               supportsObjectPosition,
             );
+
+            // Reveal only after final fit/positioning is applied
+            if (node.imgEl) {
+              node.imageLoading = false;
+              node.imgEl.style.opacity = '1';
+            }
             node.emit('loaded', payload);
           });
 
           node.imgEl.addEventListener('error', () => {
+            node.imageLoading = false;
             if (node.imgEl) {
               node.imgEl.removeAttribute('src');
               node.imgEl.style.display = 'none';
@@ -1055,6 +1064,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   divBg: HTMLElement | undefined;
   divBorder: HTMLElement | undefined;
   imgEl: HTMLImageElement | undefined;
+  imageLoading = false;
   lazyImagePendingSrc: string | null = null;
   lazyImageSubTextureProps:
     | InstanceType<lng.TextureMap['SubTexture']>['props']
@@ -1163,6 +1173,9 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     const pendingSrc = this.lazyImagePendingSrc;
     if (!pendingSrc) return;
     if (this.imgEl.dataset.rawSrc === pendingSrc) return;
+    // Hide transient frame while source is loading and being fitted.
+    this.imageLoading = true;
+    this.imgEl.style.opacity = '0';
     this.imgEl.style.display = '';
     this.imgEl.dataset.pendingSrc = pendingSrc;
     this.imgEl.src = pendingSrc;
