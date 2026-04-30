@@ -327,6 +327,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         break;
     }
 
+    style += `white-space: pre-wrap;`;
+
     if (maxLines !== Infinity) {
       // https://stackoverflow.com/a/13924997
       style += `display: -webkit-box;
@@ -419,6 +421,8 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         'bottom: 0',
         'display: block',
         'pointer-events: none',
+        `opacity: ${node.imageLoading ? 0 : 1}`,
+        'transition: opacity 100ms linear',
       ];
 
       if (props.textureOptions.resizeMode?.type) {
@@ -613,6 +617,16 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         node.div.insertBefore(node.divBg, node.div.firstChild);
       }
 
+      const isSyncSubtextureUpdate =
+        rawImgSrc != null &&
+        srcPos != null &&
+        !!node.imgEl &&
+        node.imgEl.complete &&
+        node.imgEl.dataset.rawSrc === rawImgSrc;
+      if (isSyncSubtextureUpdate) {
+        node.imageLoading = true;
+      }
+
       let bgLayerStyle =
         'position: absolute; top:0; left:0; right:0; bottom:0; z-index: -1; pointer-events: none; overflow: hidden;';
       if (bgStyle) {
@@ -621,6 +635,9 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       if (maskStyle) {
         bgLayerStyle += maskStyle;
       }
+      if (hasDivBgTint && srcPos != null && node.imageLoading) {
+        bgLayerStyle += 'opacity: 0;';
+      }
 
       node.divBg.setAttribute('style', bgLayerStyle + radiusStyle);
 
@@ -628,6 +645,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         if (!node.imgEl) {
           node.imgEl = document.createElement('img');
           node.imgEl.alt = '';
+          node.imgEl.crossOrigin = 'anonymous';
           node.imgEl.setAttribute('aria-hidden', 'true');
           node.imgEl.setAttribute('loading', 'lazy');
           node.imgEl.removeAttribute('src');
@@ -660,10 +678,19 @@ function updateNodeStyles(node: DOMNode | DOMText) {
               supportsObjectFit,
               supportsObjectPosition,
             );
+
+            // Reveal only after final fit/positioning is applied
+            if (node.imgEl) {
+              node.imageLoading = false;
+              node.imgEl.style.opacity = '1';
+            }
+            node.showBackgroundLayer();
             node.emit('loaded', payload);
           });
 
           node.imgEl.addEventListener('error', () => {
+            node.imageLoading = false;
+            node.showBackgroundLayer();
             if (node.imgEl) {
               node.imgEl.removeAttribute('src');
               node.imgEl.style.display = 'none';
@@ -707,6 +734,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           node.imgEl.dataset.rawSrc === rawImgSrc
         ) {
           applySubTextureScaling(node, node.imgEl, srcPos);
+          if (node.imageLoading) {
+            node.imageLoading = false;
+            node.imgEl.style.opacity = '1';
+            node.showBackgroundLayer();
+          }
         }
         if (
           !srcPos &&
@@ -1052,6 +1084,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   divBg: HTMLElement | undefined;
   divBorder: HTMLElement | undefined;
   imgEl: HTMLImageElement | undefined;
+  imageLoading = false;
   lazyImagePendingSrc: string | null = null;
   lazyImageSubTextureProps:
     | InstanceType<lng.TextureMap['SubTexture']>['props']
@@ -1155,11 +1188,30 @@ export class DOMNode extends EventEmitter implements IRendererNode {
     }
   }
 
+  showBackgroundLayer() {
+    if (this.divBg) {
+      this.divBg.style.opacity = '1';
+    }
+  }
+
+  hideMaskedBackgroundLayer() {
+    if (
+      this.divBg &&
+      (this.divBg.style.maskImage || this.divBg.style.webkitMaskImage)
+    ) {
+      this.divBg.style.opacity = '0';
+    }
+  }
+
   applyPendingImageSrc() {
     if (!this.imgEl) return;
     const pendingSrc = this.lazyImagePendingSrc;
     if (!pendingSrc) return;
     if (this.imgEl.dataset.rawSrc === pendingSrc) return;
+    // Hide transient frame while source is loading and being fitted.
+    this.imageLoading = true;
+    this.imgEl.style.opacity = '0';
+    this.hideMaskedBackgroundLayer();
     this.imgEl.style.display = '';
     this.imgEl.dataset.pendingSrc = pendingSrc;
     this.imgEl.src = pendingSrc;
