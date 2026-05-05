@@ -272,7 +272,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     }
 
     if (transform.length > 0) {
-      style += `transform: ${transform};`;
+      style += `transform: ${transform} translateZ(0);`;
+      style += `backface-visibility: hidden;`;
+      style += `-webkit-backface-visibility: hidden;`;
+      style += `perspective: 1000px;`;
+      style += `-webkit-perspective: 1000px;`;
     }
   }
 
