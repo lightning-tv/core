@@ -235,6 +235,10 @@ function updateNodeParent(node: DOMNode | DOMText) {
   }
 }
 
+/**
+ * Builds the CSS transform string from node props (x, y, rotation, scale, mount).
+ * Returns an empty string if no transform is needed.
+ */
 function buildTransformCSS(props: IRendererNodeProps): string {
   const transforms: string[] = [];
 
@@ -261,10 +265,9 @@ function buildTransformCSS(props: IRendererNodeProps): string {
 }
 
 /**
- * Updates only the CSS transform of a node without rebuilding the full style
- * string. Use this fast path when only positional/transform props change
- * (x, y, rotation, scale, mount), since those are the most frequent updates
- * during scrolling and animation.
+ * Fast path for transform-only updates (x, y, rotation, scale, mount).
+ * Skips full style rebuild but still re-evaluates viewport bounds for nodes
+ * with a texture source to drive lazy image load/unload during scroll.
  */
 function updateTransformOnly(node: DOMNode | DOMText): void {
   const transform = buildTransformCSS(node.props);
@@ -284,9 +287,8 @@ function updateTransformOnly(node: DOMNode | DOMText): void {
 }
 
 /**
- * Re-evaluates the render state (in-bounds / viewport) for a node.
- * Extracted from updateNodeStyles so both full and fast-path updates
- * can trigger it without duplicating logic.
+ * Recomputes the viewport bounds state for a node with a texture source and,
+ * if changed, triggers lazy image load or unload via updateRenderState.
  */
 function updateRenderStateIfNeeded(node: DOMNode | DOMText): void {
   if (!(node instanceof DOMNode) || node === node.stage.root) return;
