@@ -235,8 +235,6 @@ function updateNodeParent(node: DOMNode | DOMText) {
   }
 }
 
-// getNodeLineHeight moved to domRendererUtils.ts
-
 function buildTransformCSS(props: IRendererNodeProps): string {
   const transforms: string[] = [];
 
