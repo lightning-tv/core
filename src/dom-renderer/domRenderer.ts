@@ -274,13 +274,11 @@ function updateTransformOnly(node: DOMNode | DOMText): void {
   const s = node.div.style;
 
   if (transform.length > 0) {
-    s.transform = `${transform} translateZ(0)`;
+    s.transform = `${transform}`;
     s.backfaceVisibility = 'hidden';
-    s.webkitBackfaceVisibility = 'hidden';
   } else {
     s.transform = '';
     s.backfaceVisibility = '';
-    s.webkitBackfaceVisibility = '';
   }
 
   updateRenderStateIfNeeded(node);
@@ -319,11 +317,9 @@ function updateNodeStyles(node: DOMNode | DOMText) {
   {
     const transform = buildTransformCSS(props);
     if (transform.length > 0) {
-      style += `transform: ${transform} translateZ(0);`;
+      style += `transform: ${transform};`;
       style += `backface-visibility: hidden;`;
       style += `-webkit-backface-visibility: hidden;`;
-      style += `perspective: 1000px;`;
-      style += `-webkit-perspective: 1000px;`;
     }
   }
 
