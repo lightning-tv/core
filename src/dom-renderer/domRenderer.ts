@@ -657,10 +657,14 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       }
     }
 
-    // If there's still no reason to use divBg, check out tint/gradient/subtexture/radius
+    // If there's still no reason to use divBg, check out tint/gradient/subtexture/radius/bgStyle
     if (!needsBackgroundLayer && rawImgSrc) {
       needsBackgroundLayer =
-        hasTint || !!gradient || srcPos !== null || radiusStyle !== '';
+        hasTint ||
+        !!gradient ||
+        srcPos !== null ||
+        radiusStyle !== '' ||
+        bgStyle !== '';
     }
 
     style += radiusStyle;
