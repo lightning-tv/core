@@ -443,10 +443,9 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     let imgStyle = '';
     let hasDivBgTint = false;
 
+    let hasTint = false;
     if (rawImgSrc) {
-      needsBackgroundLayer = true;
-
-      const hasTint = props.color !== 0xffffffff && props.color !== 0x00000000;
+      hasTint = props.color !== 0xffffffff && props.color !== 0x00000000;
 
       if (hasTint) {
         bgStyle += `background-color: ${colorToRgba(props.color)};`;
@@ -658,6 +657,11 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       }
     }
 
+    // If there's still no reason to use divBg, check out tint/gradient/subtexture
+    if (!needsBackgroundLayer && rawImgSrc) {
+      needsBackgroundLayer = hasTint || !!gradient || srcPos !== null;
+    }
+
     style += radiusStyle;
 
     if (needsBackgroundLayer) {
@@ -818,6 +822,134 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           node.imgEl.remove();
           node.imgEl = undefined;
         }
+      }
+    } else if (rawImgSrc) {
+      // Image directly in node.div (without divBg) when there is no tint/gradient
+
+      // Cleanup divBg
+      if (node.divBg) {
+        node.divBg.remove();
+        node.divBg = undefined;
+      }
+
+      const isSyncSubtextureUpdate =
+        srcPos != null &&
+        !!node.imgEl &&
+        node.imgEl.complete &&
+        node.imgEl.dataset.rawSrc === rawImgSrc;
+      if (isSyncSubtextureUpdate) {
+        node.imageLoading = true;
+      }
+
+      if (!node.imgEl) {
+        node.imgEl = document.createElement('img');
+        node.imgEl.alt = '';
+        node.imgEl.crossOrigin = 'anonymous';
+        node.imgEl.setAttribute('aria-hidden', 'true');
+        node.imgEl.setAttribute('loading', 'lazy');
+        node.imgEl.removeAttribute('src');
+
+        node.imgEl.addEventListener('load', () => {
+          const payload: lng.NodeTextureLoadedPayload = {
+            type: 'texture',
+            dimensions: {
+              width: node.imgEl!.naturalWidth,
+              height: node.imgEl!.naturalHeight,
+            },
+          };
+          node.imgEl!.style.display = '';
+          applySubTextureScaling(
+            node,
+            node.imgEl!,
+            node.lazyImageSubTextureProps,
+          );
+
+          const resizeMode = (node.props.textureOptions as any)?.resizeMode;
+          const clipX = resizeMode?.clipX ?? 0.5;
+          const clipY = resizeMode?.clipY ?? 0.5;
+          computeLegacyObjectFit(
+            node,
+            node.imgEl!,
+            resizeMode,
+            clipX,
+            clipY,
+            node.lazyImageSubTextureProps,
+            supportsObjectFit,
+            supportsObjectPosition,
+          );
+
+          if (node.imgEl) {
+            node.imageLoading = false;
+            node.imgEl.style.opacity = '1';
+          }
+          node.emit('loaded', payload);
+        });
+
+        node.imgEl.addEventListener('error', () => {
+          node.imageLoading = false;
+          if (node.imgEl) {
+            node.imgEl.removeAttribute('src');
+            node.imgEl.style.display = 'none';
+            node.imgEl.removeAttribute('data-rawSrc');
+          }
+
+          const failedSrc =
+            node.imgEl?.dataset.pendingSrc || node.lazyImagePendingSrc || '';
+
+          const payload: lng.NodeTextureFailedPayload = {
+            type: 'texture',
+            error: new Error(`Failed to load image: ${failedSrc}`),
+          };
+          node.emit('failed', payload);
+        });
+      }
+
+      node.lazyImagePendingSrc = rawImgSrc;
+      node.lazyImageSubTextureProps = srcPos;
+      node.imgEl.dataset.pendingSrc = rawImgSrc;
+
+      if (node.imgEl.parentElement !== node.div) {
+        node.div.appendChild(node.imgEl);
+      }
+
+      node.imgEl.setAttribute('style', imgStyle);
+
+      if (isRenderStateInBounds(node.renderState)) {
+        node.applyPendingImageSrc();
+      } else if (!node.imgEl.dataset.rawSrc) {
+        node.imgEl.removeAttribute('src');
+      }
+
+      if (
+        srcPos &&
+        node.imgEl.complete &&
+        node.imgEl.dataset.rawSrc === rawImgSrc
+      ) {
+        applySubTextureScaling(node, node.imgEl, srcPos);
+        if (node.imageLoading) {
+          node.imageLoading = false;
+          node.imgEl.style.opacity = '1';
+        }
+      }
+      if (
+        !srcPos &&
+        node.imgEl.complete &&
+        (!supportsObjectFit || !supportsObjectPosition) &&
+        node.imgEl.dataset.rawSrc === rawImgSrc
+      ) {
+        const resizeMode = (node.props.textureOptions as any)?.resizeMode;
+        const clipX = resizeMode?.clipX ?? 0.5;
+        const clipY = resizeMode?.clipY ?? 0.5;
+        computeLegacyObjectFit(
+          node,
+          node.imgEl,
+          resizeMode,
+          clipX,
+          clipY,
+          srcPos,
+          supportsObjectFit,
+          supportsObjectPosition,
+        );
       }
     } else {
       node.lazyImagePendingSrc = null;
