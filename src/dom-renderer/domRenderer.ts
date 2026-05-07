@@ -275,10 +275,8 @@ function updateTransformOnly(node: DOMNode | DOMText): void {
 
   if (transform.length > 0) {
     s.transform = `${transform}`;
-    s.backfaceVisibility = 'hidden';
   } else {
     s.transform = '';
-    s.backfaceVisibility = '';
   }
 
   updateRenderStateIfNeeded(node);
@@ -318,8 +316,6 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     const transform = buildTransformCSS(props);
     if (transform.length > 0) {
       style += `transform: ${transform};`;
-      style += `backface-visibility: hidden;`;
-      style += `-webkit-backface-visibility: hidden;`;
     }
   }
 
@@ -684,7 +680,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
       }
 
       let bgLayerStyle =
-        'position: absolute; top:0; left:0; right:0; bottom:0; z-index: -1; pointer-events: none; overflow: hidden;';
+        'position: absolute; top:0; left:0; right:0; bottom:0; z-index: -1; pointer-events: none; -webkit-clip-path: inset(0); clip-path: inset(0);';
       if (bgStyle) {
         bgLayerStyle += bgStyle;
       }
