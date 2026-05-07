@@ -316,8 +316,6 @@ function updateNodeStyles(node: DOMNode | DOMText) {
     const transform = buildTransformCSS(props);
     if (transform.length > 0) {
       style += `transform: ${transform};`;
-      style += `backface-visibility: hidden;`;
-      style += `-webkit-backface-visibility: hidden;`;
     }
   }
 
