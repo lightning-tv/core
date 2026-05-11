@@ -768,7 +768,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
           node.divBg.appendChild(node.imgEl);
         }
 
-        node.imgEl.setAttribute('style', imgStyle);
+        node.imgEl.setAttribute('style', imgStyle + radiusStyle);
 
         if (hasDivBgTint) {
           node.imgEl.style.visibility = 'hidden';
@@ -909,7 +909,7 @@ function updateNodeStyles(node: DOMNode | DOMText) {
         node.div.appendChild(node.imgEl);
       }
 
-      node.imgEl.setAttribute('style', imgStyle);
+      node.imgEl.setAttribute('style', imgStyle + radiusStyle);
 
       if (isRenderStateInBounds(node.renderState)) {
         node.applyPendingImageSrc();
